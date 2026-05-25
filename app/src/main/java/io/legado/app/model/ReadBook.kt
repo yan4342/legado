@@ -8,6 +8,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookProgress
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.DailyReadRecord
 import io.legado.app.data.entities.ReadRecord
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.book.BookHelp
@@ -287,10 +288,18 @@ object ReadBook : CoroutineScope by MainScope() {
             if (!AppConfig.enableReadRecord) {
                 return@execute
             }
-            readRecord.readTime = readRecord.readTime + System.currentTimeMillis() - readStartTime
+            val elapsed = System.currentTimeMillis() - readStartTime
+            readRecord.readTime = readRecord.readTime + elapsed
             readStartTime = System.currentTimeMillis()
             readRecord.lastRead = System.currentTimeMillis()
             appDb.readRecordDao.insert(readRecord)
+            // dual-write daily read record
+            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                .format(java.util.Date())
+            val existing = appDb.dailyReadRecordDao.getReadTime(today, readRecord.bookName) ?: 0
+            appDb.dailyReadRecordDao.insert(
+                DailyReadRecord(today, readRecord.bookName, existing + elapsed)
+            )
         }
     }
 

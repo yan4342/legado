@@ -4,9 +4,11 @@ import android.content.Context
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.SearchView
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.tabs.TabLayout
 import io.legado.app.R
 import io.legado.app.base.BaseActivity
 import io.legado.app.base.adapter.ItemViewHolder
@@ -20,6 +22,7 @@ import io.legado.app.help.config.LocalConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.book.search.SearchActivity
+import io.legado.app.ui.widget.ReadBarChartView
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.cnCompare
@@ -31,6 +34,7 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 
 class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
@@ -51,6 +55,7 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
         initView()
         initAllTime()
         initData()
+        initChart()
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
@@ -102,7 +107,9 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
             alert(R.string.delete, R.string.sure_del) {
                 yesButton {
                     appDb.readRecordDao.clear()
+                    appDb.dailyReadRecordDao.clear()
                     initData()
+                    initChart()
                 }
                 noButton()
             }
@@ -151,6 +158,107 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
                 }
             }
             adapter.setItems(readRecords)
+        }
+    }
+
+    @Suppress("SetTextI18n")
+    private fun initChart() {
+        lifecycleScope.launch {
+            try {
+            val cal = Calendar.getInstance()
+            val todayFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val today = todayFormat.format(cal.time)
+
+            // Date range: last 365 days
+            cal.add(Calendar.DAY_OF_YEAR, -364)
+            val startDate = todayFormat.format(cal.time)
+
+            val dailyRecords = withContext(IO) {
+                appDb.dailyReadRecordDao.sumDailyByDateRange(startDate, today)
+            }
+            val heatmapData = dailyRecords.associate { it.date to it.readTime }
+
+            val topBooks = withContext(IO) {
+                appDb.dailyReadRecordDao.topBooksByDateRange(startDate, today, 20)
+            }
+
+            // Today's reading time
+            val todayTime = withContext(IO) {
+                appDb.dailyReadRecordDao.sumByDateRange(today, today)
+            }
+            binding.cardChartInclude.tvTodayTime.text = formatDuring(todayTime)
+
+            // Consecutive days
+            val consecutiveDays = withContext(IO) {
+                var count = 0
+                val checkCal = Calendar.getInstance()
+                val checkFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                while (true) {
+                    val checkDate = checkFormat.format(checkCal.time)
+                    val dayTime = appDb.dailyReadRecordDao.sumByDateRange(checkDate, checkDate)
+                    if (dayTime > 0) {
+                        count++
+                        checkCal.add(Calendar.DAY_OF_YEAR, -1)
+                    } else {
+                        break
+                    }
+                }
+                count
+            }
+            binding.cardChartInclude.tvConsecutiveDays.text = "${consecutiveDays}天"
+
+            // Total books count
+            val totalBooks = withContext(IO) {
+                appDb.readRecordDao.allShow.size
+            }
+            binding.cardChartInclude.tvTotalBooks.text = "${totalBooks}本"
+
+            // Heatmap
+            binding.cardChartInclude.heatmapView.setData(heatmapData)
+            binding.cardChartInclude.heatmapView.onDayClick = { date, readTime ->
+                // Tooltip is shown by the view itself
+            }
+
+            // Bar chart
+            val barItems = topBooks.map {
+                ReadBarChartView.BarItem(it.bookName, it.readTime)
+            }
+            binding.cardChartInclude.barChartView.setData(barItems)
+            binding.cardChartInclude.barChartView.onItemClick = { bookName ->
+                lifecycleScope.launch {
+                    val book = withContext(IO) {
+                        appDb.bookDao.findByName(bookName).firstOrNull()
+                    }
+                    if (book == null) {
+                        SearchActivity.start(this@ReadRecordActivity, bookName)
+                    } else {
+                        startActivityForBook(book)
+                    }
+                }
+            }
+
+            // Tab switch
+            binding.cardChartInclude.tabChartType.addOnTabSelectedListener(
+                object : TabLayout.OnTabSelectedListener {
+                    override fun onTabSelected(tab: TabLayout.Tab?) {
+                        when (tab?.position) {
+                            0 -> {
+                                binding.cardChartInclude.heatmapView.visibility = View.VISIBLE
+                                binding.cardChartInclude.barChartView.visibility = View.GONE
+                            }
+                            1 -> {
+                                binding.cardChartInclude.heatmapView.visibility = View.GONE
+                                binding.cardChartInclude.barChartView.visibility = View.VISIBLE
+                            }
+                        }
+                    }
+                    override fun onTabUnselected(tab: TabLayout.Tab?) {}
+                    override fun onTabReselected(tab: TabLayout.Tab?) {}
+                }
+            )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -208,7 +316,9 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
                 setMessage(getString(R.string.sure_del_any, item.bookName))
                 yesButton {
                     appDb.readRecordDao.deleteByName(item.bookName)
+                    appDb.dailyReadRecordDao.deleteByBook(item.bookName)
                     initData()
+                    initChart()
                 }
                 noButton()
             }

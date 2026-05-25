@@ -782,6 +782,11 @@
     <string name="read_record">Read record</string>
     <string name="del_read_record">Delete Read record</string>
     <string name="read_record_summary">Read record summary</string>
+    <string name="today_read_time">Today</string>
+    <string name="consecutive_days">Streak</string>
+    <string name="total_books_read">Books</string>
+    <string name="heatmap">Heatmap</string>
+    <string name="bar_chart">Ranking</string>
     <string name="local_tts">Local TTS</string>
     <string name="thread_count">Thread count</string>
     <string name="all_read_time">Total read time</string>

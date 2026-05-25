@@ -10,22 +10,25 @@ android {
     namespace = 'com.script'
     kotlin {
         jvmToolchain {
-            languageVersion.set(JavaLanguageVersion.of(17))
+            languageVersion.set(JavaLanguageVersion.of(21))
         }
     }
     defaultConfig {
         minSdk 21
-        targetSdk 36
 
         consumerProguardFiles "consumer-rules.pro"
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
     lint {
         checkDependencies = true
+        targetSdk 36
+    }
+    testOptions {
+        targetSdk 36
     }
     tasks.withType(JavaCompile).tap {
         configureEach {

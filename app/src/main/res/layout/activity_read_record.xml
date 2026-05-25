@@ -13,6 +13,13 @@
         app:contentLayout="@layout/view_search"
         app:title="@string/read_record" />
 
+    <!-- Visualization card -->
+    <include
+        android:id="@+id/card_chart_include"
+        layout="@layout/view_read_record_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
