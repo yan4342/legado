@@ -69,12 +69,15 @@
     <string name="book_source">Book sources</string>
     <string name="book_source_manage">Sources management</string>
     <string name="book_source_manage_desc">Create/Import/Edit/Manage Book sources</string>
+    <string name="content_source_manage">Content Sources</string>
+    <string name="my_data">My Data</string>
     <string name="setting">Settings</string>
     <string name="theme_setting">Theme settings</string>
     <string name="theme_setting_s">Some settings related to interface or color</string>
     <string name="other_setting">Other settings</string>
     <string name="other_setting_s">Some function-related settings</string>
     <string name="about">About</string>
+    <string name="tool_about">Tools &amp; About</string>
     <string name="donate">Donations</string>
     <string name="exit">Exit</string>
     <string name="exit_no_save">It has not been saved. Do you want to continue editing?</string>

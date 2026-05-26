@@ -68,12 +68,15 @@
     <string name="book_source">书源</string>
     <string name="book_source_manage">书源管理</string>
     <string name="book_source_manage_desc">新建、导入、编辑或管理书源</string>
+    <string name="content_source_manage">内容源管理</string>
+    <string name="my_data">我的数据</string>
     <string name="setting">设置</string>
     <string name="theme_setting">主题设置</string>
     <string name="theme_setting_s">与界面/颜色相关的一些设置</string>
     <string name="other_setting">其它设置</string>
     <string name="other_setting_s">与功能相关的一些设置</string>
     <string name="about">关于</string>
+    <string name="tool_about">工具与关于</string>
     <string name="donate">捐赠</string>
     <string name="exit">退出</string>
     <string name="exit_no_save">尚未保存，是否继续编辑</string>
