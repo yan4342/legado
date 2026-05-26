@@ -3,6 +3,7 @@ package io.legado.app.ui.widget.dialog
 import android.app.Dialog
 import android.content.Context
 import io.legado.app.databinding.DialogWaitBinding
+import io.legado.app.lib.theme.filletBackground
 
 
 @Suppress("unused")
@@ -13,6 +14,7 @@ class WaitDialog(context: Context) : Dialog(context) {
     init {
         setCanceledOnTouchOutside(false)
         setContentView(binding.root)
+        window?.setBackgroundDrawable(context.filletBackground)
     }
 
     fun setText(text: String): WaitDialog {

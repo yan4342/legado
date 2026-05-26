@@ -23,9 +23,6 @@ class SwitchPreference(context: Context, attrs: AttributeSet) :
     }
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
-        if (!isBottomBackground) {
-            CardPositionHelper.applyCardStyle(holder, this)
-        }
         val v = Preference.bindView<SwitchCompat>(
             context, holder, icon, title, summary,
             widgetLayoutResource,
@@ -36,6 +33,9 @@ class SwitchPreference(context: Context, attrs: AttributeSet) :
             v.applyTint(context.accentColor)
         }
         super.onBindViewHolder(holder)
+        if (!isBottomBackground) {
+            CardPositionHelper.applyCardStyle(holder, this)
+        }
         onLongClick?.let { listener ->
             holder.itemView.setOnLongClickListener {
                 listener.invoke(this)

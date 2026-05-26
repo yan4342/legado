@@ -52,7 +52,6 @@ class IconListPreference(context: Context, attrs: AttributeSet) : ListPreference
     }
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
-        CardPositionHelper.applyCardStyle(holder, this)
         super.onBindViewHolder(holder)
         val v = Preference.bindView<ImageView>(
             context,
@@ -72,6 +71,7 @@ class IconListPreference(context: Context, attrs: AttributeSet) : ListPreference
                 v.setImageDrawable(drawable)
             }
         }
+        CardPositionHelper.applyCardStyle(holder, this)
     }
 
     override fun onClick() {

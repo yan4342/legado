@@ -6,7 +6,7 @@ import android.view.KeyEvent
 import android.view.ViewGroup
 import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.DialogPageKeyBinding
-import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.filletBackground
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.hideSoftInput
 import io.legado.app.utils.putPrefString
@@ -25,8 +25,8 @@ class PageKeyDialog(context: Context) : Dialog(context) {
 
     init {
         setContentView(binding.root)
+        window?.setBackgroundDrawable(context.filletBackground)
         binding.run {
-            contentView.setBackgroundColor(context.backgroundColor)
             etPrev.setText(context.getPrefString(PreferKey.prevKeys))
             etNext.setText(context.getPrefString(PreferKey.nextKeys))
             tvReset.onClick {

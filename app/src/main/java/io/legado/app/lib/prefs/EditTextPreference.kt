@@ -25,9 +25,9 @@ class EditTextPreference(context: Context, attrs: AttributeSet) :
     }
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
-        CardPositionHelper.applyCardStyle(holder, this)
         Preference.bindView<TextView>(context, holder, icon, title, summary, null, null)
         super.onBindViewHolder(holder)
+        CardPositionHelper.applyCardStyle(holder, this)
     }
 
     override fun setOnBindEditTextListener(onBindEditTextListener: OnBindEditTextListener?) {
