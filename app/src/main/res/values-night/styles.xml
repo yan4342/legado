@@ -1,6 +1,8 @@
 <resources>
 
-    <style name="Spinner" parent="android:Theme.Holo" />
+    <style name="Style.Spinner" parent="Widget.AppCompat.Spinner">
+        <item name="android:popupBackground">@drawable/shape_spinner_dropdown</item>
+    </style>
 
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Dark">
         <item name="overlapAnchor">false</item>

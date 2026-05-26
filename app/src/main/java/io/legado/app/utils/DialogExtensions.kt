@@ -13,9 +13,10 @@ import splitties.systemservices.windowManager
 
 fun AlertDialog.applyTint(): AlertDialog {
     window?.setBackgroundDrawable(context.filletBackground)
+    val accentColor = ThemeStore.accentColor(context)
     val colorStateList = Selector.colorBuild()
-        .setDefaultColor(ThemeStore.accentColor(context))
-        .setPressedColor(ColorUtils.darkenColor(ThemeStore.accentColor(context)))
+        .setDefaultColor(accentColor)
+        .setPressedColor(ColorUtils.darkenColor(accentColor))
         .create()
     if (getButton(AlertDialog.BUTTON_NEGATIVE) != null) {
         getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(colorStateList)
@@ -27,8 +28,13 @@ fun AlertDialog.applyTint(): AlertDialog {
         getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(colorStateList)
     }
     window?.decorView?.post {
-        listView?.forEach {
-            it.applyTint(context.accentColor)
+        listView?.apply {
+            val padding = 8.dpToPx()
+            setPadding(padding, padding / 2, padding, padding / 2)
+            clipToPadding = false
+            forEach {
+                it.applyTint(accentColor)
+            }
         }
     }
     return this

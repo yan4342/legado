@@ -84,12 +84,12 @@
                     android:layout_marginRight="3dp"
                     tools:ignore="RtlHardcoded" />
 
-                <androidx.appcompat.widget.AppCompatSpinner
+                <io.legado.app.ui.widget.RoundedSpinner
                     android:id="@+id/sp_type"
+                    style="@style/Style.Spinner"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:entries="@array/book_type"
-                    android:theme="@style/Spinner" />
+                    android:entries="@array/book_type" />
 
             </LinearLayout>
 

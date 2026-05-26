@@ -67,8 +67,9 @@
             app:layout_constraintLeft_toLeftOf="@id/til_group_name"
             app:layout_constraintTop_toBottomOf="@id/til_group_name" />
 
-        <androidx.appcompat.widget.AppCompatSpinner
+        <io.legado.app.ui.widget.RoundedSpinner
             android:id="@+id/sp_sort"
+            style="@style/Style.Spinner"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="6dp"
@@ -76,7 +77,6 @@
             app:layout_constraintBottom_toBottomOf="@id/tv_sort"
             app:layout_constraintLeft_toRightOf="@+id/tv_sort"
             app:layout_constraintTop_toTopOf="@id/tv_sort"
-            android:theme="@style/Spinner"
             tools:ignore="RtlHardcoded" />
 
         <io.legado.app.lib.theme.view.ThemeCheckBox

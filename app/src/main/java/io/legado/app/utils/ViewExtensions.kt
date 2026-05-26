@@ -249,6 +249,30 @@ fun PopupMenu.show(x: Int, y: Int) {
     }.onFailure {
         it.printOnDebug()
     }
+    applyRoundedCornersToPopup()
+}
+
+private fun PopupMenu.applyRoundedCornersToPopup() {
+    kotlin.runCatching {
+        val menuPopupHelper = this.javaClass.getDeclaredField("mPopup")
+            .apply { isAccessible = true }.get(this)
+        val menuPopup = menuPopupHelper.javaClass.getDeclaredField("mPopup")
+            .apply { isAccessible = true }.get(menuPopupHelper)
+        val popupWindow = menuPopup.javaClass.getDeclaredField("mPopup")
+            .apply { isAccessible = true }.get(menuPopup) as? android.widget.PopupWindow
+        popupWindow?.let { pw ->
+            val decorView = pw.contentView?.parent as? View ?: return@let
+            val radius = decorView.resources.displayMetrics.density * 12f
+            decorView.outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, radius)
+                }
+            }
+            decorView.clipToOutline = true
+        }
+    }.onFailure {
+        it.printOnDebug()
+    }
 }
 
 fun View.shouldHideSoftInput(event: MotionEvent): Boolean {

@@ -33,12 +33,12 @@
                 android:text="@string/book_type"
                 tools:ignore="RtlHardcoded" />
 
-            <androidx.appcompat.widget.AppCompatSpinner
+            <io.legado.app.ui.widget.RoundedSpinner
                 android:id="@+id/sp_type"
+                style="@style/Style.Spinner"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:entries="@array/book_type"
-                android:theme="@style/Spinner"
                 tools:ignore="TouchTargetSizeCheck" />
 
             <io.legado.app.lib.theme.view.ThemeCheckBox

@@ -10,8 +10,10 @@ import androidx.preference.MultiSelectListPreferenceDialogFragmentCompat
 import androidx.preference.PreferenceDialogFragmentCompat
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
+import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.filletBackground
+import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.dpToPx
 
@@ -36,11 +38,20 @@ class MultiSelectListPreferenceDialog : MultiSelectListPreferenceDialogFragmentC
         dialog.window?.setBackgroundDrawable(requireContext().filletBackground)
         dialog.window?.decorView?.post {
             (dialog as AlertDialog).run {
-                getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(accentColor)
-                getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(accentColor)
-                getButton(AlertDialog.BUTTON_NEUTRAL)?.setTextColor(accentColor)
-                listView?.forEach {
-                    it.applyTint(accentColor)
+                val colorStateList = Selector.colorBuild()
+                    .setDefaultColor(accentColor)
+                    .setPressedColor(ColorUtils.darkenColor(accentColor))
+                    .create()
+                getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(colorStateList)
+                getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(colorStateList)
+                getButton(AlertDialog.BUTTON_NEUTRAL)?.setTextColor(colorStateList)
+                listView?.apply {
+                    val padding = 8.dpToPx()
+                    setPadding(padding, padding / 2, padding, padding / 2)
+                    clipToPadding = false
+                    forEach {
+                        it.applyTint(accentColor)
+                    }
                 }
             }
         }
