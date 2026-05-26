@@ -720,6 +720,8 @@
     <string name="accent">强调色</string>
     <string name="background_color">背景色</string>
     <string name="navbar_color">底部操作栏颜色</string>
+    <string name="card_background_color">卡片背景色</string>
+    <string name="text_accent_color">文字强调色</string>
     <string name="day">白天</string>
     <string name="day_color_primary">白天，主色调</string>
     <string name="day_color_accent">白天，强调色</string>

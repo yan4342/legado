@@ -23,6 +23,9 @@ class SwitchPreference(context: Context, attrs: AttributeSet) :
     }
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
+        if (!isBottomBackground) {
+            CardPositionHelper.applyCardStyle(holder, this)
+        }
         val v = Preference.bindView<SwitchCompat>(
             context, holder, icon, title, summary,
             widgetLayoutResource,

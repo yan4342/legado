@@ -36,4 +36,7 @@
     <dimen name="fastscroll_scrollbar_padding_end">8dp</dimen>
 
     <dimen name="fixed_height_bottom_padding">8dp</dimen>
+
+    <dimen name="prefs_card_corner_radius">16dp</dimen>
+    <dimen name="prefs_card_margin_horizontal">12dp</dimen>
 </resources>

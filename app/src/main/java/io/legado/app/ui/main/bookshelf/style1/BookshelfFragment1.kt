@@ -15,6 +15,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.FragmentBookshelf1Binding
+import io.legado.app.constant.PreferKey
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
@@ -22,6 +23,7 @@ import io.legado.app.ui.book.group.GroupEditDialog
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.style1.books.BooksFragment
+import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.isCreated
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showDialogFragment
@@ -71,6 +73,14 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         tabLayout.isTabIndicatorFullWidth = false
         tabLayout.tabMode = TabLayout.MODE_SCROLLABLE
         tabLayout.setSelectedTabIndicatorColor(requireContext().accentColor)
+        val textAccentKey = if (AppConfig.isNightTheme) PreferKey.cNTextAccent else PreferKey.cTextAccent
+        val textAccentColor = requireContext().getPrefInt(textAccentKey)
+        if (textAccentColor != 0) {
+            tabLayout.setTabTextColors(
+                textAccentColor and 0x99FFFFFF.toInt(),
+                textAccentColor
+            )
+        }
         tabLayout.setupWithViewPager(binding.viewPagerBookshelf)
         binding.viewPagerBookshelf.offscreenPageLimit = 1
         binding.viewPagerBookshelf.adapter = adapter

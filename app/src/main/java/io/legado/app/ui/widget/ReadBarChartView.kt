@@ -8,9 +8,10 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import io.legado.app.lib.theme.ThemeUtils
 import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.isDarkTheme
-import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.utils.dpToPx
 
 /**
@@ -39,11 +40,11 @@ class ReadBarChartView @JvmOverloads constructor(
 
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = 13.dpToPx().toFloat()
-        try {
-            color = context.primaryTextColor
-        } catch (_: Exception) {
-            color = 0xFF000000.toInt()
-        }
+        color = ThemeUtils.resolveColor(
+            context,
+            com.google.android.material.R.attr.colorOnSurface,
+            0xFF000000.toInt()
+        )
     }
     private val timePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = 12.dpToPx().toFloat()
@@ -61,15 +62,24 @@ class ReadBarChartView @JvmOverloads constructor(
         try {
             val isDark = context.isDarkTheme
             val accent = context.accentColor
-            bgBarPaint.color = if (isDark) 0xFF21262D.toInt() else 0xFFF6F8FA.toInt()
-            timePaint.color = if (isDark) 0xFF8B949E.toInt() else 0xFF656D76.toInt()
-
+            val bg = context.backgroundColor
+            bgBarPaint.color = if (isDark) {
+                blendColor(bg, 0xFFFFFFFF.toInt(), 0.1f)
+            } else {
+                blendColor(bg, 0xFF000000.toInt(), 0.05f)
+            }
+            timePaint.color = ThemeUtils.resolveColor(
+                context,
+                com.google.android.material.R.attr.colorOnSurface,
+                if (isDark) 0xFF8B949E.toInt() else 0xFF656D76.toInt()
+            )
+            val barBase = if (isDark) 0xFF30363D.toInt() else 0xFFFFFFFF.toInt()
             barColors = intArrayOf(
                 accent,
-                blendColor(accent, if (isDark) 0xFF30363D.toInt() else 0xFFFFFFFF.toInt(), 0.2f),
-                blendColor(accent, if (isDark) 0xFF30363D.toInt() else 0xFFFFFFFF.toInt(), 0.4f),
-                blendColor(accent, if (isDark) 0xFF30363D.toInt() else 0xFFFFFFFF.toInt(), 0.6f),
-                blendColor(accent, if (isDark) 0xFF30363D.toInt() else 0xFFFFFFFF.toInt(), 0.75f),
+                blendColor(accent, barBase, 0.2f),
+                blendColor(accent, barBase, 0.4f),
+                blendColor(accent, barBase, 0.6f),
+                blendColor(accent, barBase, 0.75f),
             )
         } catch (e: Exception) {
             val fallback = 0xFF1976D2.toInt()

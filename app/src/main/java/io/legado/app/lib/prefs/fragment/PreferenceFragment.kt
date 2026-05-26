@@ -9,9 +9,12 @@ import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import io.legado.app.R
+import io.legado.app.lib.prefs.CardPositionHelper
 import io.legado.app.lib.prefs.EditTextPreferenceDialog
 import io.legado.app.lib.prefs.ListPreferenceDialog
 import io.legado.app.lib.prefs.MultiSelectListPreferenceDialog
+import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.utils.applyNavigationBarPadding
 
 abstract class PreferenceFragment : PreferenceFragmentCompat() {
@@ -20,8 +23,23 @@ abstract class PreferenceFragment : PreferenceFragmentCompat() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        CardPositionHelper.clearCache()
+        listView.setBackgroundColor(requireContext().backgroundColor)
+        val horizontalPadding =
+            resources.getDimensionPixelSize(R.dimen.prefs_card_margin_horizontal)
+        listView.setPadding(
+            horizontalPadding,
+            listView.paddingTop,
+            horizontalPadding,
+            listView.paddingBottom
+        )
         listView.clipToPadding = false
+        listView.scrollBarStyle = View.SCROLLBARS_OUTSIDE_OVERLAY
         listView.applyNavigationBarPadding()
+        // Remove default preference divider decorations
+        for (i in listView.itemDecorationCount - 1 downTo 0) {
+            listView.removeItemDecorationAt(i)
+        }
     }
 
     @SuppressLint("RestrictedApi")

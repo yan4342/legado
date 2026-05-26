@@ -110,6 +110,9 @@ open class Preference(context: Context, attrs: AttributeSet) :
 
     final override fun onBindViewHolder(holder: PreferenceViewHolder) {
         super.onBindViewHolder(holder)
+        if (!isBottomBackground) {
+            CardPositionHelper.applyCardStyle(holder, this)
+        }
         onBindView(holder)
         onLongClick?.let { listener ->
             holder.itemView.onLongClick {

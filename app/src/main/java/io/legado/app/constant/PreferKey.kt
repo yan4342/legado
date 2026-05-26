@@ -174,6 +174,8 @@ object PreferKey {
     const val cAccent = "colorAccent"
     const val cBackground = "colorBackground"
     const val cBBackground = "colorBottomBackground"
+    const val cCardBg = "colorCardBg"
+    const val cTextAccent = "colorTextAccent"
     const val bgImage = "backgroundImage"
     const val bgImageBlurring = "backgroundImageBlurring"
 
@@ -181,6 +183,8 @@ object PreferKey {
     const val cNAccent = "colorAccentNight"
     const val cNBackground = "colorBackgroundNight"
     const val cNBBackground = "colorBottomBackgroundNight"
+    const val cNCardBg = "colorCardBgNight"
+    const val cNTextAccent = "colorTextAccentNight"
     const val bgImageN = "backgroundImageNight"
     const val bgImageNBlurring = "backgroundImageNightBlurring"
     const val showReadTitleAddition = "showReadTitleAddition"

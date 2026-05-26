@@ -144,14 +144,18 @@ class ThemeConfigFragment : PreferenceFragment(),
             PreferKey.cPrimary,
             PreferKey.cAccent,
             PreferKey.cBackground,
-            PreferKey.cBBackground -> {
+            PreferKey.cBBackground,
+            PreferKey.cCardBg,
+            PreferKey.cTextAccent -> {
                 upTheme(false)
             }
 
             PreferKey.cNPrimary,
             PreferKey.cNAccent,
             PreferKey.cNBackground,
-            PreferKey.cNBBackground -> {
+            PreferKey.cNBBackground,
+            PreferKey.cNCardBg,
+            PreferKey.cNTextAccent -> {
                 upTheme(true)
             }
 
@@ -303,10 +307,8 @@ class ThemeConfigFragment : PreferenceFragment(),
 
     private fun upTheme(isNightTheme: Boolean) {
         if (AppConfig.isNightTheme == isNightTheme) {
-            listView.post {
-                ThemeConfig.applyTheme(requireContext())
-                recreateActivities()
-            }
+            ThemeConfig.applyTheme(requireContext())
+            view?.post { recreateActivities() }
         }
     }
 

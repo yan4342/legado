@@ -722,6 +722,8 @@
     <string name="accent">Accent</string>
     <string name="background_color">Background color</string>
     <string name="navbar_color">NavBar color</string>
+    <string name="card_background_color">Card background color</string>
+    <string name="text_accent_color">Text accent color</string>
     <string name="day">Day</string>
     <string name="day_color_primary">Day,Primary</string>
     <string name="day_color_accent">Day,Accent</string>

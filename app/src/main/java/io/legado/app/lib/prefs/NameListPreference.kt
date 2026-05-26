@@ -24,6 +24,9 @@ class NameListPreference(context: Context, attrs: AttributeSet) : ListPreference
     }
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
+        if (!isBottomBackground) {
+            CardPositionHelper.applyCardStyle(holder, this)
+        }
         val v = Preference.bindView<TextView>(
             context, holder, icon, title, summary, widgetLayoutResource,
             R.id.text_view, isBottomBackground = isBottomBackground

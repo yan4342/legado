@@ -17,6 +17,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.ReadRecordShow
 import io.legado.app.databinding.ActivityReadRecordBinding
 import io.legado.app.databinding.ItemReadRecordBinding
+import io.legado.app.constant.PreferKey
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.lib.dialogs.alert
@@ -26,6 +27,7 @@ import io.legado.app.ui.widget.ReadBarChartView
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.cnCompare
+import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getInt
 import io.legado.app.utils.putInt
 import io.legado.app.utils.startActivityForBook
@@ -220,7 +222,7 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
             }
 
             // Bar chart
-            val barItems = topBooks.map {
+            val barItems = topBooks.filter { it.bookName.isNotBlank() }.map {
                 ReadBarChartView.BarItem(it.bookName, it.readTime)
             }
             binding.cardChartInclude.barChartView.setData(barItems)
@@ -235,6 +237,16 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
                         startActivityForBook(book)
                     }
                 }
+            }
+
+            // Tab text color
+            val textAccentKey = if (AppConfig.isNightTheme) PreferKey.cNTextAccent else PreferKey.cTextAccent
+            val textAccentColor = getPrefInt(textAccentKey)
+            if (textAccentColor != 0) {
+                binding.cardChartInclude.tabChartType.setTabTextColors(
+                    textAccentColor and 0x99FFFFFF.toInt(),
+                    textAccentColor
+                )
             }
 
             // Tab switch

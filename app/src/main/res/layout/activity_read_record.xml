@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
     android:orientation="vertical">
 
     <io.legado.app.ui.widget.TitleBar
@@ -20,56 +21,75 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <!-- Summary card -->
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingLeft="10dp"
-        android:paddingRight="10dp">
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
 
-        <TextView
-            android:id="@+id/tv_book_name"
-            android:layout_width="0dp"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="6dp"
-            android:singleLine="true"
-            android:textColor="@color/primaryText"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toLeftOf="@+id/tv_remove"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:ignore="RtlHardcoded"
-            tools:text="name" />
+            android:paddingStart="16dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="12dp">
 
-        <TextView
-            android:id="@+id/tv_reading_time"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:padding="6dp"
-            android:singleLine="true"
-            android:textColor="@color/secondaryText"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toLeftOf="@+id/tv_remove"
-            app:layout_constraintTop_toBottomOf="@id/tv_book_name"
-            tools:text="readingTime" />
+            <TextView
+                android:id="@+id/tv_book_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textColor="@color/primaryText"
+                android:textSize="14sp"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toLeftOf="@+id/tv_remove"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:ignore="RtlHardcoded"
+                tools:text="name" />
 
-        <TextView
-            android:id="@+id/tv_remove"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:padding="6dp"
-            android:text="@string/clear"
-            android:textColor="@color/primaryText"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            <TextView
+                android:id="@+id/tv_reading_time"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:singleLine="true"
+                android:textColor="@color/secondaryText"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toLeftOf="@+id/tv_remove"
+                app:layout_constraintTop_toBottomOf="@id/tv_book_name"
+                tools:text="readingTime" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            <TextView
+                android:id="@+id/tv_remove"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:padding="6dp"
+                android:text="@string/clear"
+                android:textColor="@color/primaryText"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </com.google.android.material.card.MaterialCardView>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
+        android:paddingBottom="8dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
 </LinearLayout>
