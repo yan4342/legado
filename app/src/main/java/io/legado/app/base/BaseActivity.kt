@@ -172,7 +172,7 @@ abstract class BaseActivity<VB : ViewBinding>(
                     || type == android.view.WindowManager.LayoutParams.TYPE_BASE_APPLICATION) continue
                 // Skip if not yet laid out — retry next frame
                 if (view.width == 0 || view.height == 0) continue
-                val childContent = view.getChildAt(0) as? View
+                val childContent = view.getChildAt(0)
                 // Skip if child content not yet attached — retry next frame
                 if (childContent == null) continue
                 // Set card-colored rounded background on DecorView itself

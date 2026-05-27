@@ -3,7 +3,6 @@ package io.legado.app.ui.dict.rule
 import android.content.Context
 import android.os.Bundle
 import android.view.ViewGroup
-import androidx.core.os.bundleOf
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.base.adapter.ItemViewHolder
@@ -64,7 +63,7 @@ class DictRuleAdapter(context: Context, var callBack: CallBack) :
         getItems().forEach {
             selected.add(it)
         }
-        notifyItemRangeChanged(0, itemCount, bundleOf(Pair("selected", null)))
+        notifyItemRangeChanged(0, itemCount, Bundle().apply { putString("selected", null) })
         callBack.upCountView()
     }
 
@@ -76,7 +75,7 @@ class DictRuleAdapter(context: Context, var callBack: CallBack) :
                 selected.add(it)
             }
         }
-        notifyItemRangeChanged(0, itemCount, bundleOf(Pair("selected", null)))
+        notifyItemRangeChanged(0, itemCount, Bundle().apply { putString("selected", null) })
         callBack.upCountView()
     }
 
@@ -190,7 +189,7 @@ class DictRuleAdapter(context: Context, var callBack: CallBack) :
                     } else {
                         selected.remove(it)
                     }
-                    notifyItemChanged(position, bundleOf(Pair("selected", null)))
+                    notifyItemChanged(position, Bundle().apply { putString("selected", null) })
                     callBack.upCountView()
                     return true
                 }

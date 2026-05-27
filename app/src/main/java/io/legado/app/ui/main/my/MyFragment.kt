@@ -30,6 +30,7 @@ import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.ui.replace.ReplaceRuleActivity
 import io.legado.app.utils.LogUtils
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.observeEventSticky
 import io.legado.app.utils.openUrl
@@ -112,6 +113,13 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
 
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             super.onViewCreated(view, savedInstanceState)
+            listView.clipToPadding = false
+            listView.setPadding(
+                listView.paddingLeft,
+                listView.paddingTop,
+                listView.paddingRight,
+                listView.paddingBottom + 16.dpToPx()
+            )
             listView.setEdgeEffectColor(primaryColor)
         }
 
