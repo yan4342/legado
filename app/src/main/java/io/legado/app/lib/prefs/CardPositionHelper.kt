@@ -117,7 +117,6 @@ object CardPositionHelper {
 
     private fun computeCardPosition(preference: androidx.preference.Preference): CardPosition {
         val parent = preference.parent ?: return CardPosition.NONE
-        if (parent !is PreferenceGroup) return CardPosition.NONE
         val visibleChildren = (0 until parent.preferenceCount)
             .map { parent.getPreference(it) }
             .filter { it.isVisible && it !is PreferenceCategory }

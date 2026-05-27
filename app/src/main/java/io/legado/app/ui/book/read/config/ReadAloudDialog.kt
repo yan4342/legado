@@ -15,6 +15,7 @@ import io.legado.app.databinding.DialogReadAloudBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.bottomSheetBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
@@ -33,7 +34,7 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
         super.onStart()
         dialog?.window?.run {
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            setBackgroundDrawableResource(R.color.background)
+            setBackgroundDrawable(requireContext().bottomSheetBackground)
             decorView.setPadding(0, 0, 0, 0)
             val attr = attributes
             attr.dimAmount = 0.0f
@@ -58,7 +59,6 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
         val isLight = ColorUtils.isColorLight(bg)
         val textColor = requireContext().getPrimaryTextColor(isLight)
         binding.run {
-            rootView.setBackgroundColor(bg)
             tvPre.setTextColor(textColor)
             tvNext.setTextColor(textColor)
             ivPlayPrev.setColorFilter(textColor)

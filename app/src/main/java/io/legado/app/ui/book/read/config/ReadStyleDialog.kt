@@ -20,6 +20,7 @@ import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.bottomSheetBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.ReadBookActivity
@@ -44,7 +45,7 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
         super.onStart()
         dialog?.window?.run {
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            setBackgroundDrawableResource(R.color.background)
+            setBackgroundDrawable(requireContext().bottomSheetBackground)
             decorView.setPadding(0, 0, 0, 0)
             val attr = attributes
             attr.dimAmount = 0.0f
@@ -71,7 +72,6 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
         val bg = requireContext().bottomBackground
         val isLight = ColorUtils.isColorLight(bg)
         val textColor = requireContext().getPrimaryTextColor(isLight)
-        rootView.setBackgroundColor(bg)
         tvPageAnim.setTextColor(textColor)
         tvBgTs.setTextColor(textColor)
         tvShareLayout.setTextColor(textColor)

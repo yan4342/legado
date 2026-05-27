@@ -40,4 +40,6 @@
     <dimen name="prefs_card_corner_radius">16dp</dimen>
     <dimen name="prefs_card_margin_horizontal">12dp</dimen>
     <dimen name="dialog_corner_radius">16dp</dimen>
+    <dimen name="bottom_sheet_handle_margin_top">8dp</dimen>
+    <dimen name="bottom_sheet_handle_margin_bottom">4dp</dimen>
 </resources>

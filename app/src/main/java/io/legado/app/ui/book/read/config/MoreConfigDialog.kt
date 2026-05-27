@@ -20,6 +20,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.prefs.fragment.PreferenceFragment
 import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.bottomSheetBackground
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.ReadBookActivity
@@ -39,7 +40,7 @@ class MoreConfigDialog : BasePrefDialogFragment() {
         super.onStart()
         dialog?.window?.run {
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            setBackgroundDrawableResource(R.color.background)
+            setBackgroundDrawable(requireContext().bottomSheetBackground)
             decorView.setPadding(0, 0, 0, 0)
             val attr = attributes
             attr.dimAmount = 0.0f
@@ -56,7 +57,6 @@ class MoreConfigDialog : BasePrefDialogFragment() {
     ): View {
         (activity as ReadBookActivity).bottomDialog++
         val view = LinearLayout(context)
-        view.setBackgroundColor(requireContext().bottomBackground)
         view.id = R.id.tag1
         container?.addView(view)
         return view
@@ -93,6 +93,7 @@ class MoreConfigDialog : BasePrefDialogFragment() {
 
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             super.onViewCreated(view, savedInstanceState)
+            listView.setBackgroundColor(requireContext().bottomBackground)
             listView.setEdgeEffectColor(primaryColor)
         }
 

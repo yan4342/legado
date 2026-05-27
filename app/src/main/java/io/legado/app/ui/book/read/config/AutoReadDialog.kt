@@ -13,6 +13,7 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.databinding.DialogAutoReadBinding
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.bottomSheetBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
@@ -34,7 +35,7 @@ class AutoReadDialog : BaseDialogFragment(R.layout.dialog_auto_read) {
         super.onStart()
         dialog?.window?.run {
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            setBackgroundDrawableResource(R.color.background)
+            setBackgroundDrawable(requireContext().bottomSheetBackground)
             decorView.setPadding(0, 0, 0, 0)
             val attr = attributes
             attr.dimAmount = 0.0f
@@ -58,7 +59,6 @@ class AutoReadDialog : BaseDialogFragment(R.layout.dialog_auto_read) {
         val bg = requireContext().bottomBackground
         val isLight = ColorUtils.isColorLight(bg)
         val textColor = requireContext().getPrimaryTextColor(isLight)
-        root.setBackgroundColor(bg)
         tvReadSpeedTitle.setTextColor(textColor)
         tvReadSpeed.setTextColor(textColor)
         ivCatalog.setColorFilter(textColor, PorterDuff.Mode.SRC_IN)

@@ -146,3 +146,20 @@ val Context.filletBackground: GradientDrawable
         background.setColor(backgroundColor)
         return background
     }
+
+val Context.bottomSheetBackground: android.graphics.drawable.Drawable
+    get() {
+        if (AppConfig.isEInkMode) {
+            return ContextCompat.getDrawable(this, R.drawable.bg_eink_border_dialog)!!
+        }
+        val background = GradientDrawable()
+        val cornerRadius = resources.getDimension(R.dimen.dialog_corner_radius)
+        background.cornerRadii = floatArrayOf(
+            cornerRadius, cornerRadius,
+            cornerRadius, cornerRadius,
+            0f, 0f,
+            0f, 0f
+        )
+        background.setColor(bottomBackground)
+        return background
+    }
