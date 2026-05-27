@@ -50,7 +50,7 @@ android {
     }
     defaultConfig {
         applicationId "io.legado.app"
-        minSdk 21
+        minSdk 28
         targetSdk 36
         versionCode 10000 + gitCommits
         versionName version
@@ -215,7 +215,8 @@ dependencies {
 
     //room sql语句不高亮解决方法https://issuetracker.google.com/issues/234612964#comment6
     implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
+    // room-ktx 已合并到 room-runtime（Room 2.7.0+），保留空依赖无影响
+    //implementation(libs.room.ktx)
     //kapt("androidx.room:room-compiler:$room_version")
     ksp(libs.room.compiler)
     androidTestImplementation(libs.room.testing)
