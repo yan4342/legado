@@ -81,7 +81,8 @@ abstract class BaseDialogFragment(
         if (adaptationSoftKeyboard) {
             view.findViewById<View>(R.id.vw_bg)?.setOnClickListener(null)
             view.setOnClickListener { dismiss() }
-        } else if (!AppConfig.isEInkMode) {
+        }
+        if (!AppConfig.isEInkMode) {
             dialog?.window?.setBackgroundDrawable(requireContext().filletBackground)
         }
         onFragmentCreated(view, savedInstanceState)

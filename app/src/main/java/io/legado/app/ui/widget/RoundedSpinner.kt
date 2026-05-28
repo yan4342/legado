@@ -7,12 +7,20 @@ import android.view.View
 import android.view.ViewOutlineProvider
 import android.widget.PopupWindow
 import androidx.appcompat.widget.AppCompatSpinner
+import io.legado.app.lib.theme.accentColor
+import io.legado.app.utils.applyTint
 
 class RoundedSpinner @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = androidx.appcompat.R.attr.spinnerStyle
 ) : AppCompatSpinner(context, attrs, defStyleAttr) {
+
+    init {
+        if (!isInEditMode) {
+            applyTint(context.accentColor)
+        }
+    }
 
     override fun performClick(): Boolean {
         val result = super.performClick()

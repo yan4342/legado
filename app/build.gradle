@@ -147,6 +147,14 @@ room {
     schemaDirectory "$projectDir/schemas"
 }
 
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("${name}_${variant.flavorName}_${variant.buildType}_${version}.apk")
+        }
+    }
+}
+
 dependencies {
     //compileOnly "com.android.tools.build:gradle:$agp_version"
     //noinspection GradleDependency,GradlePackageUpdate

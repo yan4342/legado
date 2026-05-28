@@ -18,7 +18,7 @@
             android:id="@+id/tool_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/background_menu"
+            android:background="@drawable/bg_toolbar_card_top"
             android:elevation="5dp"
             android:theme="?attr/actionBarStyle"
             app:displayHomeAsUp="false"
@@ -57,12 +57,11 @@
                     android:padding="3dp"
                     android:text="@string/variable_comment" />
 
-                <TextView
+                <io.legado.app.ui.widget.text.SecondaryTextView
                     android:id="@+id/tv_comment"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:padding="3dp"
-                    android:textColor="@color/secondaryText"
                     android:textIsSelectable="true" />
 
             </LinearLayout>

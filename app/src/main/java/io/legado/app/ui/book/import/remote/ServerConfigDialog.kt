@@ -13,7 +13,10 @@ import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.rule.RowUi
 import io.legado.app.databinding.DialogWebdavServerBinding
 import io.legado.app.databinding.ItemSourceEditBinding
-import io.legado.app.lib.theme.primaryColor
+import android.graphics.drawable.GradientDrawable
+import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.accentColor
+import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.setLayout
@@ -40,11 +43,26 @@ class ServerConfigDialog() : BaseDialogFragment(R.layout.dialog_webdav_server, t
 
     override fun onStart() {
         super.onStart()
-        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        setLayout(0.95f, 0.95f)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(primaryColor)
+        view.post {
+            val bg = view.context.backgroundColor
+            val cornerRadius = resources.getDimension(R.dimen.dialog_corner_radius)
+            view.findViewById<View>(R.id.vw_bg)?.background =
+                GradientDrawable().apply {
+                    this.cornerRadius = cornerRadius
+                    setColor(bg)
+                }
+            binding.toolBar.background = GradientDrawable().apply {
+                cornerRadii = floatArrayOf(
+                    cornerRadius, cornerRadius, cornerRadius, cornerRadius,
+                    0f, 0f, 0f, 0f
+                )
+                setColor(ColorUtils.shiftColor(bg, 0.9f))
+            }
+        }
         binding.toolBar.inflateMenu(R.menu.server_config)
         binding.toolBar.menu.applyTint(requireContext())
         binding.toolBar.setOnMenuItemClickListener(this)
@@ -87,7 +105,9 @@ class ServerConfigDialog() : BaseDialogFragment(R.layout.dialog_webdav_server, t
                     binding.flexbox.addView(it.root)
                     it.root.id = index + 1000
                     it.tvLabel.text = rowUi.name
+                    it.tvLabel.applyTint(requireContext().accentColor)
                     it.editText.setText(config?.getString(rowUi.name))
+                    it.editText.applyTint(requireContext().accentColor)
                 }
                 RowUi.Type.password -> ItemSourceEditBinding.inflate(
                     layoutInflater,
@@ -97,9 +117,11 @@ class ServerConfigDialog() : BaseDialogFragment(R.layout.dialog_webdav_server, t
                     binding.flexbox.addView(it.root)
                     it.root.id = index + 1000
                     it.tvLabel.text = rowUi.name
+                    it.tvLabel.applyTint(requireContext().accentColor)
                     it.editText.inputType =
                         InputType.TYPE_TEXT_VARIATION_PASSWORD or InputType.TYPE_CLASS_TEXT
                     it.editText.setText(config?.getString(rowUi.name))
+                    it.editText.applyTint(requireContext().accentColor)
                 }
             }
         }

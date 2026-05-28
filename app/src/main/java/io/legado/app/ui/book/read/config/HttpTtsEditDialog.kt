@@ -11,7 +11,9 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.data.entities.HttpTTS
 import io.legado.app.databinding.DialogHttpTtsEditBinding
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.primaryColor
+import android.graphics.drawable.GradientDrawable
+import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.utils.ColorUtils
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.login.SourceLoginActivity
 import io.legado.app.ui.widget.code.addJsPattern
@@ -41,11 +43,26 @@ class HttpTtsEditDialog() : BaseDialogFragment(R.layout.dialog_http_tts_edit, tr
 
     override fun onStart() {
         super.onStart()
-        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        setLayout(0.95f, 0.95f)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(primaryColor)
+        view.post {
+            val bg = view.context.backgroundColor
+            val cornerRadius = resources.getDimension(R.dimen.dialog_corner_radius)
+            view.findViewById<View>(R.id.vw_bg)?.background =
+                GradientDrawable().apply {
+                    this.cornerRadius = cornerRadius
+                    setColor(bg)
+                }
+            binding.toolBar.background = GradientDrawable().apply {
+                cornerRadii = floatArrayOf(
+                    cornerRadius, cornerRadius, cornerRadius, cornerRadius,
+                    0f, 0f, 0f, 0f
+                )
+                setColor(ColorUtils.shiftColor(bg, 0.9f))
+            }
+        }
         binding.tvUrl.run {
             addLegadoPattern()
             addJsonPattern()

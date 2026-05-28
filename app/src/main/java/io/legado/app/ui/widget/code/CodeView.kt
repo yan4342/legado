@@ -13,6 +13,8 @@ import android.text.style.ForegroundColorSpan
 import android.text.style.ReplacementSpan
 import android.util.AttributeSet
 import androidx.annotation.ColorInt
+import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.TintHelper
 import io.legado.app.ui.widget.text.ScrollMultiAutoCompleteTextView
 import java.util.*
 import java.util.regex.Matcher
@@ -22,6 +24,12 @@ import kotlin.math.roundToInt
 @Suppress("unused")
 class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) :
     ScrollMultiAutoCompleteTextView(context, attrs) {
+
+    init {
+        if (!isInEditMode) {
+            TintHelper.setCursorTint(this, context.accentColor)
+        }
+    }
 
     private var tabWidth = 0
     private var tabWidthInCharacters = 0

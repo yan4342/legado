@@ -18,10 +18,14 @@ import io.legado.app.databinding.DialogLoginBinding
 import io.legado.app.databinding.ItemFilletTextBinding
 import io.legado.app.databinding.ItemSourceEditBinding
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.primaryColor
+import android.graphics.drawable.GradientDrawable
+import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.accentColor
+import io.legado.app.utils.ColorUtils
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.utils.GSON
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.applyBackgroundTint
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.openUrl
@@ -47,12 +51,27 @@ class SourceLoginDialog : BaseDialogFragment(R.layout.dialog_login, true) {
 
     override fun onStart() {
         super.onStart()
-        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        setLayout(0.95f, 0.95f)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
+        view.post {
+            val bg = view.context.backgroundColor
+            val cornerRadius = resources.getDimension(R.dimen.dialog_corner_radius)
+            view.findViewById<View>(R.id.vw_bg)?.background =
+                GradientDrawable().apply {
+                    this.cornerRadius = cornerRadius
+                    setColor(bg)
+                }
+            binding.toolBar.background = GradientDrawable().apply {
+                cornerRadii = floatArrayOf(
+                    cornerRadius, cornerRadius, cornerRadius, cornerRadius,
+                    0f, 0f, 0f, 0f
+                )
+                setColor(ColorUtils.shiftColor(bg, 0.9f))
+            }
+        }
         val source = viewModel.source ?: return
-        binding.toolBar.setBackgroundColor(primaryColor)
         binding.toolBar.title = getString(R.string.login_source, source.getTag())
         val loginInfo = source.getLoginInfoMap()
         val loginUi = source.loginUi()
@@ -67,7 +86,9 @@ class SourceLoginDialog : BaseDialogFragment(R.layout.dialog_login, true) {
                         binding.flexbox.addView(it.root)
                         it.root.id = index + 1000
                         it.tvLabel.text = rowUi.name
+                        it.tvLabel.applyTint(requireContext().accentColor)
                         it.editText.setText(loginInfo?.get(rowUi.name))
+                        it.editText.applyTint(requireContext().accentColor)
                     }
 
                     RowUi.Type.password -> ItemSourceEditBinding.inflate(
@@ -78,9 +99,11 @@ class SourceLoginDialog : BaseDialogFragment(R.layout.dialog_login, true) {
                         binding.flexbox.addView(it.root)
                         it.root.id = index + 1000
                         it.tvLabel.text = rowUi.name
+                        it.tvLabel.applyTint(requireContext().accentColor)
                         it.editText.inputType =
                             InputType.TYPE_TEXT_VARIATION_PASSWORD or InputType.TYPE_CLASS_TEXT
                         it.editText.setText(loginInfo?.get(rowUi.name))
+                        it.editText.applyTint(requireContext().accentColor)
                     }
 
                     RowUi.Type.button -> ItemFilletTextBinding.inflate(
@@ -93,6 +116,8 @@ class SourceLoginDialog : BaseDialogFragment(R.layout.dialog_login, true) {
                         it.root.id = index + 1000
                         it.textView.text = rowUi.name
                         it.textView.setPadding(16.dpToPx())
+                        it.textView.applyTint(requireContext().accentColor)
+                        it.textView.applyBackgroundTint(requireContext().accentColor)
                         it.root.onClick {
                             handleButtonClick(source, rowUi, loginUi)
                         }
