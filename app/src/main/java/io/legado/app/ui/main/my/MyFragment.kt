@@ -30,6 +30,7 @@ import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.ui.replace.ReplaceRuleActivity
 import io.legado.app.utils.LogUtils
+import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.observeEventSticky
@@ -120,6 +121,7 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
                 listView.paddingRight,
                 listView.paddingBottom + 16.dpToPx()
             )
+            listView.applyNavigationBarPadding(withInitialPadding = true)
             listView.setEdgeEffectColor(primaryColor)
         }
 

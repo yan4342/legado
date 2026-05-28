@@ -31,6 +31,7 @@ import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getInt
 import io.legado.app.utils.putInt
 import io.legado.app.utils.startActivityForBook
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
@@ -305,6 +306,25 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
                             startActivityForBook(book)
                         }
                     }
+                }
+                root.setOnLongClickListener {
+                    val item = getItem(holder.layoutPosition) ?: return@setOnLongClickListener true
+                    lifecycleScope.launch {
+                        val book = withContext(IO) {
+                            appDb.bookDao.findByName(item.bookName).firstOrNull()
+                        }
+                        if (book != null) {
+                            val chapterNum = book.durChapterIndex + 1
+                            val title = book.durChapterTitle
+                            val msg = if (!title.isNullOrBlank()) {
+                                getString(R.string.chapter) + " $chapterNum $title"
+                            } else {
+                                getString(R.string.chapter) + " $chapterNum"
+                            }
+                            toastOnUi(msg)
+                        }
+                    }
+                    true
                 }
                 tvRemove.setOnClickListener {
                     getItem(holder.layoutPosition)?.let { item ->

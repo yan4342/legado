@@ -491,7 +491,6 @@ object ReadBook : CoroutineScope by MainScope() {
                 }
             }
         }
-        upReadTime()
         preDownload()
     }
 

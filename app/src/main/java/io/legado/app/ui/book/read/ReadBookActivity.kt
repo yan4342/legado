@@ -363,6 +363,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         super.onPause()
         autoPageStop()
         backupJob?.cancel()
+        ReadBook.upReadTime()
         ReadBook.saveRead()
         ReadBook.cancelPreDownloadTask()
         unregisterReceiver(timeBatteryReceiver)
@@ -1618,6 +1619,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         textActionMenu.dismiss()
         popupAction.dismiss()
         binding.readView.onDestroy()
+        ReadBook.upReadTime()
         ReadBook.unregister(this)
         if (!ReadBook.inBookshelf && !isChangingConfigurations) {
             viewModel.removeFromBookshelf(null)
