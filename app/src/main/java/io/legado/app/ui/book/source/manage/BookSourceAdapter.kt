@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.PopupMenu
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.doOnLayout
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -23,6 +23,7 @@ import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.utils.buildMainHandler
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
+import io.legado.app.utils.showThemed
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.visible
 import java.util.Collections
@@ -201,7 +202,7 @@ class BookSourceAdapter(
             }
             true
         }
-        popupMenu.show()
+        popupMenu.showThemed()
     }
 
     private fun upShowExplore(iv: ImageView, source: BookSourcePart) {

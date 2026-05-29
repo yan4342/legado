@@ -15,12 +15,12 @@
             android:text="@string/manga_footer_config"
             android:textSize="18sp" />
 
-        <TextView
+        <io.legado.app.ui.widget.text.PrimaryTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/manga_header_chapter"
-            android:textColor="@color/primaryText"
+            
             android:textSize="14sp" />
 
         <LinearLayout
@@ -53,12 +53,12 @@
                 android:text="@string/manga_check_chapter_name" />
         </LinearLayout>
 
-        <TextView
+        <io.legado.app.ui.widget.text.PrimaryTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/manga_header_page"
-            android:textColor="@color/primaryText"
+            
             android:textSize="14sp" />
 
         <LinearLayout
@@ -83,12 +83,12 @@
                 android:text="@string/manga_check_page_number" />
         </LinearLayout>
 
-        <TextView
+        <io.legado.app.ui.widget.text.PrimaryTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/manga_header_progress"
-            android:textColor="@color/primaryText"
+            
             android:textSize="14sp" />
 
         <LinearLayout
@@ -113,12 +113,12 @@
                 android:text="@string/manga_check_progress" />
         </LinearLayout>
 
-        <TextView
+        <io.legado.app.ui.widget.text.PrimaryTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/manga_header_footer"
-            android:textColor="@color/primaryText"
+            
             android:textSize="14sp" />
 
         <RadioGroup

@@ -31,14 +31,14 @@
             android:orientation="horizontal"
             android:padding="8dp">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_read_speed_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:layout_weight="1"
                 android:text="@string/auto_page_speed"
-                android:textColor="@color/primaryText"
+                
                 android:textSize="14sp" />
 
             <TextView
@@ -86,10 +86,10 @@
                 android:layout_weight="1"
                 android:contentDescription="@string/chapter_list"
                 android:src="@drawable/ic_toc"
-                app:tint="@color/primaryText"
+                app:tint="?attr/colorOnSurface"
                 tools:ignore="NestedWeights" />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_catalog"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -97,7 +97,7 @@
                 android:layout_marginTop="3dp"
                 android:text="@string/chapter_list"
                 android:maxLines="1"
-                android:textColor="@color/primaryText"
+                
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -124,10 +124,10 @@
                 android:layout_weight="1"
                 android:contentDescription="@string/main_menu"
                 android:src="@drawable/ic_menu"
-                app:tint="@color/primaryText"
+                app:tint="?attr/colorOnSurface"
                 tools:ignore="NestedWeights" />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_main_menu"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -135,7 +135,7 @@
                 android:layout_marginTop="3dp"
                 android:text="@string/main_menu"
                 android:maxLines="1"
-                android:textColor="@color/primaryText"
+                
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -162,10 +162,10 @@
                 android:layout_weight="1"
                 android:contentDescription="@string/stop"
                 android:src="@drawable/ic_auto_page_stop"
-                app:tint="@color/primaryText"
+                app:tint="?attr/colorOnSurface"
                 tools:ignore="NestedWeights" />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_auto_page_stop"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -173,7 +173,7 @@
                 android:layout_marginTop="3dp"
                 android:text="@string/stop"
                 android:maxLines="1"
-                android:textColor="@color/primaryText"
+                
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -200,10 +200,10 @@
                 android:layout_weight="1"
                 android:contentDescription="@string/setting"
                 android:src="@drawable/ic_settings"
-                app:tint="@color/primaryText"
+                app:tint="?attr/colorOnSurface"
                 tools:ignore="NestedWeights" />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_setting"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -211,7 +211,7 @@
                 android:layout_marginTop="3dp"
                 android:text="@string/setting"
                 android:maxLines="1"
-                android:textColor="@color/primaryText"
+                
                 android:textSize="12sp" />
         </LinearLayout>
 

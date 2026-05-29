@@ -9,9 +9,11 @@ import androidx.annotation.ColorInt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import io.legado.app.R
+import io.legado.app.constant.PreferKey
 import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
+import io.legado.app.utils.getPrefInt
 
 /**
  * @author Karim Abou Zeid (kabouzeid)
@@ -103,6 +105,42 @@ val Context.colorOnSurfaceVariant: Int
 val Context.colorSurfaceContainer: Int
     get() = ThemeStore.colorSurfaceContainer(this)
 
+/**
+ * 卡片背景色：优先读取用户自定义 cCardBg/cNCardBg，回退到 colorSurfaceContainer
+ */
+val Context.cardBackgroundColor: Int
+    get() {
+        val prefKey = if (isDarkTheme) PreferKey.cNCardBg else PreferKey.cCardBg
+        val savedColor = getPrefInt(prefKey)
+        return if (savedColor != 0) savedColor else colorSurfaceContainer
+    }
+
+/**
+ * 菜单/弹出层背景色：优先读取用户自定义卡片色，回退到 backgroundColor
+ */
+val Context.menuBackgroundColor: Int
+    get() {
+        val prefKey = if (isDarkTheme) PreferKey.cNCardBg else PreferKey.cCardBg
+        val savedColor = getPrefInt(prefKey)
+        return if (savedColor != 0) savedColor else backgroundColor
+    }
+
+/**
+ * 图标着色色：使用 colorOnSurface（与文字主色一致）
+ */
+/**
+ * 浮窗/弹出菜单背景色：优先读取用户自定义 cPopupBg/cNPopupBg，回退到 cardBackgroundColor
+ */
+val Context.popupBackgroundColor: Int
+    get() {
+        val prefKey = if (isDarkTheme) PreferKey.cNPopupBg else PreferKey.cPopupBg
+        val savedColor = getPrefInt(prefKey)
+        return if (savedColor != 0) savedColor else cardBackgroundColor
+    }
+
+val Context.iconTintColor: Int
+    get() = colorOnSurface
+
 val Context.primaryTextColor: Int
     get() = getPrimaryTextColor(isDarkTheme)
 
@@ -160,6 +198,18 @@ val Fragment.colorOnSurfaceVariant: Int
 val Fragment.colorSurfaceContainer: Int
     get() = ThemeStore.colorSurfaceContainer(requireContext())
 
+val Fragment.cardBackgroundColor: Int
+    get() = requireContext().cardBackgroundColor
+
+val Fragment.menuBackgroundColor: Int
+    get() = requireContext().menuBackgroundColor
+
+val Fragment.popupBackgroundColor: Int
+    get() = requireContext().popupBackgroundColor
+
+val Fragment.iconTintColor: Int
+    get() = requireContext().iconTintColor
+
 val Fragment.primaryTextColor: Int
     get() = requireContext().getPrimaryTextColor(isDarkTheme)
 
@@ -203,7 +253,7 @@ val Context.filletBackground: GradientDrawable
     get() {
         val background = GradientDrawable()
         background.cornerRadius = resources.getDimension(R.dimen.dialog_corner_radius)
-        background.setColor(colorSurface)
+        background.setColor(popupBackgroundColor)
         return background
     }
 

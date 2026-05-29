@@ -84,7 +84,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@drawable/ic_help"
-                    app:tint="@color/primaryText"
+                    app:tint="?attr/colorOnSurface"
                     android:contentDescription="@string/help" />
 
             </LinearLayout>

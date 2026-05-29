@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupMenu
+import androidx.appcompat.widget.PopupMenu
 import androidx.activity.addCallback
 import androidx.activity.viewModels
 import androidx.appcompat.widget.SearchView
@@ -26,6 +26,7 @@ import io.legado.app.utils.ConvertUtils
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.openFileUri
+import io.legado.app.utils.showThemed
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import java.io.File
 
@@ -224,7 +225,7 @@ class FileManageActivity : VMBaseActivity<ActivityFileManageBinding, FileManageV
                 }
                 true
             }
-            popupMenu.show()
+            popupMenu.showThemed()
         }
 
     }

@@ -35,14 +35,14 @@
             android:layout_gravity="center"
             app:loading_width="2dp" />
 
-        <TextView
+        <io.legado.app.ui.widget.text.SecondaryTextView
             android:id="@+id/tv_msg"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="16dp"
             android:layout_gravity="center"
             android:visibility="gone"
-            android:textColor="@color/secondaryText" />
+             />
 
     </FrameLayout>
 
@@ -71,13 +71,13 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-            <TextView
+            <io.legado.app.ui.widget.text.SecondaryTextView
                 android:id="@+id/tv_cancel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="12dp"
                 android:text="@string/cancel"
-                android:textColor="@color/secondaryText"
+                
                 android:visibility="gone"
                 tools:ignore="RtlHardcoded" />
 

@@ -3,14 +3,16 @@ package io.legado.app.ui.rss.subscription
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupMenu
+import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.data.entities.RuleSub
 import io.legado.app.databinding.ItemRuleSubBinding
+import io.legado.app.lib.theme.cardBackgroundColor
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
+import io.legado.app.utils.showThemed
 
 
 class RuleSubAdapter(context: Context, val callBack: Callback) :
@@ -18,6 +20,7 @@ class RuleSubAdapter(context: Context, val callBack: Callback) :
     ItemTouchCallback.Callback {
 
     private val typeArray = context.resources.getStringArray(R.array.rule_type)
+    private val cardBg = context.cardBackgroundColor
 
     override fun convert(
         holder: ItemViewHolder,
@@ -25,6 +28,7 @@ class RuleSubAdapter(context: Context, val callBack: Callback) :
         item: RuleSub,
         payloads: MutableList<Any>
     ) {
+        binding.root.setBackgroundColor(cardBg)
         binding.tvType.text = typeArray[item.type]
         binding.tvName.text = item.name
         binding.tvUrl.text = item.url
@@ -52,7 +56,7 @@ class RuleSubAdapter(context: Context, val callBack: Callback) :
             }
             true
         }
-        popupMenu.show()
+        popupMenu.showThemed()
     }
 
     override fun getViewBinding(parent: ViewGroup): ItemRuleSubBinding {

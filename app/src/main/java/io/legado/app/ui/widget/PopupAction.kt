@@ -1,19 +1,17 @@
 package io.legado.app.ui.widget
 
 import android.content.Context
+import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.PopupWindow
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.databinding.ItemTextBinding
 import io.legado.app.databinding.PopupActionBinding
 import io.legado.app.lib.dialogs.SelectItem
-import splitties.systemservices.layoutInflater
 
-class PopupAction(private val context: Context) :
-    PopupWindow(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT) {
+class PopupAction(private val context: Context) : ThemedPopupWindow(context) {
 
-    val binding = PopupActionBinding.inflate(context.layoutInflater)
+    val binding = PopupActionBinding.inflate(LayoutInflater.from(context))
     val adapter by lazy {
         Adapter(context).apply {
             setHasStableIds(true)
@@ -22,7 +20,7 @@ class PopupAction(private val context: Context) :
     var onActionClick: ((action: String) -> Unit)? = null
 
     init {
-        contentView = binding.root
+        setThemedContentView(binding.root)
 
         isTouchable = true
         isOutsideTouchable = false

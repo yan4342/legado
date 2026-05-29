@@ -92,7 +92,7 @@
                 android:paddingBottom="3dp"
                 tools:ignore="RtlHardcoded">
 
-                <TextView
+                <io.legado.app.ui.widget.text.PrimaryTextView
                     android:id="@+id/tv_name"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -101,7 +101,7 @@
                     android:includeFontPadding="false"
                     android:singleLine="true"
                     android:text="@string/book_name"
-                    android:textColor="@color/primaryText"
+
                     android:textSize="18sp"
                     tools:ignore="RtlHardcoded" />
 
@@ -130,10 +130,10 @@
                         android:contentDescription="@string/origin_format"
                         android:paddingRight="4dp"
                         android:src="@drawable/ic_author"
-                        app:tint="@color/tv_text_summary"
+                        app:tint="?attr/colorOnSurfaceVariant"
                         tools:ignore="RtlHardcoded,RtlSymmetry" />
 
-                    <TextView
+                    <io.legado.app.ui.widget.text.SecondaryTextView
                         android:id="@+id/tv_author"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -141,7 +141,7 @@
                         android:includeFontPadding="false"
                         android:singleLine="true"
                         android:text="@string/author"
-                        android:textColor="@color/tv_text_summary"
+
                         android:textSize="13sp"
                         tools:ignore="NestedWeights,TextContrastCheck" />
 
@@ -205,10 +205,10 @@
                                 android:contentDescription="@string/origin_format"
                                 android:paddingRight="2dp"
                                 android:src="@drawable/ic_web_outline"
-                                app:tint="@color/tv_text_summary"
+                                app:tint="?attr/colorOnSurfaceVariant"
                                 tools:ignore="RtlHardcoded,RtlSymmetry" />
 
-                            <TextView
+                            <io.legado.app.ui.widget.text.SecondaryTextView
                                 android:id="@+id/tv_origin"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -217,7 +217,7 @@
                                 android:includeFontPadding="false"
                                 android:paddingRight="6dp"
                                 android:singleLine="true"
-                                android:textColor="@color/tv_text_summary"
+
                                 android:textSize="13sp"
                                 tools:ignore="NestedWeights,RtlHardcoded,RtlSymmetry,TextContrastCheck"
                                 tools:text="@string/origin_format" />
@@ -251,10 +251,10 @@
                                 android:contentDescription="@string/read_dur_progress"
                                 android:paddingRight="2dp"
                                 android:src="@drawable/ic_book_last"
-                                app:tint="@color/tv_text_summary"
+                                app:tint="?attr/colorOnSurfaceVariant"
                                 tools:ignore="RtlHardcoded,RtlSymmetry" />
 
-                            <TextView
+                            <io.legado.app.ui.widget.text.SecondaryTextView
                                 android:id="@+id/tv_lasted"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -263,7 +263,7 @@
                                 android:includeFontPadding="false"
                                 android:paddingRight="6dp"
                                 android:singleLine="true"
-                                android:textColor="@color/tv_text_summary"
+
                                 android:textSize="13sp"
                                 tools:ignore="NestedWeights,RtlHardcoded,RtlSymmetry,TextContrastCheck"
                                 tools:text="@string/read_dur_progress" />
@@ -284,10 +284,10 @@
                                 android:contentDescription="@string/read_dur_progress"
                                 android:paddingRight="2dp"
                                 android:src="@drawable/ic_groups"
-                                app:tint="@color/tv_text_summary"
+                                app:tint="?attr/colorOnSurfaceVariant"
                                 tools:ignore="RtlHardcoded,RtlSymmetry" />
 
-                            <TextView
+                            <io.legado.app.ui.widget.text.SecondaryTextView
                                 android:id="@+id/tv_group"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -296,7 +296,7 @@
                                 android:includeFontPadding="false"
                                 android:paddingRight="6dp"
                                 android:singleLine="true"
-                                android:textColor="@color/tv_text_summary"
+
                                 android:textSize="13sp"
                                 tools:ignore="NestedWeights,RtlHardcoded,RtlSymmetry,TextContrastCheck"
                                 tools:text="@string/group_s" />
@@ -328,10 +328,10 @@
                                 android:contentDescription="@string/read_dur_progress"
                                 android:paddingRight="2dp"
                                 android:src="@drawable/ic_folder_open"
-                                app:tint="@color/tv_text_summary"
+                                app:tint="?attr/colorOnSurfaceVariant"
                                 tools:ignore="RtlHardcoded,RtlSymmetry" />
 
-                            <TextView
+                            <io.legado.app.ui.widget.text.SecondaryTextView
                                 android:id="@+id/tv_toc"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -340,7 +340,7 @@
                                 android:includeFontPadding="false"
                                 android:paddingRight="6dp"
                                 android:singleLine="true"
-                                android:textColor="@color/tv_text_summary"
+
                                 android:textSize="13sp"
                                 tools:ignore="NestedWeights,RtlHardcoded,RtlSymmetry,TextContrastCheck"
                                 tools:text="@string/toc_s" />
@@ -389,7 +389,7 @@
                 android:orientation="horizontal"
                 app:layout_constraintBottom_toBottomOf="parent">
 
-                <TextView
+                <io.legado.app.ui.widget.text.PrimaryTextView
                     android:id="@+id/tv_shelf"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
@@ -400,7 +400,7 @@
                     android:gravity="center"
                     android:includeFontPadding="false"
                     android:text="@string/remove_from_bookshelf"
-                    android:textColor="@color/primaryText"
+
                     android:textSize="15sp" />
 
                 <io.legado.app.ui.widget.text.AccentBgTextView

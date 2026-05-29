@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupMenu
+import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
@@ -16,6 +16,7 @@ import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.ui.widget.recycler.DragSelectTouchHelper
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.showThemed
 
 
 class ReplaceRuleAdapter(context: Context, var callBack: CallBack) :
@@ -166,7 +167,7 @@ class ReplaceRuleAdapter(context: Context, var callBack: CallBack) :
             }
             true
         }
-        popupMenu.show()
+        popupMenu.showThemed()
     }
 
     override fun swap(srcPosition: Int, targetPosition: Int): Boolean {

@@ -729,6 +729,7 @@
     <string name="accent">Accent</string>
     <string name="background_color">Background color</string>
     <string name="navbar_color">NavBar color</string>
+    <string name="popup_background_color">浮窗背景色</string>
     <string name="card_background_color">Card background color</string>
     <string name="text_accent_color">Text accent color</string>
     <string name="day">Day</string>

@@ -40,7 +40,7 @@
         android:paddingRight="10dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <TextView
+        <io.legado.app.ui.widget.text.PrimaryTextView
             android:id="@+id/tv_current_search_info"
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -51,7 +51,7 @@
             android:paddingLeft="10dp"
             android:paddingRight="10dp"
             android:singleLine="true"
-            android:textColor="@color/primaryText"
+            
             android:textSize="12sp" />
 
         <Space
@@ -66,7 +66,7 @@
             android:contentDescription="@string/go_to_top"
             android:src="@drawable/ic_arrow_drop_up"
             android:tooltipText="@string/go_to_top"
-            app:tint="@color/primaryText"
+            app:tint="?attr/colorOnSurface"
             tools:ignore="UnusedAttribute" />
 
         <androidx.appcompat.widget.AppCompatImageView
@@ -77,7 +77,7 @@
             android:contentDescription="@string/go_to_bottom"
             android:src="@drawable/ic_arrow_drop_down"
             android:tooltipText="@string/go_to_bottom"
-            app:tint="@color/primaryText"
+            app:tint="?attr/colorOnSurface"
             tools:ignore="UnusedAttribute" />
     </LinearLayout>
 

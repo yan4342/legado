@@ -12,6 +12,7 @@ import android.view.animation.Interpolator
 import android.widget.OverScroller
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.ViewCompat
+import io.legado.app.lib.theme.secondaryTextColor
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -22,6 +23,12 @@ import kotlin.math.min
  */
 class ScrollTextView(context: Context, attrs: AttributeSet?) :
     AppCompatTextView(context, attrs) {
+
+    init {
+        if (!isInEditMode) {
+            setTextColor(context.secondaryTextColor)
+        }
+    }
 
     //是否到顶或者到底的标志
     private var disallowIntercept = true

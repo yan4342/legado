@@ -60,13 +60,13 @@
                 app:trackCornerRadius="99dp"
                 app:trackThickness="3dp" />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_loading_message"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="@string/loading"
-                android:textColor="@color/primaryText" />
+                 />
         </LinearLayout>
 
         <LinearLayout
@@ -77,11 +77,11 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_msg"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/primaryText" />
+                 />
 
             <io.legado.app.ui.widget.text.AccentTextView
                 android:id="@+id/tv_retry"

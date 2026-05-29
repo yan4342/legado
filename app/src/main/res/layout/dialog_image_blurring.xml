@@ -5,13 +5,13 @@
     android:orientation="vertical"
     android:padding="10dp">
 
-    <TextView
+    <io.legado.app.ui.widget.text.PrimaryTextView
         android:id="@+id/text_view_value"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="6dp"
         android:layout_gravity="center_horizontal"
-        android:textColor="@color/primaryText"
+        
         android:textSize="17sp" />
 
     <androidx.appcompat.widget.AppCompatSeekBar

@@ -120,6 +120,7 @@ import io.legado.app.utils.observeEvent
 import io.legado.app.utils.observeEventSticky
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.showThemed
 import io.legado.app.utils.showHelp
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.startActivityForBook
@@ -389,14 +390,14 @@ class ReadBookActivity : BaseReadBookActivity(),
                 inflate(R.menu.book_read_change_source)
                 this.menu.applyOpenTint(this@ReadBookActivity)
                 setOnMenuItemClickListener(this@ReadBookActivity)
-            }.show()
+            }.showThemed()
         }
         menu.iconItemOnLongClick(R.id.menu_refresh) {
             PopupMenu(this, it).apply {
                 inflate(R.menu.book_read_refresh)
                 this.menu.applyOpenTint(this@ReadBookActivity)
                 setOnMenuItemClickListener(this@ReadBookActivity)
-            }.show()
+            }.showThemed()
         }
         binding.readMenu.refreshMenuColorFilter()
         return super.onCompatCreateOptionsMenu(menu)

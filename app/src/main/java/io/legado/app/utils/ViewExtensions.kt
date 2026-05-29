@@ -7,7 +7,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Outline
 import android.graphics.Picture
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.text.Html
 import android.view.MotionEvent
@@ -17,6 +19,7 @@ import android.view.View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
 import android.view.View.INVISIBLE
 import android.view.View.VISIBLE
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.inputmethod.InputMethodManager
 import android.widget.EdgeEffect
 import android.widget.EditText
@@ -38,6 +41,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager.widget.ViewPager
 import io.legado.app.help.config.AppConfig
+import io.legado.app.lib.theme.popupBackgroundColor
 import io.legado.app.lib.theme.TintHelper
 import io.legado.app.utils.canvasrecorder.CanvasRecorder
 import io.legado.app.utils.canvasrecorder.record
@@ -249,30 +253,37 @@ fun PopupMenu.show(x: Int, y: Int) {
     }.onFailure {
         it.printOnDebug()
     }
-    applyRoundedCornersToPopup()
+    val ctx = kotlin.runCatching {
+        val anchor = this.javaClass.getDeclaredField("mAnchor")
+            .apply { isAccessible = true }.get(this) as? View
+        anchor?.context
+    }.getOrNull() ?: return
+    PopupThemeApplier.apply(ctx)
+    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        PopupThemeApplier.apply(ctx)
+    }, 80)
 }
 
-private fun PopupMenu.applyRoundedCornersToPopup() {
-    kotlin.runCatching {
-        val menuPopupHelper = this.javaClass.getDeclaredField("mPopup")
-            .apply { isAccessible = true }.get(this)
-        val menuPopup = menuPopupHelper.javaClass.getDeclaredField("mPopup")
-            .apply { isAccessible = true }.get(menuPopupHelper)
-        val popupWindow = menuPopup.javaClass.getDeclaredField("mPopup")
-            .apply { isAccessible = true }.get(menuPopup) as? android.widget.PopupWindow
-        popupWindow?.let { pw ->
-            val decorView = pw.contentView?.parent as? View ?: return@let
-            val radius = decorView.resources.displayMetrics.density * 12f
-            decorView.outlineProvider = object : android.view.ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: android.graphics.Outline) {
-                    outline.setRoundRect(0, 0, view.width, view.height, radius)
-                }
-            }
-            decorView.clipToOutline = true
-        }
-    }.onFailure {
-        it.printOnDebug()
-    }
+/**
+ * 替代 [PopupMenu.show] 的带主题版本。
+ * 立即 + 延迟双重着色，确保 PopupWindow 无论何时创建都能被覆盖。
+ */
+fun PopupMenu.showThemed() {
+    show()
+    // 从锚点 View 拿 context（比反推 Activity 更可靠）
+    val ctx = kotlin.runCatching {
+        val anchor = this.javaClass.getDeclaredField("mAnchor")
+            .apply { isAccessible = true }.get(this) as? View
+        anchor?.context
+    }.getOrNull() ?: return
+    PopupThemeApplier.apply(ctx)
+    // 延迟重试：PopupWindow 可能异步创建
+    (ctx as? android.app.Activity)?.window?.decorView?.postDelayed({
+        PopupThemeApplier.apply(ctx)
+    }, 80)
+    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        PopupThemeApplier.apply(ctx)
+    }, 200)
 }
 
 fun View.shouldHideSoftInput(event: MotionEvent): Boolean {

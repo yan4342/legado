@@ -20,22 +20,22 @@
             android:paddingTop="6dp"
             android:paddingBottom="6dp">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_add_group_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="@string/add_group"
-                android:textColor="@color/primaryText"
+                
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toLeftOf="@+id/sw_add_group" />
 
-            <TextView
+            <io.legado.app.ui.widget.text.SecondaryTextView
                 android:id="@+id/tv_add_group_s"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="@string/custom_group_summary"
-                android:textColor="@color/secondaryText"
+                
                 app:layout_constraintTop_toBottomOf="@+id/tv_add_group_title"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toLeftOf="@+id/sw_add_group" />

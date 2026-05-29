@@ -3,7 +3,7 @@ package io.legado.app.ui.main.explore
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupMenu
+import androidx.appcompat.widget.PopupMenu
 import android.widget.TextView
 import androidx.core.view.children
 import com.google.android.flexbox.FlexboxLayout
@@ -25,6 +25,7 @@ import io.legado.app.utils.dpToPx
 import io.legado.app.utils.gone
 import io.legado.app.utils.removeLastElement
 import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.showThemed
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.visible
 import kotlinx.coroutines.CoroutineScope
@@ -177,7 +178,7 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
             }
             true
         }
-        popupMenu.show()
+        popupMenu.showThemed()
         return true
     }
 

@@ -4,7 +4,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    
     android:padding="16dp">
 
     <TextView
@@ -44,11 +44,11 @@
 
     </io.legado.app.ui.widget.text.TextInputLayout>
 
-    <TextView
+    <io.legado.app.ui.widget.text.SecondaryTextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="5dp"
-        android:textColor="@color/secondaryText"
+        
         android:text="@string/page_key_set_help" />
 
     <LinearLayout
@@ -57,7 +57,7 @@
         android:layout_margin="5dp"
         android:orientation="horizontal">
 
-        <TextView
+        <io.legado.app.ui.widget.text.PrimaryTextView
             android:id="@+id/tv_reset"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -69,13 +69,13 @@
             android:paddingTop="5dp"
             android:paddingBottom="5dp"
             android:text="@string/reset"
-            android:textColor="@color/primaryText" />
+             />
 
         <Space
             android:layout_width="3dp"
             android:layout_height="wrap_content" />
 
-        <TextView
+        <io.legado.app.ui.widget.text.PrimaryTextView
             android:id="@+id/tv_ok"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -87,7 +87,7 @@
             android:paddingTop="5dp"
             android:paddingBottom="5dp"
             android:text="@string/ok"
-            android:textColor="@color/primaryText" />
+             />
 
     </LinearLayout>
 

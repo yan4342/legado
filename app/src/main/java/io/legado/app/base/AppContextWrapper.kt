@@ -2,11 +2,16 @@ package io.legado.app.base
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.os.Build
 import android.os.LocaleList
+import android.util.TypedValue
+import androidx.annotation.ColorInt
+import io.legado.app.R
 import io.legado.app.constant.PreferKey
+import io.legado.app.lib.theme.popupBackgroundColor
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.sysConfiguration
@@ -29,7 +34,8 @@ object AppContextWrapper {
             configuration.locale = targetLocale
         }
         configuration.fontScale = getFontScale(context)
-        return context.createConfigurationContext(configuration)
+        val configContext = context.createConfigurationContext(configuration)
+        return ThemeContextWrapper(configContext)
     }
 
     fun getFontScale(context: Context): Float {
@@ -94,6 +100,60 @@ object AppContextWrapper {
         val pfLanguage = pfLocale.language
         val pfCountry = pfLocale.country
         return language == pfLanguage && country == pfCountry
+    }
+
+    /**
+     * ContextWrapper that intercepts [R.color.background_menu] in XML drawable
+     * resolution to use the theme's [popupBackgroundColor].
+     *
+     * Since [Context.getDrawable] is final, we instead wrap [Resources] and
+     * override [Resources.getColor], which is the path used when inflating
+     * XML drawables like [R.drawable.bg_popup_menu].
+     */
+    private class ThemeContextWrapper(base: Context) : ContextWrapper(base) {
+
+        private val themedResources by lazy {
+            ThemeResources(super.getResources(), baseContext)
+        }
+
+        override fun getResources(): Resources = themedResources
+    }
+
+    /**
+     * Resources wrapper that replaces [R.color.background_menu] with the
+     * theme's [popupBackgroundColor] at drawable-inflation time.
+     */
+    private class ThemeResources(
+        private val delegate: Resources,
+        private val context: Context
+    ) : Resources(delegate.assets, delegate.displayMetrics, delegate.configuration) {
+
+        @ColorInt
+        override fun getColor(id: Int, theme: Theme?): Int {
+            if (id == R.color.background_menu) {
+                return context.popupBackgroundColor
+            }
+            return super.getColor(id, theme)
+        }
+
+        override fun getColor(id: Int): Int {
+            if (id == R.color.background_menu) {
+                return context.popupBackgroundColor
+            }
+            return super.getColor(id)
+        }
+
+        override fun getValue(id: Int, outValue: TypedValue, resolveRefs: Boolean) {
+            // Intercept @color/background_menu for XML drawable that uses
+            // it as a reference (e.g. <solid android:color="@color/background_menu"/>).
+            // When resolveRefs=true, the caller wants the actual value, not the reference.
+            if (id == R.color.background_menu && resolveRefs) {
+                outValue.type = TypedValue.TYPE_INT_COLOR_ARGB8
+                outValue.data = context.popupBackgroundColor
+                return
+            }
+            super.getValue(id, outValue, resolveRefs)
+        }
     }
 
 }

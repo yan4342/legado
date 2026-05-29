@@ -13,13 +13,13 @@
         android:orientation="horizontal"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
+        <io.legado.app.ui.widget.text.PrimaryTextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:padding="6dp"
             android:text="@string/group_style"
-            android:textColor="@color/primaryText" />
+             />
 
         <io.legado.app.ui.widget.RoundedSpinner
             android:id="@+id/sp_group_style"

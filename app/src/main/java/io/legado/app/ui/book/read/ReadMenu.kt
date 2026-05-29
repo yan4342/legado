@@ -47,6 +47,7 @@ import io.legado.app.utils.loadAnimation
 import io.legado.app.utils.modifyBegin
 import io.legado.app.utils.openUrl
 import io.legado.app.utils.putPrefBoolean
+import io.legado.app.utils.showThemed
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.visible
 import splitties.views.onClick
@@ -373,7 +374,7 @@ class ReadMenu @JvmOverloads constructor(
                 !ReadBook.bookSource?.loginUrl.isNullOrEmpty()
                         && ReadBook.curTextChapter?.isVip == true
                         && ReadBook.curTextChapter?.isPay != true
-            sourceMenu.show()
+            sourceMenu.showThemed()
         }
         //亮度跟随
         ivBrightnessAuto.setOnClickListener {

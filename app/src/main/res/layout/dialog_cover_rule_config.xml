@@ -85,13 +85,13 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-            <TextView
+            <io.legado.app.ui.widget.text.SecondaryTextView
                 android:id="@+id/tv_cancel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="12dp"
                 android:text="@string/cancel"
-                android:textColor="@color/secondaryText"
+                
                 tools:ignore="RtlHardcoded" />
 
             <io.legado.app.ui.widget.text.AccentTextView

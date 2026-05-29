@@ -16,12 +16,12 @@
         app:title="跳转确认"
         app:titleTextAppearance="@style/ToolbarTitle" />
 
-    <TextView
+    <io.legado.app.ui.widget.text.PrimaryTextView
         android:id="@+id/message"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="16dp"
-        android:textColor="@color/primaryText"
+        
         android:textSize="16sp" />
 
     <com.google.android.flexbox.FlexboxLayout

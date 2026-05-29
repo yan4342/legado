@@ -84,20 +84,20 @@
             android:orientation="horizontal"
             tools:ignore="RtlHardcoded,RtlSymmetry">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:text="@string/show_hide"
-                android:textColor="@color/primaryText" />
+                 />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_header_show"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="6dp"
-                android:textColor="@color/primaryText"
+                
                 tools:text="@string/show_hide" />
 
         </LinearLayout>
@@ -110,20 +110,20 @@
             android:orientation="horizontal"
             tools:ignore="RtlHardcoded,RtlSymmetry">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:text="@string/left"
-                android:textColor="@color/primaryText" />
+                 />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_header_left"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="6dp"
-                android:textColor="@color/primaryText"
+                
                 tools:text="@string/title" />
 
         </LinearLayout>
@@ -136,20 +136,20 @@
             android:orientation="horizontal"
             tools:ignore="RtlHardcoded,RtlSymmetry">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:text="@string/middle"
-                android:textColor="@color/primaryText" />
+                 />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_header_middle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="6dp"
-                android:textColor="@color/primaryText"
+                
                 tools:text="@string/title" />
 
         </LinearLayout>
@@ -162,20 +162,20 @@
             android:orientation="horizontal"
             tools:ignore="RtlHardcoded,RtlSymmetry">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:text="@string/right"
-                android:textColor="@color/primaryText" />
+                 />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_header_right"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="6dp"
-                android:textColor="@color/primaryText"
+                
                 tools:text="@string/title" />
 
         </LinearLayout>
@@ -194,20 +194,20 @@
             android:orientation="horizontal"
             tools:ignore="RtlHardcoded,RtlSymmetry">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:text="@string/show_hide"
-                android:textColor="@color/primaryText" />
+                 />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_footer_show"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="6dp"
-                android:textColor="@color/primaryText"
+                
                 tools:text="@string/show_hide" />
 
         </LinearLayout>
@@ -220,20 +220,20 @@
             android:orientation="horizontal"
             tools:ignore="RtlHardcoded,RtlSymmetry">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:text="@string/left"
-                android:textColor="@color/primaryText" />
+                 />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_footer_left"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="6dp"
-                android:textColor="@color/primaryText"
+                
                 tools:text="@string/title" />
 
         </LinearLayout>
@@ -246,20 +246,20 @@
             android:orientation="horizontal"
             tools:ignore="RtlHardcoded,RtlSymmetry">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:text="@string/middle"
-                android:textColor="@color/primaryText" />
+                 />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_footer_middle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="6dp"
-                android:textColor="@color/primaryText"
+                
                 tools:text="@string/title" />
 
         </LinearLayout>
@@ -272,20 +272,20 @@
             android:orientation="horizontal"
             tools:ignore="RtlHardcoded,RtlSymmetry">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:text="@string/right"
-                android:textColor="@color/primaryText" />
+                 />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_footer_right"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="6dp"
-                android:textColor="@color/primaryText"
+                
                 tools:text="@string/title" />
 
         </LinearLayout>
@@ -304,20 +304,20 @@
             android:orientation="horizontal"
             tools:ignore="RtlHardcoded,RtlSymmetry">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:text="@string/text_color"
-                android:textColor="@color/primaryText" />
+                 />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_tip_color"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="6dp"
-                android:textColor="@color/primaryText"
+                
                 tools:text="@string/text_color" />
 
         </LinearLayout>
@@ -330,20 +330,20 @@
             android:orientation="horizontal"
             tools:ignore="RtlHardcoded,RtlSymmetry">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:text="@string/tip_divider_color"
-                android:textColor="@color/primaryText" />
+                 />
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:id="@+id/tv_tip_divider_color"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="6dp"
-                android:textColor="@color/primaryText"
+                
                 tools:text="@string/tip_divider_color" />
 
         </LinearLayout>

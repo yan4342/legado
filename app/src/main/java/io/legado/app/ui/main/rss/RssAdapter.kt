@@ -16,6 +16,7 @@ import io.legado.app.databinding.ItemRssBinding
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.help.glide.OkHttpModelLoader
 import io.legado.app.lib.theme.colorSurfaceContainer
+import io.legado.app.utils.showThemed
 import splitties.views.onLongClick
 
 class RssAdapter(
@@ -76,7 +77,7 @@ class RssAdapter(
             }
             true
         }
-        popupMenu.show()
+        popupMenu.showThemed()
     }
 
     interface CallBack {

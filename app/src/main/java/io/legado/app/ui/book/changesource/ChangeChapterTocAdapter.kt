@@ -9,9 +9,10 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.databinding.ItemChapterListBinding
 import io.legado.app.lib.theme.ThemeUtils
 import io.legado.app.lib.theme.accentColor
-import io.legado.app.utils.getCompatColor
 import io.legado.app.utils.gone
 import io.legado.app.utils.visible
+import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.cardBackgroundColor
 
 class ChangeChapterTocAdapter(context: Context, val callback: Callback) :
     RecyclerAdapter<BookChapter, ItemChapterListBinding>(context) {
@@ -33,12 +34,12 @@ class ChangeChapterTocAdapter(context: Context, val callback: Callback) :
             if (isDur) {
                 tvChapterName.setTextColor(context.accentColor)
             } else {
-                tvChapterName.setTextColor(context.getCompatColor(R.color.primaryText))
+                tvChapterName.setTextColor(context.primaryTextColor)
             }
             tvChapterName.text = item.title
             if (item.isVolume) {
                 //卷名，如第一卷 突出显示
-                tvChapterItem.setBackgroundColor(context.getCompatColor(R.color.btn_bg_press))
+                tvChapterItem.setBackgroundColor(context.cardBackgroundColor)
             } else {
                 //普通章节 保持不变
                 tvChapterItem.background =

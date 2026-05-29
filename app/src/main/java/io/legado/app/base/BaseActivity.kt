@@ -3,9 +3,7 @@ package io.legado.app.base
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
-import android.graphics.Outline
 import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.util.AttributeSet
@@ -14,8 +12,6 @@ import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewOutlineProvider
-import android.widget.FrameLayout
 import androidx.activity.addCallback
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -29,10 +25,10 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
-import io.legado.app.lib.theme.colorSurfaceContainer
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.widget.TitleBar
 import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.PopupThemeApplier
 import io.legado.app.utils.applyBackgroundTint
 import io.legado.app.utils.applyOpenTint
 import io.legado.app.utils.applyTint
@@ -77,8 +73,8 @@ abstract class BaseActivity<VB : ViewBinding>(
         context: Context,
         attrs: AttributeSet
     ): View? {
-        if (AppConst.menuViewNames.contains(name) && parent?.parent is FrameLayout) {
-            (parent.parent as View).setBackgroundColor(backgroundColor)
+        if (AppConst.menuViewNames.contains(name)) {
+            PopupThemeApplier.applyMenuItemParents(this, parent)
         }
         return super.onCreateView(parent, name, context, attrs)
     }
@@ -127,98 +123,24 @@ abstract class BaseActivity<VB : ViewBinding>(
 
     override fun onMenuOpened(featureId: Int, menu: Menu): Boolean {
         menu.applyOpenTint(this)
-        applyRoundedCornersToPopup(retries = 5)
+        // 弹出菜单使用原生 Drawable 背景（已有圆角），只需动态替换颜色
+        applyPopupBackgroundColor()
         return super.onMenuOpened(featureId, menu)
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun applyRoundedCornersToPopup(retries: Int) {
-        if (retries <= 0) return
-        window.decorView.post {
-            val found = tryApplyRoundedClip()
-            if (!found) {
-                applyRoundedCornersToPopup(retries - 1)
-            }
-        }
-    }
-
-    private val cardBackgroundColor: Int
-        get() {
-            val prefKey = if (AppConfig.isNightTheme) PreferKey.cNCardBg else PreferKey.cCardBg
-            val savedColor = getPrefInt(prefKey)
-            return if (savedColor != 0) {
-                savedColor
-            } else {
-                colorSurfaceContainer
-            }
-        }
-
-    private fun tryApplyRoundedClip(): Boolean {
-        return try {
-            val wmClass = Class.forName("android.view.WindowManagerGlobal")
-            val instance = wmClass.getDeclaredMethod("getInstance").invoke(null)
-            val viewsField = wmClass.getDeclaredField("mViews").apply { isAccessible = true }
-            val views = viewsField.get(instance) as? List<*> ?: return false
-            val radius = resources.displayMetrics.density * 12f
-            val cardColor = cardBackgroundColor
-            var found = false
-            for (view in views) {
-                if (view !is ViewGroup) continue
-                val lp = view.layoutParams as? android.view.WindowManager.LayoutParams ?: continue
-                val type = lp.type
-                if (type == android.view.WindowManager.LayoutParams.TYPE_APPLICATION
-                    || type == android.view.WindowManager.LayoutParams.TYPE_BASE_APPLICATION) continue
-                // Skip if not yet laid out — retry next frame
-                if (view.width == 0 || view.height == 0) continue
-                val childContent = view.getChildAt(0)
-                // Skip if child content not yet attached — retry next frame
-                if (childContent == null) continue
-                // Skip ActionMode popups (text selection floating toolbar)
-                if (isActionModePopup(view)) continue
-                // Set card-colored rounded background on DecorView itself
-                view.background = GradientDrawable().apply {
-                    setColor(cardColor)
-                    cornerRadius = radius
-                }
-                // Clear child background so DecorView's card color shows through
-                childContent.background = null
-                view.outlineProvider = object : ViewOutlineProvider() {
-                    override fun getOutline(v: View, outline: Outline) {
-                        outline.setRoundRect(0, 0, v.width, v.height, radius)
-                    }
-                }
-                view.clipToOutline = true
-                found = true
-            }
-            found
-        } catch (_: Exception) {
-            false
-        }
-    }
-
     /**
-     * 检查 PopupWindow 是否是 ActionMode 弹窗（文本选择浮动工具栏）。
-     * 通过遍历视图层次结构查找 ActionBarContextView / ActionMenuView / FloatingToolbar 来判断。
+     * 动态更新弹出菜单背景色和圆角。
      */
-    private fun isActionModePopup(view: View): Boolean {
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                val child = view.getChildAt(i)
-                val name = child.javaClass.name
-                if (name.contains("ActionBarContextView")
-                    || name.contains("ActionMode")
-                    || name.contains("ActionMenuView")
-                    || name.contains("FloatingToolbar")
-                    || name.contains("FloatingActionMode")
-                ) {
-                    return true
-                }
-                if (child is ViewGroup && isActionModePopup(child)) {
-                    return true
-                }
-            }
+    private fun applyPopupBackgroundColor() {
+        window.decorView.post {
+            PopupThemeApplier.apply(this@BaseActivity)
         }
-        return false
+        window.decorView.postDelayed({
+            PopupThemeApplier.apply(this@BaseActivity)
+        }, 80L)
+        window.decorView.postDelayed({
+            PopupThemeApplier.apply(this@BaseActivity)
+        }, 200L)
     }
 
     open fun onCompatCreateOptionsMenu(menu: Menu) = super.onCreateOptionsMenu(menu)

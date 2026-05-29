@@ -15,9 +15,10 @@ import io.legado.app.data.entities.RssArticle
 import io.legado.app.databinding.ItemRssArticleBinding
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.help.glide.OkHttpModelLoader
-import io.legado.app.utils.getCompatColor
 import io.legado.app.utils.gone
 import io.legado.app.utils.visible
+import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.secondaryTextColor
 
 
 class RssArticlesAdapter(context: Context, callBack: CallBack) :
@@ -73,9 +74,9 @@ class RssArticlesAdapter(context: Context, callBack: CallBack) :
                 }.into(imageView)
             }
             if (item.read) {
-                tvTitle.setTextColor(context.getCompatColor(R.color.tv_text_summary))
+                tvTitle.setTextColor(context.secondaryTextColor)
             } else {
-                tvTitle.setTextColor(context.getCompatColor(R.color.primaryText))
+                tvTitle.setTextColor(context.primaryTextColor)
             }
         }
     }

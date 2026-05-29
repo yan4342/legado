@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    >
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/tool_bar"
@@ -68,7 +68,7 @@
         android:id="@+id/ll_bottom_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/background"
+        
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingLeft="10dp"
@@ -89,14 +89,14 @@
             android:layout_height="wrap_content"
             android:layout_weight="1" />
 
-        <TextView
+        <io.legado.app.ui.widget.text.SecondaryTextView
             android:id="@+id/tv_cancel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginRight="16dp"
             android:padding="12dp"
             android:text="@string/cancel"
-            android:textColor="@color/secondaryText"
+            
             tools:ignore="RtlHardcoded" />
 
         <io.legado.app.ui.widget.text.AccentTextView
@@ -109,6 +109,5 @@
             tools:ignore="RtlHardcoded" />
 
     </LinearLayout>
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

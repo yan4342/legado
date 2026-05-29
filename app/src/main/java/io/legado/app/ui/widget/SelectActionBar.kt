@@ -19,6 +19,7 @@ import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryDisabledTextColor
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyNavigationBarPadding
+import io.legado.app.utils.showThemed
 import io.legado.app.utils.visible
 
 
@@ -49,7 +50,7 @@ class SelectActionBar @JvmOverloads constructor(
             }
             binding.btnRevertSelection.setOnClickListener { callBack?.revertSelection() }
             binding.btnSelectActionMain.setOnClickListener { callBack?.onClickSelectBarMainAction() }
-            binding.ivMenuMore.setOnClickListener { selMenu?.show() }
+            binding.ivMenuMore.setOnClickListener { selMenu?.showThemed() }
             applyNavigationBarPadding()
         }
     }

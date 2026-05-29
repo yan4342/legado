@@ -78,7 +78,7 @@
         android:id="@+id/tab_layout"
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:background="@color/background"
+        
         android:elevation="3dp"
         tools:ignore="SpeakableTextPresentCheck" />
 

@@ -15,13 +15,13 @@
         android:orientation="horizontal"
         android:padding="16dp">
 
-        <TextView
+        <io.legado.app.ui.widget.text.PrimaryTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_marginRight="2dp"
             android:text="@string/switch_on"
-            android:textColor="@color/primaryText"
+            
             android:textSize="16sp"
             tools:ignore="RtlHardcoded"
             android:minWidth="88dp" />
@@ -61,12 +61,12 @@
         android:padding="16dp"
         android:gravity="start|center_vertical">
 
-        <TextView
+        <io.legado.app.ui.widget.text.PrimaryTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:text="@string/start_from"
-            android:textColor="@color/primaryText"
+            
             android:textSize="16sp"
             android:gravity="center_vertical"
             android:minWidth="100dp" />
@@ -108,13 +108,13 @@
             android:layout_height="match_parent"
             android:minWidth="100dp">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
                 android:layout_marginRight="2dp"
                 android:text="@string/start_chapter"
-                android:textColor="@color/primaryText"
+                
                 android:textSize="16sp"
                 tools:ignore="RtlHardcoded" />
 
@@ -147,14 +147,14 @@
             android:layout_height="match_parent"
             android:gravity="end">
 
-            <TextView
+            <io.legado.app.ui.widget.text.PrimaryTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
                 android:layout_marginLeft="25dp"
                 android:layout_marginRight="5dp"
                 android:text="@string/daily_chapters"
-                android:textColor="@color/primaryText"
+                
                 android:textSize="16sp" />
 
             <EditText

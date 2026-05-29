@@ -13,13 +13,13 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <TextView
+    <io.legado.app.ui.widget.text.PrimaryTextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:layout_marginRight="5dp"
         android:text="@string/chapter"
-        android:textColor="@color/primaryText"
+        
         android:textSize="16sp"
         tools:ignore="RtlHardcoded" />
 
@@ -44,14 +44,14 @@
         android:textSize="14sp"
         tools:ignore="TouchTargetSizeCheck,TextContrastCheck" />
 
-    <TextView
+    <io.legado.app.ui.widget.text.PrimaryTextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:layout_marginLeft="5dp"
         android:layout_marginRight="5dp"
         android:text="@string/to"
-        android:textColor="@color/primaryText"
+        
         android:textSize="16sp" />
 
     <EditText

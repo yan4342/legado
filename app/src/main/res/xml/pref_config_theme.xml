@@ -109,6 +109,13 @@
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.ColorPreference
+            android:defaultValue="@color/background_card"
+            android:key="colorPopupBg"
+            android:title="@string/popup_background_color"
+            app:cpv_dialogType="preset"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.ColorPreference
             android:defaultValue="@color/md_red_600"
             android:key="colorTextAccent"
             android:title="@string/text_accent_color"
@@ -173,6 +180,13 @@
             android:defaultValue="@color/md_grey_850"
             android:key="colorCardBgNight"
             android:title="@string/card_background_color"
+            app:cpv_dialogType="preset"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.ColorPreference
+            android:defaultValue="@color/md_grey_850"
+            android:key="colorPopupBgNight"
+            android:title="@string/popup_background_color"
             app:cpv_dialogType="preset"
             app:iconSpaceReserved="false" />
 
