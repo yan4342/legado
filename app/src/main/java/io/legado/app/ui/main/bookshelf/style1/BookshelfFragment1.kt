@@ -72,6 +72,7 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         binding.viewPagerBookshelf.setEdgeEffectColor(primaryColor)
         tabLayout.isTabIndicatorFullWidth = false
         tabLayout.tabMode = TabLayout.MODE_SCROLLABLE
+        tabLayout.tabGravity = TabLayout.GRAVITY_START
         tabLayout.setSelectedTabIndicatorColor(requireContext().accentColor)
         val textAccentKey = if (AppConfig.isNightTheme) PreferKey.cNTextAccent else PreferKey.cTextAccent
         val textAccentColor = requireContext().getPrefInt(textAccentKey)

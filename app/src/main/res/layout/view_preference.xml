@@ -6,10 +6,10 @@
     android:layout_marginStart="12dp"
     android:layout_marginEnd="12dp"
     android:paddingStart="16dp"
-    android:paddingTop="4dp"
+    android:paddingTop="8dp"
     android:paddingEnd="16dp"
-    android:paddingBottom="4dp"
-    android:minHeight="40dp"
+    android:paddingBottom="6dp"
+    android:minHeight="52dp"
     android:clickable="true"
     android:focusable="true"
     android:orientation="horizontal"
@@ -34,7 +34,7 @@
         <TextView
             android:id="@+id/preference_title"
             android:singleLine="true"
-            android:textSize="16sp"
+            android:textSize="18sp"
             android:text="@string/title"
             android:textColor="@color/primaryText"
             android:layout_width="match_parent"
@@ -42,7 +42,7 @@
 
         <TextView
             android:id="@+id/preference_desc"
-            android:textSize="14sp"
+            android:textSize="16sp"
             android:textColor="@color/tv_text_summary"
             android:text="@string/default1"
             android:layout_width="match_parent"

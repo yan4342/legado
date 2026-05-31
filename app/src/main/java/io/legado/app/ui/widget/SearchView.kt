@@ -40,13 +40,17 @@ class SearchView @JvmOverloads constructor(
                 textView = findViewById(androidx.appcompat.R.id.search_src_text)
                 mSearchHintIcon = this.context.getDrawable(R.drawable.ic_search_hint)
             }
-            // 改变字体
-            textView!!.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            textView!!.gravity = Gravity.CENTER_VERTICAL
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                textView!!.isLocalePreferredLineHeightForMinimumUsed = false
+            // 使用 post 避免在 layout 过程中触发 requestLayout
+            post {
+                textView?.let { tv ->
+                    tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    tv.gravity = Gravity.CENTER_VERTICAL
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                        tv.isLocalePreferredLineHeightForMinimumUsed = false
+                    }
+                    updateQueryHint()
+                }
             }
-            updateQueryHint()
         } catch (e: Exception) {
             e.printOnDebug()
         }

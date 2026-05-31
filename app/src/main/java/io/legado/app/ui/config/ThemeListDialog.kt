@@ -1,6 +1,7 @@
 package io.legado.app.ui.config
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
@@ -15,6 +16,7 @@ import io.legado.app.databinding.DialogRecyclerViewBinding
 import io.legado.app.databinding.ItemThemeConfigBinding
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.popupPrimaryTextColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.*
@@ -100,6 +102,11 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_recycler_view),
         ) {
             binding.apply {
                 tvName.text = item.themeName
+                val textColor = context.popupPrimaryTextColor
+                tvName.setTextColor(textColor)
+                val tintList = ColorStateList.valueOf(textColor)
+                ivShare.imageTintList = tintList
+                ivDelete.imageTintList = tintList
             }
         }
 

@@ -5,8 +5,14 @@ import android.content.DialogInterface.OnDismissListener
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
+import android.content.res.ColorStateList
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.annotation.LayoutRes
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentManager
@@ -19,7 +25,9 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.filletBackground
+import io.legado.app.lib.theme.popupBackgroundColor
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.setBackgroundKeepPadding
 import kotlinx.coroutines.CoroutineScope
@@ -85,6 +93,15 @@ abstract class BaseDialogFragment(
         }
         if (!AppConfig.isEInkMode) {
             dialog?.window?.setBackgroundDrawable(requireContext().filletBackground)
+            // 对话框文字颜色适配自定义浮窗背景色（跳过自定义主题控件，保留其自身着色逻辑）
+            val dialogTextColor = if (ColorUtils.isColorLight(requireContext().popupBackgroundColor)) {
+                0xDE000000.toInt()
+            } else {
+                0xFFFFFFFF.toInt()
+            }
+            view.post {
+                applyDialogTextColor(view, dialogTextColor)
+            }
         }
         view.findViewById<View>(R.id.tool_bar)?.setBackgroundColor(requireContext().primaryColor)
         onFragmentCreated(view, savedInstanceState)
@@ -92,6 +109,38 @@ abstract class BaseDialogFragment(
     }
 
     abstract fun onFragmentCreated(view: View, savedInstanceState: Bundle?)
+
+    companion object {
+        /**
+         * 递归遍历 View 树，对标准 TextView/ImageView（非按钮/输入框/自定义主题控件）设置文字/图标颜色。
+         * 跳过 PrimaryTextView、SecondaryTextView 等自着色控件。
+         */
+        private fun applyDialogTextColor(view: View, textColor: Int) {
+            if (view is TextView
+                && view !is Button
+                && view !is EditText
+                && view.javaClass.name.let {
+                    it == "android.widget.TextView"
+                            || it == "androidx.appcompat.widget.AppCompatTextView"
+                }
+            ) {
+                view.setTextColor(textColor)
+            }
+            if (view is ImageView
+                && view.javaClass.name.let {
+                    it == "android.widget.ImageView"
+                            || it == "androidx.appcompat.widget.AppCompatImageView"
+                }
+            ) {
+                view.imageTintList = ColorStateList.valueOf(textColor)
+            }
+            if (view is ViewGroup) {
+                for (i in 0 until view.childCount) {
+                    applyDialogTextColor(view.getChildAt(i), textColor)
+                }
+            }
+        }
+    }
 
     override fun show(manager: FragmentManager, tag: String?) {
         kotlin.runCatching {
