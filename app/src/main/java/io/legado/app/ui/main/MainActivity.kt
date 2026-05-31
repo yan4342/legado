@@ -36,7 +36,7 @@ import io.legado.app.lib.theme.primaryColor
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.about.CrashLogsDialog
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
-import io.legado.app.ui.main.bookshelf.style1.BookshelfFragment1
+import io.legado.app.ui.main.bookshelf.compose.BookshelfComposeFragment
 import io.legado.app.ui.main.bookshelf.style2.BookshelfFragment2
 import io.legado.app.ui.main.explore.ExploreFragment
 import io.legado.app.ui.main.my.MyFragment
@@ -197,20 +197,23 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     /**
      * 用户隐私与协议
      */
-    private suspend fun privacyPolicy(): Boolean = suspendCancellableCoroutine sc@{ block ->
+    private suspend fun privacyPolicy(): Boolean {
         if (LocalConfig.privacyPolicyOk) {
-            block.resume(true)
-            return@sc
+            return true
         }
-        val privacyPolicy = String(assets.open("privacyPolicy.md").readBytes())
-        alert(getString(R.string.privacy_policy), privacyPolicy) {
-            positiveButton(R.string.agree) {
-                LocalConfig.privacyPolicyOk = true
-                block.resume(true)
-            }
-            negativeButton(R.string.refuse) {
-                finish()
-                block.resume(false)
+        val privacyPolicy = withContext(IO) {
+            String(assets.open("privacyPolicy.md").readBytes())
+        }
+        return suspendCancellableCoroutine { block ->
+            alert(getString(R.string.privacy_policy), privacyPolicy) {
+                positiveButton(R.string.agree) {
+                    LocalConfig.privacyPolicyOk = true
+                    block.resume(true)
+                }
+                negativeButton(R.string.refuse) {
+                    finish()
+                    block.resume(false)
+                }
             }
         }
     }
@@ -218,28 +221,33 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     /**
      * 版本更新日志
      */
-    private suspend fun upVersion() = suspendCancellableCoroutine sc@{ block ->
+    private suspend fun upVersion() {
         if (LocalConfig.versionCode == appInfo.versionCode) {
-            block.resume(null)
-            return@sc
+            return
         }
         LocalConfig.versionCode = appInfo.versionCode
         if (LocalConfig.isFirstOpenApp) {
-            val help = String(assets.open("web/help/md/appHelp.md").readBytes())
-            val dialog = TextDialog(getString(R.string.help), help, TextDialog.Mode.MD)
-            dialog.setOnDismissListener {
-                block.resume(null)
+            val help = withContext(IO) {
+                String(assets.open("web/help/md/appHelp.md").readBytes())
             }
-            showDialogFragment(dialog)
+            suspendCancellableCoroutine<Unit> { block ->
+                val dialog = TextDialog(getString(R.string.help), help, TextDialog.Mode.MD)
+                dialog.setOnDismissListener {
+                    block.resume(Unit)
+                }
+                showDialogFragment(dialog)
+            }
         } else if (!BuildConfig.DEBUG) {
-            val log = String(assets.open("updateLog.md").readBytes())
-            val dialog = TextDialog(getString(R.string.update_log), log, TextDialog.Mode.MD)
-            dialog.setOnDismissListener {
-                block.resume(null)
+            val log = withContext(IO) {
+                String(assets.open("updateLog.md").readBytes())
             }
-            showDialogFragment(dialog)
-        } else {
-            block.resume(null)
+            suspendCancellableCoroutine<Unit> { block ->
+                val dialog = TextDialog(getString(R.string.update_log), log, TextDialog.Mode.MD)
+                dialog.setOnDismissListener {
+                    block.resume(Unit)
+                }
+                showDialogFragment(dialog)
+            }
         }
     }
 
@@ -426,7 +434,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             val position = (any as MainFragmentInterface).position
                 ?: return POSITION_NONE
             val fragmentId = getId(position)
-            if ((fragmentId == idBookshelf1 && any is BookshelfFragment1)
+            if ((fragmentId == idBookshelf1 && any is BookshelfComposeFragment)
                 || (fragmentId == idBookshelf2 && any is BookshelfFragment2)
                 || (fragmentId == idExplore && any is ExploreFragment)
                 || (fragmentId == idRss && any is RssFragment)
@@ -439,7 +447,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
         override fun getItem(position: Int): Fragment {
             return when (getId(position)) {
-                idBookshelf1 -> BookshelfFragment1(position)
+                idBookshelf1 -> BookshelfComposeFragment(position)
                 idBookshelf2 -> BookshelfFragment2(position)
                 idExplore -> ExploreFragment(position)
                 idRss -> RssFragment(position)

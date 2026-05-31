@@ -152,6 +152,10 @@
         <activity
             android:name=".ui.book.info.BookInfoActivity"
             android:launchMode="singleTop" />
+        <!-- 书籍详情页 Compose 版 -->
+        <activity
+            android:name=".ui.book.info.compose.BookInfoComposeActivity"
+            android:launchMode="singleTop" />
         <!-- 书籍信息编辑 -->
         <activity
             android:name=".ui.book.info.edit.BookInfoEditActivity"

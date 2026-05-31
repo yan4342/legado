@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import androidx.core.view.postDelayed
+import androidx.lifecycle.lifecycleScope
 import io.legado.app.base.BaseActivity
 import io.legado.app.constant.PreferKey
 import io.legado.app.constant.Theme
@@ -24,6 +25,9 @@ import io.legado.app.utils.startActivity
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import io.legado.app.utils.windowSize
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 open class WelcomeActivity : BaseActivity<ActivityWelcomeBinding>() {
 
@@ -52,24 +56,34 @@ open class WelcomeActivity : BaseActivity<ActivityWelcomeBinding>() {
                 when (ThemeConfig.getTheme()) {
                     Theme.Dark -> getPrefString(PreferKey.welcomeImageDark)?.let { path ->
                         val size = windowManager.windowSize
-                        BitmapUtils.decodeBitmap(path, size.widthPixels, size.heightPixels).let {
-                            binding.tvLegado.visible(AppConfig.welcomeShowTextDark)
-                            binding.ivBook.visible(AppConfig.welcomeShowIconDark)
-                            binding.tvGzh.visible(AppConfig.welcomeShowTextDark)
-                            window.decorView.background = BitmapDrawable(resources, it)
-                            return
+                        lifecycleScope.launch {
+                            val bitmap = withContext(IO) {
+                                BitmapUtils.decodeBitmap(path, size.widthPixels, size.heightPixels)
+                            }
+                            bitmap?.let {
+                                binding.tvLegado.visible(AppConfig.welcomeShowTextDark)
+                                binding.ivBook.visible(AppConfig.welcomeShowIconDark)
+                                binding.tvGzh.visible(AppConfig.welcomeShowTextDark)
+                                window.decorView.background = BitmapDrawable(resources, it)
+                            }
                         }
+                        return
                     }
 
                     else -> getPrefString(PreferKey.welcomeImage)?.let { path ->
                         val size = windowManager.windowSize
-                        BitmapUtils.decodeBitmap(path, size.widthPixels, size.heightPixels).let {
-                            binding.tvLegado.visible(AppConfig.welcomeShowText)
-                            binding.ivBook.visible(AppConfig.welcomeShowIcon)
-                            binding.tvGzh.visible(AppConfig.welcomeShowText)
-                            window.decorView.background = BitmapDrawable(resources, it)
-                            return
+                        lifecycleScope.launch {
+                            val bitmap = withContext(IO) {
+                                BitmapUtils.decodeBitmap(path, size.widthPixels, size.heightPixels)
+                            }
+                            bitmap?.let {
+                                binding.tvLegado.visible(AppConfig.welcomeShowText)
+                                binding.ivBook.visible(AppConfig.welcomeShowIcon)
+                                binding.tvGzh.visible(AppConfig.welcomeShowText)
+                                window.decorView.background = BitmapDrawable(resources, it)
+                            }
                         }
+                        return
                     }
                 }
             }
@@ -79,10 +93,19 @@ open class WelcomeActivity : BaseActivity<ActivityWelcomeBinding>() {
 
     private fun startMainActivity() {
         startActivity<MainActivity>()
-        if (getPrefBoolean(PreferKey.defaultToRead) && appDb.bookDao.lastReadBook != null) {
-            startActivity<ReadBookActivity>()
+        if (getPrefBoolean(PreferKey.defaultToRead)) {
+            lifecycleScope.launch {
+                val lastBook = withContext(IO) {
+                    appDb.bookDao.lastReadBook
+                }
+                if (lastBook != null) {
+                    startActivity<ReadBookActivity>()
+                }
+                finish()
+            }
+        } else {
+            finish()
         }
-        finish()
     }
 
 }

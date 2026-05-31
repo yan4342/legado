@@ -90,6 +90,20 @@ class App : Application() {
                 .autoClear(false)
                 .enableLogger(BuildConfig.DEBUG || AppConfig.recordLog)
                 .setLogger(EventLogger())
+            // 修复 LiveEventBus 在 targetSdkVersion>=36 上反射隐藏 API 被拒的问题
+            // AppUtils.fixSoftInputLeaks() 会反射访问 InputMethodManager 的私有字段
+            // 反注册其 ActivityLifecycleCallbacks 以阻止该反射调用
+            try {
+                val cls = Class.forName("com.jeremyliao.liveeventbus.utils.AppUtils")
+                val field = cls.getDeclaredField("ACTIVITY_LIFECYCLE")
+                field.isAccessible = true
+                val lifecycle = field.get(null) as? ActivityLifecycleCallbacks
+                if (lifecycle != null) {
+                    unregisterActivityLifecycleCallbacks(lifecycle)
+                }
+            } catch (ignored: Throwable) {
+                // ignore
+            }
             DefaultData.upVersion()
             AppFreezeMonitor.init(this@App)
             DispatchersMonitor.init()
