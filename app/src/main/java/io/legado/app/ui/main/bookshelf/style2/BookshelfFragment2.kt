@@ -23,6 +23,7 @@ import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.book.group.GroupEditDialog
 import io.legado.app.ui.book.info.BookInfoActivity
+import io.legado.app.ui.book.info.compose.BookInfoComposeActivity
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.utils.cnCompare
@@ -220,7 +221,7 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
 
     override fun onItemLongClick(item: Any) {
         when (item) {
-            is Book -> startActivity<BookInfoActivity> {
+            is Book -> startActivity<BookInfoComposeActivity> {
                 putExtra("name", item.name)
                 putExtra("author", item.author)
             }

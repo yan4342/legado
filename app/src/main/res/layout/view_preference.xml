@@ -5,60 +5,60 @@
     android:layout_height="wrap_content"
     android:layout_marginStart="12dp"
     android:layout_marginEnd="12dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="48dp"
+    android:orientation="horizontal"
     android:paddingStart="16dp"
     android:paddingTop="8dp"
     android:paddingEnd="16dp"
-    android:paddingBottom="6dp"
-    android:minHeight="52dp"
-    android:clickable="true"
-    android:focusable="true"
-    android:orientation="horizontal"
-    android:gravity="center_vertical">
+    android:paddingBottom="6dp">
 
     <ImageView
         android:id="@+id/preference_icon"
-        android:layout_marginEnd="16dp"
-        android:scaleType="fitCenter"
-        android:visibility="visible"
-        android:paddingTop="1dp"
         android:layout_width="24dp"
         android:layout_height="24dp"
+        android:layout_marginEnd="16dp"
+        android:paddingTop="1dp"
+        android:scaleType="fitCenter"
+        android:visibility="visible"
         tools:ignore="ContentDescription" />
 
     <LinearLayout
-        android:orientation="vertical"
-        android:layout_weight="1.0"
         android:layout_width="0dp"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:layout_weight="1.0"
+        android:orientation="vertical">
 
         <TextView
             android:id="@+id/preference_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:singleLine="true"
-            android:textSize="18sp"
             android:text="@string/title"
             android:textColor="@color/primaryText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:textSize="16sp" />
 
         <TextView
             android:id="@+id/preference_desc"
-            android:textSize="16sp"
-            android:textColor="@color/tv_text_summary"
-            android:text="@string/default1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" />
+            android:layout_marginTop="8dp"
+            android:text="@string/default1"
+            android:textColor="@color/tv_text_summary"
+            android:textSize="14sp" />
 
     </LinearLayout>
 
     <FrameLayout
         android:id="@+id/preference_widget"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
-        android:visibility="gone"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:visibility="gone" />
 
 </LinearLayout>

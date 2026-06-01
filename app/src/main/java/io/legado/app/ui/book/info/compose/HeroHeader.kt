@@ -1,14 +1,18 @@
 package io.legado.app.ui.book.info.compose
 
+import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,6 +31,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import io.legado.app.R
 import io.legado.app.data.entities.Book
 import io.legado.app.model.BookCover
+import io.legado.app.ui.widget.image.CoverImageView
 
 /**
  * 详情页 Hero Header：模糊封面背景 + 大封面 + 书名 + 作者。
@@ -42,7 +47,7 @@ fun HeroHeader(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(340.dp),
+            .height(300.dp),
     ) {
         // 模糊封面背景
         AndroidView(
@@ -57,69 +62,72 @@ fun HeroHeader(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(260.dp)
+                .height(280.dp)
                 .blur(25.dp),
         )
 
-        // 渐变遮罩
+        // 渐变遮罩 — 统一黑色
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(260.dp)
+                .height(280.dp)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.3f),
-                            MaterialTheme.colorScheme.surface,
+                            Color.Black.copy(alpha = 0.1f),
+                            Color.Black.copy(alpha = 0.2f),
+                            Color.Black.copy(alpha = 0.25f),
                         ),
                     ),
                 ),
         )
 
-        // 封面 + 标题
-        Column(
+        // 封面（左）+ 书名/作者（右）同行，下移避开 TopAppBar
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .padding(top = 80.dp, start = 20.dp, end = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            // 使用 CoverImageView，支持在默认封面上绘制书名/作者
             AndroidView(
                 factory = { ctx ->
-                    ImageView(ctx).apply {
-                        scaleType = ImageView.ScaleType.CENTER_CROP
+                    CoverImageView(ctx).apply {
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        )
                     }
                 },
-                update = { imageView ->
-                    BookCover.load(context, coverUrl, false, null)
-                        .placeholder(R.drawable.image_cover_default)
-                        .error(R.drawable.image_cover_default)
-                        .into(imageView)
+                update = { coverView ->
+                    coverView.load(coverUrl, book.name, book.getRealAuthor(), false, null)
                 },
                 modifier = Modifier
-                    .size(width = 140.dp, height = 196.dp)
-                    .clip(RoundedCornerShape(12.dp)),
+                    .size(width = 100.dp, height = 140.dp)
+                    .clip(RoundedCornerShape(10.dp)),
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
-            Text(
-                text = book.name,
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-
-            if (book.author.isNotBlank()) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center,
+            ) {
                 Text(
-                    text = book.getRealAuthor(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    modifier = Modifier.padding(top = 4.dp),
+                    text = book.name,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
                 )
+                if (book.author.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = book.getRealAuthor(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }

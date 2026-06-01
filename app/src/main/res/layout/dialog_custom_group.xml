@@ -2,7 +2,7 @@
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="wrap_content"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:paddingLeft="20dp"
     android:paddingRight="20dp"
@@ -57,12 +57,14 @@
             android:id="@+id/text_input_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingTop="6dp">
+            android:paddingTop="6dp"
+            android:paddingBottom="12dp">
 
             <io.legado.app.ui.widget.text.AutoCompleteTextView
                 android:id="@+id/edit_view"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:dropDownAnchor="@id/text_input_layout"
                 tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
 
         </io.legado.app.ui.widget.text.TextInputLayout>

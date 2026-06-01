@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.info.compose
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,31 +43,30 @@ fun ChapterCard(
                 modifier = Modifier.size(18.dp),
                 tint = MaterialTheme.colorScheme.onSurface,
             )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = if (totalChapterNum > 0) {
-                    stringResource(R.string.toc_s, "$totalChapterNum 章")
-                } else {
-                    stringResource(R.string.chapter_list)
-                },
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+//                Text(
+//                    text = if (totalChapterNum > 0) {
+//                        stringResource(R.string.toc_s, "$totalChapterNum 章")
+//                    } else {
+//                        stringResource(R.string.chapter_list)
+//                    },
+//                    style = MaterialTheme.typography.titleSmall,
+//                    color = MaterialTheme.colorScheme.onSurface,
+//                )
+                Text(
+                    text = latestChapterTitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
             Icon(
                 painter = painterResource(R.drawable.ic_arrow_right),
                 contentDescription = null,
+                modifier = Modifier.size(18.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-
-        Text(
-            text = latestChapterTitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-            modifier = Modifier.padding(top = 4.dp),
-        )
     }
 }

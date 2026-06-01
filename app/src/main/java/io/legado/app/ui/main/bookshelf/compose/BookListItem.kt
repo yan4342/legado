@@ -50,9 +50,11 @@ fun BookListItem(
         ) {
             BookCoverImage(
                 coverUrl = book.getDisplayCover(),
+                name = book.name,
+                author = book.getRealAuthor(),
                 modifier = Modifier
-                    .width(96.dp)
-                    .height(136.dp),
+                    .width(72.dp)
+                    .height(102.dp),
             )
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -69,14 +71,25 @@ fun BookListItem(
                 )
 
                 if (book.author.isNotBlank()) {
-                    Text(
-                        text = book.getRealAuthor(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
+                    Row(
+                        modifier = Modifier.padding(top = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_author),
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = book.getRealAuthor(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
 
                 book.durChapterTitle?.let { title ->
@@ -85,7 +98,7 @@ fun BookListItem(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_chapter_list),
+                            painter = painterResource(R.drawable.ic_update),
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -108,7 +121,7 @@ fun BookListItem(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.ic_update),
+                                painter = painterResource(R.drawable.ic_book_last),
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.primary,

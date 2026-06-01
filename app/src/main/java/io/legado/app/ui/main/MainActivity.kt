@@ -140,18 +140,19 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean = binding.run {
+        val smoothScroll = !AppConfig.isEInkMode
         when (item.itemId) {
             R.id.menu_bookshelf ->
-                viewPagerMain.setCurrentItem(0, false)
+                viewPagerMain.setCurrentItem(0, smoothScroll)
 
             R.id.menu_discovery ->
-                viewPagerMain.setCurrentItem(realPositions.indexOf(idExplore), false)
+                viewPagerMain.setCurrentItem(realPositions.indexOf(idExplore), smoothScroll)
 
             R.id.menu_rss ->
-                viewPagerMain.setCurrentItem(realPositions.indexOf(idRss), false)
+                viewPagerMain.setCurrentItem(realPositions.indexOf(idRss), smoothScroll)
 
             R.id.menu_my_config ->
-                viewPagerMain.setCurrentItem(realPositions.indexOf(idMy), false)
+                viewPagerMain.setCurrentItem(realPositions.indexOf(idMy), smoothScroll)
         }
         return false
     }

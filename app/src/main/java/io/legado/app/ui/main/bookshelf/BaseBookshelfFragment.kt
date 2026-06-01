@@ -56,7 +56,7 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
             toastOnUi(it.localizedMessage ?: "ERROR")
         }
     }
-    private val exportResult = registerForActivityResult(HandleFileContract()) {
+    protected val exportResult = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             alert(R.string.export_success) {
                 if (uri.toString().isAbsUrl()) {
@@ -239,7 +239,7 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
     }
 
 
-    private fun importBookshelfAlert(groupId: Long) {
+    protected fun importBookshelfAlert(groupId: Long) {
         alert(titleResource = R.string.import_bookshelf) {
             val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
                 editView.hint = "url/json"

@@ -34,6 +34,7 @@ import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.book.info.BookInfoActivity
+import io.legado.app.ui.book.info.compose.BookInfoComposeActivity
 import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyNavigationBarMargin
@@ -460,7 +461,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
      * 显示书籍详情
      */
     override fun showBookInfo(name: String, author: String, bookUrl: String) {
-        startActivity<BookInfoActivity> {
+        startActivity<BookInfoComposeActivity> {
             putExtra("name", name)
             putExtra("author", author)
             putExtra("bookUrl", bookUrl)

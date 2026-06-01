@@ -20,6 +20,7 @@ import io.legado.app.exception.NoStackTraceException
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.ui.book.info.BookInfoActivity
+import io.legado.app.ui.book.info.compose.BookInfoComposeActivity
 import io.legado.app.utils.GSON
 import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.fromJsonObject
@@ -81,7 +82,7 @@ class AddToBookshelfDialog() : BaseDialogFragment(R.layout.dialog_add_to_bookshe
         }
         viewModel.load(bookUrl) {
             viewModel.saveSearchBook(it) {
-                startActivity<BookInfoActivity> {
+                startActivity<BookInfoComposeActivity> {
                     putExtra("name", it.name)
                     putExtra("author", it.author)
                     putExtra("bookUrl", it.bookUrl)

@@ -32,6 +32,7 @@ import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.book.group.GroupManageDialog
 import io.legado.app.ui.book.group.GroupSelectDialog
 import io.legado.app.ui.book.info.BookInfoActivity
+import io.legado.app.ui.book.info.compose.BookInfoComposeActivity
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.SelectActionBar
 import io.legado.app.ui.widget.dialog.WaitDialog
@@ -404,7 +405,7 @@ class BookshelfManageActivity :
     }
 
     override fun openBook(book: Book) {
-        startActivity<BookInfoActivity> {
+        startActivity<BookInfoComposeActivity> {
             putExtra("name", book.name)
             putExtra("author", book.author)
         }

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.WindowManager
 import android.widget.CheckBox
 import android.widget.LinearLayout
 import androidx.activity.compose.setContent
@@ -35,6 +36,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
+import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.book.audio.AudioPlayActivity
 import io.legado.app.ui.book.changecover.ChangeCoverDialog
 import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
@@ -138,6 +140,10 @@ class BookInfoComposeActivity :
     @SuppressLint("PrivateResource")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 避免白屏：在 setContent 之前设置窗口背景色与主题一致
+        window.decorView.setBackgroundColor(
+            io.legado.app.lib.theme.ThemeStore.backgroundColor(this)
+        )
 
         viewModel.initData(intent)
         viewModel.waitDialogData.observe(this) { upWaitDialogStatus(it) }
@@ -160,6 +166,9 @@ class BookInfoComposeActivity :
 
                 if (currentBook != null) {
                     val book = currentBook!!
+                    var canUpdateState by remember(book) { mutableStateOf(book.canUpdate) }
+                    var splitLongChapterState by remember(book) { mutableStateOf(book.getSplitLongChapter()) }
+                    var inBookshelfState by remember { mutableStateOf(viewModel.inBookshelf) }
                     BookDetailScreen(
                         book = book,
                         latestChapterTitle = book.latestChapterTitle,
@@ -172,6 +181,16 @@ class BookInfoComposeActivity :
                                 readBook(book)
                             }
                         },
+                        onShelfClick = {
+                            if (book.isWebFile) {
+                                showWebFileDownloadAlert()
+                            } else {
+                                viewModel.addToBookshelf {
+                                    inBookshelfState = true
+                                }
+                            }
+                        },
+                        inBookshelf = inBookshelfState,
                         onTocClick = {
                             if (chapterList.isNullOrEmpty()) {
                                 toastOnUi(R.string.chapter_list_empty)
@@ -185,8 +204,23 @@ class BookInfoComposeActivity :
                             }
                         },
                         onMenuAction = { action ->
+                            when (action) {
+                                MENU_CAN_UPDATE -> {
+                                    book.canUpdate = !book.canUpdate
+                                    canUpdateState = book.canUpdate
+                                }
+                                MENU_SPLIT_LONG_CHAPTER -> {
+                                    book.setSplitLongChapter(!book.getSplitLongChapter())
+                                    splitLongChapterState = book.getSplitLongChapter()
+                                }
+                            }
                             handleMenuAction(action, book)
                         },
+                        canUpdate = canUpdateState,
+                        splitLongChapter = splitLongChapterState,
+                        isLoginVisible = !viewModel.bookSource?.loginUrl.isNullOrBlank(),
+                        isSourceVariableVisible = viewModel.bookSource != null,
+                        isBookVariableVisible = viewModel.bookSource != null,
                     )
                 }
             }
@@ -195,43 +229,44 @@ class BookInfoComposeActivity :
 
     private fun handleMenuAction(itemId: Int, book: Book) {
         when (itemId) {
-            R.id.menu_edit -> infoEditResult.launch {
+            MENU_EDIT -> infoEditResult.launch {
                 putExtra("bookUrl", book.bookUrl)
             }
-            R.id.menu_share_it -> {
+            MENU_SHARE -> {
                 val bookJson = GSON.toJson(book)
                 val shareStr = "${book.bookUrl}#$bookJson"
                 shareWithQr(shareStr, book.name)
             }
-            R.id.menu_refresh -> refreshBook()
-            R.id.menu_login -> viewModel.bookSource?.let {
+            MENU_REFRESH -> refreshBook()
+            MENU_LOGIN -> viewModel.bookSource?.let {
                 startActivity<SourceLoginActivity> {
                     putExtra("type", "bookSource")
                     putExtra("key", it.bookSourceUrl)
                 }
             }
-            R.id.menu_top -> viewModel.topBook()
-            R.id.menu_set_source_variable -> setSourceVariable()
-            R.id.menu_set_book_variable -> setBookVariable()
-            R.id.menu_can_update -> {
-                book.canUpdate = !book.canUpdate
+            MENU_TOP -> viewModel.topBook()
+            MENU_SET_SOURCE_VARIABLE -> setSourceVariable()
+            MENU_SET_BOOK_VARIABLE -> setBookVariable()
+            MENU_COPY_BOOK_URL -> sendToClip(book.bookUrl)
+            MENU_COPY_TOC_URL -> book.tocUrl?.let { sendToClip(it) }
+            MENU_CAN_UPDATE -> {
+                // 状态已在 onMenuAction lambda 中切换，这里只保存
                 if (viewModel.inBookshelf) {
                     viewModel.saveBook(book)
                 }
             }
-            R.id.menu_split_long_chapter -> {
-                book.setSplitLongChapter(!book.getSplitLongChapter())
+            MENU_SPLIT_LONG_CHAPTER -> {
+                // 状态已在 onMenuAction lambda 中切换，这里只重新加载
                 viewModel.loadBookInfo(book, false)
             }
-            R.id.menu_clear_cache -> viewModel.clearCache()
-            R.id.menu_upload -> upLoadBook(book)
-            R.id.menu_copy_book_url -> sendToClip(book.bookUrl)
-            R.id.menu_copy_toc_url -> book.tocUrl?.let { sendToClip(it) }
-            R.id.menu_delete_alert -> {
-                LocalConfig.bookInfoDeleteAlert = !LocalConfig.bookInfoDeleteAlert
-            }
-            else -> {
-                // 其他未识别的菜单项
+            MENU_CLEAR_CACHE -> viewModel.clearCache()
+            MENU_LOG -> showDialogFragment<AppLogDialog>()
+            MENU_UPLOAD -> upLoadBook(book)
+            MENU_DELETE -> deleteBook()
+            MENU_CHANGE_SOURCE -> {
+                showDialogFragment(
+                    ChangeBookSourceDialog(book.name, book.author)
+                )
             }
         }
     }

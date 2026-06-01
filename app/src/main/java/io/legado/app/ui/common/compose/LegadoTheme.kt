@@ -8,6 +8,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -17,9 +18,9 @@ import androidx.compose.ui.unit.sp
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.M3ColorHelper
 import io.legado.app.lib.theme.cardBackgroundColor
-import io.legado.app.lib.theme.isDarkTheme
 import io.legado.app.lib.theme.popupBackgroundColor
 import io.legado.app.lib.theme.ThemeStore
+import io.legado.app.utils.ColorUtils
 
 /**
  * 从 ThemeStore 读取当前主题颜色，构建 M3 ColorScheme。
@@ -28,7 +29,7 @@ import io.legado.app.lib.theme.ThemeStore
 @Composable
 fun rememberLegadoColorScheme(): ColorScheme {
     val context = LocalContext.current
-    val isDark = context.isDarkTheme
+    val isDark = AppConfig.isNightTheme
 
     return if (AppConfig.isEInkMode) {
         val tokens = M3ColorHelper.computeEInkTokens()
@@ -100,6 +101,17 @@ fun legadoPopupBackgroundColor(): Color {
     return Color(context.popupBackgroundColor)
 }
 
+/**
+ * 浮窗文字主色，根据 popupBackgroundColor 明暗自动选择。
+ * 浅色背景 → 深色文字，深色背景 → 白色文字。
+ */
+@Composable
+fun legadoPopupPrimaryTextColor(): Color {
+    val context = LocalContext.current
+    val isLight = ColorUtils.isColorLight(context.popupBackgroundColor)
+    return if (isLight) Color(0xDE000000) else Color(0xFFFFFFFF)
+}
+
 private val AppTypography = Typography(
     headlineLarge = TextStyle(
         fontWeight = FontWeight.Bold,
@@ -147,16 +159,21 @@ private val AppShapes = Shapes(
     small = RoundedCornerShape(8.dp),
     medium = RoundedCornerShape(12.dp),
     large = RoundedCornerShape(16.dp),
+    extraSmall = RoundedCornerShape(12.dp),  // DropdownMenu 圆角 12dp
     extraLarge = RoundedCornerShape(24.dp),
 )
 
 @Composable
 fun LegadoTheme(content: @Composable () -> Unit) {
     val colorScheme = rememberLegadoColorScheme()
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = AppTypography,
-        shapes = AppShapes,
-        content = content,
-    )
+    CompositionLocalProvider(
+        LocalAnimationsEnabled provides !AppConfig.isEInkMode
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = AppTypography,
+            shapes = AppShapes,
+            content = content,
+        )
+    }
 }

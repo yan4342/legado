@@ -1,7 +1,7 @@
 package io.legado.app.ui.common.compose
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -14,11 +14,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import io.legado.app.help.config.AppConfig
 
 /**
  * 可折叠文本组件，默认显示 [collapsedMaxLines] 行，点击展开/折叠。
- * E-Ink 模式下禁用动画。
+ * 展开按钮独立一行，不与文字重叠。E-Ink 模式下通过 LocalAnimationsEnabled 禁用动画。
  */
 @Composable
 fun CollapsibleText(
@@ -28,9 +27,9 @@ fun CollapsibleText(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var isOverflow by remember { mutableStateOf(false) }
-    val isEInk = AppConfig.isEInkMode
+    val animationsEnabled = LocalAnimationsEnabled.current
 
-    Box(modifier = modifier) {
+    Column(modifier = modifier) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
@@ -39,7 +38,7 @@ fun CollapsibleText(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (isEInk) Modifier else Modifier.animateContentSize()),
+                .then(if (animationsEnabled) Modifier.animateContentSize() else Modifier),
             onTextLayout = { result ->
                 if (!expanded) {
                     isOverflow = result.hasVisualOverflow
@@ -49,7 +48,7 @@ fun CollapsibleText(
         if (isOverflow || expanded) {
             TextButton(
                 onClick = { expanded = !expanded },
-                modifier = Modifier.align(Alignment.BottomEnd),
+                modifier = Modifier.align(Alignment.End),
             ) {
                 Text(
                     text = if (expanded) "折叠" else "展开",

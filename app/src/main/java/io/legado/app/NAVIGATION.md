@@ -44,10 +44,21 @@
 
 | 想改的功能 | 关键文件路径 |
 |-----------|-------------|
-| 书架主界面（列表/网格） | `ui/main/bookshelf/style1/`、`ui/main/bookshelf/style2/`、`ui/main/bookshelf/BookshelfViewModel.kt` |
+| 书架主界面（Compose 版） | `ui/main/bookshelf/compose/BookshelfScreen.kt`（主 Composable）、`ui/main/bookshelf/compose/BookshelfComposeFragment.kt`（Fragment 宿主） |
+| 书架列表项（封面+书名+作者+章节） | `ui/main/bookshelf/compose/BookListItem.kt` |
+| 书架网格项（封面+书名） | `ui/main/bookshelf/compose/BookGridItem.kt` |
+| 书架主界面（旧版 Style1） | `ui/main/bookshelf/style1/`（已由 Compose 版替换） |
+| 书架主界面（旧版 Style2） | `ui/main/bookshelf/style2/` |
+| 书架 ViewModel | `ui/main/bookshelf/BookshelfViewModel.kt` |
 | 书架管理（批量操作） | `ui/book/manage/BookshelfManageActivity.kt` |
 | 书籍分组 | `ui/book/group/`、`data/entities/BookGroup.kt`、`data/dao/BookGroupDao.kt` |
-| 书籍详情页 | `ui/book/info/BookInfoActivity.kt`、`ui/book/info/BookInfoViewModel.kt` |
+| 书籍详情页（Compose 版） | `ui/book/info/compose/BookDetailScreen.kt`（主 Composable）、`ui/book/info/compose/BookInfoComposeActivity.kt`（Activity 宿主） |
+| 书籍详情页 Hero Header（模糊背景+封面+标题） | `ui/book/info/compose/HeroHeader.kt` |
+| 书籍详情页 Chip 信息行（字数/进度/更新时间） | `ui/book/info/compose/InfoChipRow.kt` |
+| 书籍详情页简介卡片（可折叠） | `ui/book/info/compose/IntroCard.kt` |
+| 书籍详情页目录卡片 | `ui/book/info/compose/ChapterCard.kt` |
+| 书籍详情页更多菜单（复用 book_info.xml） | `ui/book/info/compose/BookDetailMenu.kt` |
+| 书籍详情页（旧版） | `ui/book/info/BookInfoActivity.kt`、`ui/book/info/BookInfoViewModel.kt` |
 | 书籍详情信息编辑 | `ui/book/info/edit/` |
 | 封面换源 | `ui/book/changecover/ChangeCoverDialog.kt`、`model/BookCover.kt` |
 | 书籍换源 | `ui/book/changesource/ChangeBookSourceDialog.kt`、`ui/book/changesource/ChangeChapterSourceDialog.kt` |
@@ -55,6 +66,17 @@
 | TXT 目录规则 | `ui/book/toc/rule/TxtTocRuleActivity.kt`、`ui/book/toc/rule/TxtTocRuleDialog.kt`、`ui/book/toc/rule/TxtTocRuleEditDialog.kt` |
 | 书签管理 | `ui/book/bookmark/AllBookmarkActivity.kt`、`ui/book/bookmark/BookmarkDialog.kt` |
 | 缓存管理 | `ui/book/cache/CacheActivity.kt`、`model/CacheBook.kt`、`help/CacheManager.kt` |
+
+### 🎨 Compose 共享组件
+
+| 组件 | 文件路径 | 说明 |
+|------|----------|------|
+| M3 Theme 桥接 | `ui/common/compose/LegadoTheme.kt` | 从 ThemeStore 读取颜色映射到 Material 3 ColorScheme，支持 Light/Dark/E-Ink 三分支 |
+| 封面图片 | `ui/common/compose/BookCoverImage.kt` | GlideImage 加载封面 URL，5:7 比例，8dp 圆角，失败时显示默认封面 |
+| 卡片容器 | `ui/common/compose/SectionCard.kt` | Card + 12dp 内边距，使用 `legadoCardBackgroundColor()` 背景色 |
+| 信息 Chip | `ui/common/compose/InfoChip.kt` | SuggestionChip，支持 outlined（surfaceVariant）和 filled（primaryContainer） |
+| 可折叠文本 | `ui/common/compose/CollapsibleText.kt` | 默认 3 行，点击展开/折叠，E-Ink 模式禁用动画 |
+| 空状态视图 | `ui/common/compose/EmptyStateView.kt` | 居中图标 + 提示文字 |
 
 ### 🌐 发现/书源相关
 
@@ -242,6 +264,14 @@ app/src/main/java/io/legado/app/
 ├── ui/                             ← 界面层
 │   ├── about/                      ← 关于页面
 │   ├── association/                ← 关联导入
+│   ├── common/                     ← ⭐ Compose 共享组件
+│   │   └── compose/
+│   │       ├── LegadoTheme.kt      ← M3 Theme 桥接（ThemeStore → ColorScheme）
+│   │       ├── BookCoverImage.kt   ← GlideImage 封面加载
+│   │       ├── SectionCard.kt      ← 通用卡片容器
+│   │       ├── InfoChip.kt         ← 信息 Chip（outlined/filled）
+│   │       ├── CollapsibleText.kt  ← 可折叠文本
+│   │       └── EmptyStateView.kt   ← 空状态视图
 │   ├── book/                       ← 书籍相关
 │   │   ├── audio/                  ← 音频播放
 │   │   ├── bookmark/               ← 书签管理
@@ -252,6 +282,14 @@ app/src/main/java/io/legado/app/
 │   │   ├── group/                  ← 分组管理
 │   │   ├── import/                 ← 本地导入
 │   │   ├── info/                   ← 书籍详情
+│   │   │   └── compose/            ← ⭐ Compose 版详情页
+│   │   │       ├── BookDetailScreen.kt  ← 主 Composable（Hero Header + 卡片布局）
+│   │   │       ├── BookInfoComposeActivity.kt ← Activity 宿主（ViewModel + 回调）
+│   │   │       ├── HeroHeader.kt  ← 模糊封面背景 + 大封面 + 书名
+│   │   │       ├── InfoChipRow.kt ← 字数/进度/更新时间 Chip 行
+│   │   │       ├── IntroCard.kt   ← 可折叠简介卡片
+│   │   │       ├── ChapterCard.kt ← 目录卡片
+│   │   │       └── BookDetailMenu.kt ← 更多菜单（复用 book_info.xml）
 │   │   ├── manage/                 ← 书架管理
 │   │   ├── manga/                  ← 漫画阅读
 │   │   ├── read/                   ← ⭐ 阅读界面（核心）
@@ -270,6 +308,15 @@ app/src/main/java/io/legado/app/
 │   ├── login/                      ← 书源登录
 │   ├── main/                       ← 主界面
 │   │   ├── bookshelf/              ← 书架标签
+│   │   │   ├── compose/            ← ⭐ Compose 版书架
+│   │   │   │   ├── BookshelfScreen.kt       ← 主 Composable（TopAppBar + Tab + List/Grid）
+│   │   │   │   ├── BookshelfComposeFragment.kt ← Fragment 宿主（ComposeView + 数据桥接）
+│   │   │   │   ├── BookListItem.kt          ← 列表项（封面72×102 + 书名 + 作者 + 章节）
+│   │   │   │   └── BookGridItem.kt          ← 网格项（封面 + 书名）
+│   │   │   ├── style1/             ← 旧版 Style1（已由 Compose 版替换）
+│   │   │   ├── style2/             ← 旧版 Style2
+│   │   │   ├── BaseBookshelfFragment.kt ← 书架基类（菜单/导入导出/分组管理）
+│   │   │   └── BookshelfViewModel.kt ← 书架 ViewModel
 │   │   ├── explore/                ← 发现标签
 │   │   ├── rss/                    ← RSS 标签
 │   │   └── my/                     ← 我的标签
@@ -311,7 +358,10 @@ app/src/main/java/io/legado/app/
 | 修改阅读页翻页动画 | `ui/book/read/page/delegate/` |
 | 修改阅读页字体/行距/背景 | `help/config/ReadBookConfig.kt`、`ui/book/read/config/BgTextConfigDialog.kt` |
 | 修改阅读页底部菜单 | `ui/book/read/ReadMenu.kt`、`res/layout/view_read_menu.xml` |
-| 修改书架显示样式 | `ui/main/bookshelf/style1/` 或 `style2/` |
+| 修改书架显示样式（Compose 版） | `ui/main/bookshelf/compose/BookshelfScreen.kt`（列表/网格切换、Tab 分组）、`BookListItem.kt`/`BookGridItem.kt`（卡片布局） |
+| 修改书架显示样式（旧版） | `ui/main/bookshelf/style1/` 或 `style2/` |
+| 修改书籍详情页布局（Compose 版） | `ui/book/info/compose/BookDetailScreen.kt`、`HeroHeader.kt`、`IntroCard.kt`、`ChapterCard.kt` |
+| 修改书籍详情页更多菜单 | `ui/book/info/compose/BookDetailMenu.kt`（从 `res/menu/book_info.xml` 加载） |
 | 修改搜索结果排序/过滤 | `ui/book/search/SearchViewModel.kt`、`model/webBook/SearchModel.kt` |
 | 修改书源规则解析方式 | `model/analyzeRule/` |
 | 修改网络请求（超时/代理/UA） | `help/http/HttpHelper.kt`、`help/http/OkHttpUtils.kt` |
@@ -329,3 +379,6 @@ app/src/main/java/io/legado/app/
 | 修改编码检测 | `lib/icu4j/`、`utils/EncodingDetect.kt` |
 | 修改权限请求流程 | `lib/permission/` |
 | 修改浮窗样式（背景/文字/圆角） | `ui/widget/ThemedPopupWindow.kt`、`lib/theme/MaterialValueHelper.kt`（`popupBackgroundColor`/`popupPrimaryTextColor`）、`utils/PopupThemeApplier.kt` |
+| 修改 Compose 主题颜色映射 | `ui/common/compose/LegadoTheme.kt`（从 ThemeStore 读取，映射到 M3 ColorScheme） |
+| 修改 Compose 封面加载 | `ui/common/compose/BookCoverImage.kt`（GlideImage + 默认封面 fallback） |
+| 修改 Compose 卡片样式 | `ui/common/compose/SectionCard.kt`（圆角、内边距、背景色） |

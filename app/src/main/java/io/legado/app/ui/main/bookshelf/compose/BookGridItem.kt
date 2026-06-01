@@ -3,9 +3,8 @@ package io.legado.app.ui.main.bookshelf.compose
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,7 +47,12 @@ fun BookGridItem(
         Column {
             BookCoverImage(
                 coverUrl = book.getDisplayCover(),
-                modifier = Modifier.fillMaxWidth(),
+                name = book.name,
+                author = book.getRealAuthor(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(5f / 7f),
+                compact = true,
             )
 
             Text(
