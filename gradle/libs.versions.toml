@@ -67,6 +67,7 @@ recyclerview = "1.4.0"
 viewpager2 = "1.1.0"
 firebaseBom = "33.2.0"
 composeBom = "2025.05.01"
+material3 = "1.4.0"
 [libraries]
 
 activity-activity = { module = "androidx.activity:activity", version.ref = "activity" }
@@ -189,6 +190,7 @@ mozilla-rhino = { module = "org.mozilla:rhino", version.ref = "rhino" }
 
 renderscript-intrinsics-replacement-toolkit = { module = "com.github.TomasValenta:renderscript-intrinsics-replacement-toolkit", version = "8eaa829ddd" }
 zxing-lite = { module = "com.github.jenly1314:zxing-lite", version.ref = "zxingLite" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 
 [bundles]
 coroutines = ["kotlinx-coroutines-core", "kotlinx-coroutines-android"]

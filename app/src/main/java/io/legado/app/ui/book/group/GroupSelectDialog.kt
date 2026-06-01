@@ -24,12 +24,19 @@ import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.ui.widget.recycler.VerticalDivider
+import io.legado.app.constant.AppLog
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.utils.windowSize
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import splitties.systemservices.windowManager
 
 
 class GroupSelectDialog() : BaseDialogFragment(R.layout.dialog_book_group_picker),
@@ -51,7 +58,7 @@ class GroupSelectDialog() : BaseDialogFragment(R.layout.dialog_book_group_picker
 
     override fun onStart() {
         super.onStart()
-        setLayout(0.9f, 0.9f)
+        setLayout(0.9f, ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
@@ -87,9 +94,36 @@ class GroupSelectDialog() : BaseDialogFragment(R.layout.dialog_book_group_picker
 
     private fun initData() {
         lifecycleScope.launch {
-            appDb.bookGroupDao.flowSelect().conflate().collect {
-                adapter.setItems(it)
-            }
+            appDb.bookGroupDao.flowSelect()
+                .catch {
+                    AppLog.put("分组选择弹窗获取分组数据失败\n${it.localizedMessage}", it)
+                }
+                .flowOn(IO)
+                .conflate()
+                .collect {
+                    adapter.setItems(it)
+                    adjustDialogHeight(it.size)
+                }
+        }
+    }
+
+    /**
+     * 根据分组数量动态调整弹窗高度。
+     * 内容少时缩小，内容多时最大不超过屏幕 90%。
+     */
+    private fun adjustDialogHeight(groupCount: Int) {
+        val view = view ?: return
+        view.post {
+            val screenSize = windowManager.windowSize
+            val maxHeight = (screenSize.heightPixels * 0.9f).toInt()
+            val dialogWidth = (screenSize.widthPixels * 0.9f).toInt()
+            // 估算内容高度: toolbar + 按钮区 + 分组项 × 项高
+            val toolbarHeight = binding.toolBar.height
+            val buttonBarHeight = 48.dpToPx()
+            val itemHeight = 48.dpToPx()
+            val contentHeight = toolbarHeight + buttonBarHeight + groupCount * itemHeight
+            val targetHeight = contentHeight.coerceAtMost(maxHeight)
+            dialog?.window?.setLayout(dialogWidth, targetHeight)
         }
     }
 

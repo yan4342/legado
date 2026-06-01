@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -36,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -65,7 +68,12 @@ fun BookDetailScreen(
     isBookVariableVisible: Boolean = false,
 ) {
     val scrollState = rememberScrollState()
-    val heroHeight = 300.dp
+    // 状态栏高度，用于让模糊背景延伸到状态栏区域
+    val statusBarHeightDp = with(LocalDensity.current) {
+        WindowInsets.statusBars.getTop(this).toDp()
+    }
+    // 280dp 与 HeroHeader Box 高度一致，确保 Surface 圆角顶部对齐
+    val heroHeight = 280.dp + statusBarHeightDp
     val surfaceOverlap = 36.dp
     val accent = Color(LocalContext.current.accentColor)
 
@@ -74,10 +82,12 @@ fun BookDetailScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
+        // 顶部深色渐变，从状态栏顶部开始，确保模糊背景在状态栏区域可见
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(160.dp)
+                // 160dp: 渐变可见区域；+statusBarHeightDp: 延伸到状态栏
+                .height(160.dp + statusBarHeightDp)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(

@@ -93,3 +93,66 @@
   - `seekbar/` — 滑块控件（`VerticalSeekBar` 垂直滑块，用于亮度调节）
   - `text/` — 文本控件（`ScrollTextView` 嵌套滚动文本、`AccentTextView`/`PrimaryTextView`/`SecondaryTextView` 主题色文本、`BadgeView` 角标、`StrokeTextView` 描边文本、`BevelLabelView` 斜角标签、`TextInputLayout` 输入框、`AutoCompleteTextView` 自动补全）
   - 其他顶层文件：`TitleBar`（标题栏，封装 Toolbar）、`SelectActionBar`（多选操作栏）、`SearchView`（搜索框）、`LabelsBar`（标签栏）、`DetailSeekBar`（进度条）、`BatteryView`（电池图标）、`ReadBarChartView`（阅读柱状图）、`ReaderInfoBarView`（阅读信息栏）、`ReadHeatmapView`（阅读热力图）、`ShadowLayout`（阴影布局）、`RoundedSpinner`（圆角下拉选择器）
+
+
+---
+
+## Compose 迁移评估
+
+### ✅ 可安全删除的文件（共 15 个）
+
+**Style1 书架（5 个 Kotlin + 2 个 XML）**
+| 文件 | 原因 |
+|---|---|
+| `ui/main/bookshelf/style1/BookshelfFragment1.kt` | 已被 `BookshelfComposeFragment` 替代 |
+| `ui/main/bookshelf/style1/books/BooksFragment.kt` | 内部 Fragment，不再使用 |
+| `ui/main/bookshelf/style1/books/BooksAdapterList.kt` | RecyclerView Adapter |
+| `ui/main/bookshelf/style1/books/BooksAdapterGrid.kt` | RecyclerView Adapter |
+| `ui/main/bookshelf/style1/books/BaseBooksAdapter.kt` | Adapter 基类 |
+| `res/layout/fragment_bookshelf1.xml` | Style1 布局 |
+| `res/layout/item_bookshelf_list.xml` | 列表 item 布局 |
+
+**Style2 书架（4 个 Kotlin + 2 个 XML）**
+| 文件 | 原因 |
+|---|---|
+| `ui/main/bookshelf/style2/BookshelfFragment2.kt` | 已被 `BookshelfComposeFragment` 替代 |
+| `ui/main/bookshelf/style2/BooksAdapterList.kt` | RecyclerView Adapter |
+| `ui/main/bookshelf/style2/BooksAdapterGrid.kt` | RecyclerView Adapter |
+| `ui/main/bookshelf/style2/BaseBooksAdapter.kt` | Adapter 基类 |
+| `res/layout/fragment_bookshelf2.xml` | Style2 布局 |
+| `res/layout/item_bookshelf_grid.xml` | 网格 item 布局 |
+
+**Style2 分组相关 XML（2 个）**
+| 文件 | 原因 |
+|---|---|
+| `res/layout/item_bookshelf_list_group.xml` | Style2 分组头布局 |
+| `res/layout/item_bookshelf_grid_group.xml` | Style2 分组头布局 |
+
+---
+
+### ⚠️ 暂时不能删除的文件
+
+**旧版 `BookInfoActivity` + `BookInfoViewModel`**（2 个 Kotlin + 1 个 XML）
+
+虽然书架、搜索、阅读页等**主入口**已切换到 `BookInfoComposeActivity`，但以下文件仍残留旧 `BookInfoActivity` 的 import 或间接引用：
+
+- `ReadBookActivity.kt` — import 了旧版（实际已用 Compose 版）
+- `SearchActivity.kt` — import 了旧版（实际已用 Compose 版）
+- `ExploreShowActivity.kt` — 可能仍直接引用
+- `AddToBookshelfDialog.kt` — 可能仍直接引用
+- BookshelfManageActivity.kt — 可能仍直接引用
+- `ReadMangaActivity.kt` — 可能仍直接引用
+
+> **建议**：先将上述文件中残留的 `BookInfoActivity` import 和启动代码统一替换为 `BookInfoComposeActivity`，确认无遗漏后再删除旧版。
+
+**`BookInfoEditActivity`** — 独立功能页（编辑书籍信息），Compose 版详情页仍通过 `infoEditResult.launch` 调用它，**不能删**。
+
+---
+
+### 📋 删除步骤建议
+
+1. **先删 Style1/Style2 整个目录**（15 个文件）
+2. **更新 `BaseBookshelfFragment`** — 移除对 Style1/Style2 子类的引用（如有抽象方法）
+3. **清理各入口文件的残留 import**（`ReadBookActivity`、`SearchActivity` 等）
+4. **验证编译通过后**，再删除旧 `BookInfoActivity`、`BookInfoViewModel`、`activity_book_info.xml`
+5. **清理 `AndroidManifest.xml`** — 移除旧 `BookInfoActivity` 的声明

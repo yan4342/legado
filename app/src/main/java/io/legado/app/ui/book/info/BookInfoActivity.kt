@@ -174,6 +174,14 @@ class BookInfoActivity :
         initViewEvent()
     }
 
+    override fun setupSystemBar() {
+        // 确保模糊封面背景能绘制到状态栏后面（XML 布局中的 bg_book）
+        super.setupSystemBar()
+        if (fullScreen && !isInMultiWindow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false)
+        }
+    }
+
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.book_info, menu)
         editMenuItem = menu.findItem(R.id.menu_edit)

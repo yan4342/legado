@@ -146,8 +146,10 @@ class ThemeConfigFragment : PreferenceFragment(),
             PreferKey.cBackground,
             PreferKey.cBBackground,
             PreferKey.cCardBg,
+            PreferKey.cPopupBg,
             PreferKey.cTextAccent -> {
                 upTheme(false)
+                recreateActivities()
             }
 
             PreferKey.cNPrimary,
@@ -155,8 +157,10 @@ class ThemeConfigFragment : PreferenceFragment(),
             PreferKey.cNBackground,
             PreferKey.cNBBackground,
             PreferKey.cNCardBg,
+            PreferKey.cNPopupBg,
             PreferKey.cNTextAccent -> {
                 upTheme(true)
+                recreateActivities()
             }
 
             PreferKey.bgImage,

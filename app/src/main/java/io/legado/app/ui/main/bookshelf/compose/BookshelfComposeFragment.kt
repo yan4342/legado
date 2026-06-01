@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.SearchView
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +18,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.indices
 import androidx.lifecycle.Observer
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import io.legado.app.R
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
@@ -42,9 +46,9 @@ import io.legado.app.utils.observeEvent
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -68,6 +72,9 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
     private val sortVersionFlow = MutableStateFlow(0)
     private val refreshVersionFlow = MutableStateFlow(0)
     private val gridVersionFlow = MutableStateFlow(0)
+    private val groupStyleVersionFlow = MutableStateFlow(0)
+    private val lastUpdateVersionFlow = MutableStateFlow(0)
+    private val isRefreshingFlow = MutableStateFlow(false)
     override val groupId: Long get() = selectedGroupId
 
     override val books: List<Book>
@@ -105,20 +112,45 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                     val sortVersion by sortVersionFlow.collectAsState()
                     val refreshVersion by refreshVersionFlow.collectAsState()
                     val gridVersion by gridVersionFlow.collectAsState()
+                    val groupStyleVersion by groupStyleVersionFlow.collectAsState()
+                    val isRefreshing by isRefreshingFlow.collectAsState()
+                    val lastUpdateVersion by lastUpdateVersionFlow.collectAsState()
                     // gridVersion 变化时重新读取 AppConfig.bookshelfLayout
                     val gridColumns = remember(gridVersion) { gridColumns() }
+                    // refreshVersion 变化时重新读取显示相关开关
+                    val showUnread = remember(refreshVersion) { AppConfig.showUnread }
+                    val showLastUpdateTime = remember(refreshVersion) { AppConfig.showLastUpdateTime }
+                    val showFastScroller = remember(refreshVersion) { AppConfig.showBookshelfFastScroller }
+                    // groupStyleVersion 变化时重新读取 AppConfig.bookGroupStyle
+                    val bookGroupStyle = remember(groupStyleVersion) { AppConfig.bookGroupStyle }
 
-                    DisposableEffect(currentGroupId, sortVersion, refreshVersion, gridVersion) {
-                        val groupsObserver = Observer<List<BookGroup>> { groups = it }
-                        val booksJob = CoroutineScope(Dispatchers.Main).launch {
-                            appDb.bookDao.flowByGroup(currentGroupId).collect {
+                    // 文件布局模式需要全量书籍才能按分组归类
+                    val queryGroupId = if (bookGroupStyle == 1) BookGroup.IdAll else currentGroupId
+                    val lifecycleOwner = LocalLifecycleOwner.current
+                    // 使用 LifecycleResumeEffect 确保 Flow 收集绑定 Fragment 生命周期，
+                    // 每次 RESUMED 时重新订阅，避免从编辑页返回后数据不同步
+                    LaunchedEffect(lifecycleOwner, queryGroupId, sortVersion, refreshVersion, gridVersion, groupStyleVersion) {
+                        lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                            appDb.bookDao.flowByGroup(queryGroupId).collect {
                                 books = sortBooks(it)
                             }
                         }
+                    }
+                    DisposableEffect(Unit) {
+                        val groupsObserver = Observer<List<BookGroup>> { groups = it }
                         appDb.bookGroupDao.show.observeForever(groupsObserver)
                         onDispose {
                             appDb.bookGroupDao.show.removeObserver(groupsObserver)
-                            booksJob.cancel()
+                        }
+                    }
+
+                    // 计算当前分组是否允许下拉刷新
+                    // 根分组（IdAll / IdRoot）始终允许
+                    val enableRefresh = remember(currentGroupId, groups, books.isNotEmpty()) {
+                        when {
+                            !books.isNotEmpty() -> false
+                            currentGroupId == BookGroup.IdAll || currentGroupId == BookGroup.IdRoot -> true
+                            else -> groups.firstOrNull { it.groupId == currentGroupId }?.enableRefresh != false
                         }
                     }
 
@@ -127,6 +159,7 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                         groups = groups,
                         selectedGroupId = currentGroupId,
                         gridColumns = gridColumns,
+                        bookGroupStyle = bookGroupStyle,
                         onGroupSelected = {
                             currentGroupId = it
                             selectedGroupId = it
@@ -204,6 +237,20 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                         onLog = {
                             showDialogFragment<io.legado.app.ui.about.AppLogDialog>()
                         },
+                        enableRefresh = enableRefresh,
+                        isRefreshing = isRefreshing,
+                        onRefresh = {
+                            isRefreshingFlow.value = true
+                            activityViewModel.upToc(books)
+                            // upToc 是异步操作，刷新完成后通过 EventBus 或手动延迟关闭指示器
+                            // 使用短延迟模拟完成反馈（与旧版 SwipeRefreshLayout 行为一致：立即停止动画）
+                            isRefreshingFlow.value = false
+                        },
+                        isUpdating = activityViewModel::isUpdate,
+                        lastUpdateVersion = lastUpdateVersion,
+                        showUnread = showUnread,
+                        showLastUpdateTime = showLastUpdateTime,
+                        showFastScroller = showFastScroller,
                     )
                 }
             }
@@ -212,6 +259,15 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         // 不需要 setup XML toolbar，Compose 自带 TopAppBar
+        // 每 30 秒递增版本号，触发 Compose 重组刷新「上次更新时间」
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+                while (isActive) {
+                    delay(30_000)
+                    lastUpdateVersionFlow.value++
+                }
+            }
+        }
     }
 
     override fun observeLiveBus() {
@@ -259,7 +315,7 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                 alertBinding.apply {
                     if (AppConfig.bookGroupStyle != spGroupStyle.selectedItemPosition) {
                         AppConfig.bookGroupStyle = spGroupStyle.selectedItemPosition
-                        gridVersionFlow.value++
+                        groupStyleVersionFlow.value++
                     }
                     if (AppConfig.showUnread != swShowUnread.isChecked) {
                         AppConfig.showUnread = swShowUnread.isChecked

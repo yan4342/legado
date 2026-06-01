@@ -268,6 +268,11 @@ class BookInfoComposeActivity :
                     ChangeBookSourceDialog(book.name, book.author)
                 )
             }
+            MENU_GROUP -> {
+                showDialogFragment(
+                    GroupSelectDialog(book.group)
+                )
+            }
         }
     }
 

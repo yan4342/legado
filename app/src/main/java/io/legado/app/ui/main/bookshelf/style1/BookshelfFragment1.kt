@@ -32,7 +32,7 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlin.collections.set
 
 /**
- * 书架界面
+ * 书架界面（旧版，已弃用）
  */
 class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1),
     TabLayout.OnTabSelectedListener,

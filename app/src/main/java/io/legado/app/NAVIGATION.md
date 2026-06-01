@@ -47,8 +47,6 @@
 | 书架主界面（Compose 版） | `ui/main/bookshelf/compose/BookshelfScreen.kt`（主 Composable）、`ui/main/bookshelf/compose/BookshelfComposeFragment.kt`（Fragment 宿主） |
 | 书架列表项（封面+书名+作者+章节） | `ui/main/bookshelf/compose/BookListItem.kt` |
 | 书架网格项（封面+书名） | `ui/main/bookshelf/compose/BookGridItem.kt` |
-| 书架主界面（旧版 Style1） | `ui/main/bookshelf/style1/`（已由 Compose 版替换） |
-| 书架主界面（旧版 Style2） | `ui/main/bookshelf/style2/` |
 | 书架 ViewModel | `ui/main/bookshelf/BookshelfViewModel.kt` |
 | 书架管理（批量操作） | `ui/book/manage/BookshelfManageActivity.kt` |
 | 书籍分组 | `ui/book/group/`、`data/entities/BookGroup.kt`、`data/dao/BookGroupDao.kt` |

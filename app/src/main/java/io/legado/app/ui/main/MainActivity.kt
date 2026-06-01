@@ -37,7 +37,6 @@ import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.about.CrashLogsDialog
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.compose.BookshelfComposeFragment
-import io.legado.app.ui.main.bookshelf.style2.BookshelfFragment2
 import io.legado.app.ui.main.explore.ExploreFragment
 import io.legado.app.ui.main.my.MyFragment
 import io.legado.app.ui.main.rss.RssFragment
@@ -70,7 +69,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     override val viewModel by viewModels<MainViewModel>()
     private val idBookshelf = 0
     private val idBookshelf1 = 11
-    private val idBookshelf2 = 12
     private val idExplore = 1
     private val idRss = 2
     private val idMy = 3
@@ -95,11 +93,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             if (pagePosition != 0) {
                 binding.viewPagerMain.currentItem = 0
                 return@addCallback
-            }
-            (fragmentMap[getFragmentId(0)] as? BookshelfFragment2)?.let {
-                if (it.back()) {
-                    return@addCallback
-                }
             }
             if (System.currentTimeMillis() - exitTime > EXIT_INTERVAL) {
                 toastOnUi(R.string.double_click_exit)
@@ -409,7 +402,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private fun getFragmentId(position: Int): Int {
         val id = realPositions[position]
         if (id == idBookshelf) {
-            return if (AppConfig.bookGroupStyle == 1) idBookshelf2 else idBookshelf1
+            // 书架统一使用 Compose 版（内部根据 bookGroupStyle 切换 Tab/文件布局）
+            return idBookshelf1
         }
         return id
     }
@@ -436,7 +430,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 ?: return POSITION_NONE
             val fragmentId = getId(position)
             if ((fragmentId == idBookshelf1 && any is BookshelfComposeFragment)
-                || (fragmentId == idBookshelf2 && any is BookshelfFragment2)
                 || (fragmentId == idExplore && any is ExploreFragment)
                 || (fragmentId == idRss && any is RssFragment)
                 || (fragmentId == idMy && any is MyFragment)
@@ -449,7 +442,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         override fun getItem(position: Int): Fragment {
             return when (getId(position)) {
                 idBookshelf1 -> BookshelfComposeFragment(position)
-                idBookshelf2 -> BookshelfFragment2(position)
                 idExplore -> ExploreFragment(position)
                 idRss -> RssFragment(position)
                 else -> MyFragment(position)

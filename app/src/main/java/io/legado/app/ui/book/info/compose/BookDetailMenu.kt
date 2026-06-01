@@ -53,6 +53,11 @@ fun BookDetailMenu(
             text = { Text(stringResource(R.string.change_origin), color = textColor) },
             onClick = { onDismiss(); onAction(MENU_CHANGE_SOURCE) },
         )
+        // 分组
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.group), color = textColor) },
+            onClick = { onDismiss(); onAction(MENU_GROUP) },
+        )
         // 置顶
         DropdownMenuItem(
             text = { Text(stringResource(R.string.to_top), color = textColor) },
@@ -148,15 +153,16 @@ const val MENU_EDIT = 0
 const val MENU_SHARE = 1
 const val MENU_REFRESH = 2
 const val MENU_CHANGE_SOURCE = 3
-const val MENU_TOP = 4
-const val MENU_LOGIN = 5
-const val MENU_SET_SOURCE_VARIABLE = 6
-const val MENU_SET_BOOK_VARIABLE = 7
-const val MENU_COPY_BOOK_URL = 8
-const val MENU_COPY_TOC_URL = 9
-const val MENU_CAN_UPDATE = 10
-const val MENU_SPLIT_LONG_CHAPTER = 11
-const val MENU_UPLOAD = 12
-const val MENU_CLEAR_CACHE = 13
-const val MENU_LOG = 14
-const val MENU_DELETE = 15
+const val MENU_GROUP = 4
+const val MENU_TOP = 5
+const val MENU_LOGIN = 6
+const val MENU_SET_SOURCE_VARIABLE = 7
+const val MENU_SET_BOOK_VARIABLE = 8
+const val MENU_COPY_BOOK_URL = 9
+const val MENU_COPY_TOC_URL = 10
+const val MENU_CAN_UPDATE = 11
+const val MENU_SPLIT_LONG_CHAPTER = 12
+const val MENU_UPLOAD = 13
+const val MENU_CLEAR_CACHE = 14
+const val MENU_LOG = 15
+const val MENU_DELETE = 16

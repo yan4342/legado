@@ -2,6 +2,7 @@ package io.legado.app.ui.main.bookshelf.compose
 
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -17,25 +18,28 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+//import androidx.compose.material3.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -56,7 +60,6 @@ import androidx.compose.ui.unit.dp
 import io.legado.app.R
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
-import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.common.compose.EmptyStateView
 import io.legado.app.ui.common.compose.LocalAnimationsEnabled
 import io.legado.app.ui.common.compose.legadoPopupBackgroundColor
@@ -84,6 +87,7 @@ fun BookshelfScreen(
     groups: List<BookGroup>,
     selectedGroupId: Long,
     gridColumns: Int, // 0 = list, 3-6 = grid columns
+    bookGroupStyle: Int = 0, // 0 = Tab 分组, 1 = 文件布局
     onGroupSelected: (Long) -> Unit,
     onConfigBookshelf: () -> Unit,
     onBookClick: (Book) -> Unit,
@@ -102,6 +106,14 @@ fun BookshelfScreen(
     onImportBookshelf: () -> Unit,
     onWebService: () -> Unit,
     onLog: () -> Unit,
+    enableRefresh: Boolean = true,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
+    isUpdating: (String) -> Boolean = { false },
+    lastUpdateVersion: Int = 0,
+    showUnread: Boolean = true,
+    showLastUpdateTime: Boolean = false,
+    showFastScroller: Boolean = false,
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val context = LocalContext.current
@@ -228,71 +240,102 @@ fun BookshelfScreen(
             )
         },
     ) { paddingValues ->
-        val selectedIndex = groups.indexOfFirst { it.groupId == selectedGroupId }
-            .coerceAtLeast(0)
-
-        Column(modifier = Modifier.padding(paddingValues)) {
-            // 分组 Tab 行
-            if (groups.isNotEmpty()) {
-                ScrollableTabRow(
-                    selectedTabIndex = selectedIndex,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    edgePadding = 8.dp,
-                    indicator = { tabPositions ->
-                        if (selectedIndex in tabPositions.indices) {
-                            TabRowDefaults.SecondaryIndicator(
-                                Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
-                                color = MaterialTheme.colorScheme.primary,
-                                height = 2.dp,
+        val contentModifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+        val content: @Composable () -> Unit = {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // 分组 Tab 行（仅 Tab 分组模式）
+                if (bookGroupStyle == 0 && groups.isNotEmpty()) {
+                    val selectedIndex = groups.indexOfFirst { it.groupId == selectedGroupId }
+                        .coerceAtLeast(0)
+                    ScrollableTabRow(
+                        selectedTabIndex = selectedIndex,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        edgePadding = 8.dp,
+                        indicator = { tabPositions ->
+                            if (selectedIndex in tabPositions.indices) {
+                                TabRowDefaults.SecondaryIndicator(
+                                    Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    height = 2.dp,
+                                )
+                            }
+                        },
+                    ) {
+                        groups.forEachIndexed { index, group ->
+                            Tab(
+                                selected = index == selectedIndex,
+                                onClick = { onGroupSelected(group.groupId) },
+                                selectedContentColor = MaterialTheme.colorScheme.primary,
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                text = {
+                                    Text(
+                                        text = group.groupName.ifEmpty {
+                                            group.getManageName(context)
+                                        },
+                                        style = if (index == selectedIndex) {
+                                            MaterialTheme.typography.labelLarge
+                                        } else {
+                                            MaterialTheme.typography.labelMedium
+                                        },
+                                        maxLines = 1,
+                                    )
+                                },
                             )
                         }
-                    },
-                ) {
-                    groups.forEachIndexed { index, group ->
-                        Tab(
-                            selected = index == selectedIndex,
-                            onClick = { onGroupSelected(group.groupId) },
-                            selectedContentColor = MaterialTheme.colorScheme.primary,
-                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            text = {
-                                Text(
-                                    text = group.groupName.ifEmpty {
-                                        group.getManageName(context)
-                                    },
-                                    style = if (index == selectedIndex) {
-                                        MaterialTheme.typography.labelLarge
-                                    } else {
-                                        MaterialTheme.typography.labelMedium
-                                    },
-                                    maxLines = 1,
-                                )
-                            },
-                        )
                     }
                 }
-            }
 
-            // 书籍列表/网格/空状态
-            if (books.isEmpty()) {
-                EmptyStateView()
-            } else if (gridColumns > 0) {
-                BookGridContent(
-                    books = books,
-                    columns = gridColumns,
-                    onBookClick = onBookClick,
-                    onBookLongClick = onBookLongClick,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                BookListContent(
-                    books = books,
-                    onBookClick = onBookClick,
-                    onBookLongClick = onBookLongClick,
-                    onBookDelete = onBookDelete,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                // 书籍列表/网格/空状态
+                if (books.isEmpty()) {
+                    EmptyStateView()
+                } else if (bookGroupStyle == 1) {
+                    BookGroupMixedContent(
+                        books = books,
+                        groups = groups,
+                        gridColumns = gridColumns,
+                        onBookClick = onBookClick,
+                        onBookLongClick = onBookLongClick,
+                        onBookDelete = onBookDelete,
+                        onGroupClick = onGroupSelected,
+                        showFastScroller = showFastScroller,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else if (gridColumns > 0) {
+                    BookGridContent(
+                        books = books,
+                        columns = gridColumns,
+                        onBookClick = onBookClick,
+                        onBookLongClick = onBookLongClick,
+                        showFastScroller = showFastScroller,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    BookListContent(
+                        books = books,
+                        onBookClick = onBookClick,
+                        onBookLongClick = onBookLongClick,
+                        onBookDelete = onBookDelete,
+                        isUpdating = isUpdating,
+                        lastUpdateVersion = lastUpdateVersion,
+                        showUnread = showUnread,
+                        showLastUpdateTime = showLastUpdateTime,
+                        showFastScroller = showFastScroller,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
+        }
+        if (enableRefresh) {
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = onRefresh,
+                modifier = contentModifier,
+            ) { content() }
+        } else {
+            Box(modifier = contentModifier) { content() }
         }
     }
 }
@@ -303,38 +346,62 @@ private fun BookListContent(
     onBookClick: (Book) -> Unit,
     onBookLongClick: (Book) -> Unit,
     onBookDelete: (Book) -> Unit,
+    isUpdating: (String) -> Boolean = { false },
+    lastUpdateVersion: Int = 0,
+    showUnread: Boolean = true,
+    showLastUpdateTime: Boolean = false,
+    showFastScroller: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
-    ) {
-        items(
-            items = books,
-            key = { it.bookUrl },
-        ) { book ->
-            if (!animationsEnabled) {
-                // E-Ink 模式：直接显示，无滑动删除
-                BookListItem(
-                    book = book,
-                    onClick = { onBookClick(book) },
-                    onLongClick = { onBookLongClick(book) },
-                    modifier = Modifier.padding(vertical = 4.dp),
-                )
-            } else {
-                SwipeToDeleteItem(
-                    onDelete = { onBookDelete(book) },
-                    modifier = Modifier.padding(vertical = 4.dp),
-                ) {
+    val listState = rememberLazyListState()
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
+        ) {
+            items(
+                items = books,
+                key = { it.bookUrl },
+            ) { book ->
+                val isUpdatingBook = isUpdating(book.bookUrl)
+                if (!animationsEnabled) {
+                    // E-Ink 模式：直接显示，无滑动删除
                     BookListItem(
                         book = book,
                         onClick = { onBookClick(book) },
                         onLongClick = { onBookLongClick(book) },
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        isUpdating = isUpdatingBook,
+                        lastUpdateVersion = lastUpdateVersion,
+                        showUnread = showUnread,
+                        showLastUpdateTime = showLastUpdateTime,
                     )
+                } else {
+                    SwipeToDeleteItem(
+                        onDelete = { onBookDelete(book) },
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    ) {
+                        BookListItem(
+                            book = book,
+                            onClick = { onBookClick(book) },
+                            onLongClick = { onBookLongClick(book) },
+                            isUpdating = isUpdatingBook,
+                            lastUpdateVersion = lastUpdateVersion,
+                            showUnread = showUnread,
+                            showLastUpdateTime = showLastUpdateTime,
+                        )
+                    }
                 }
             }
         }
+        FastScrollbar(
+            lazyListState = listState,
+            itemCount = books.size,
+            visible = showFastScroller,
+            modifier = Modifier.matchParentSize(),
+        )
     }
 }
 
@@ -371,7 +438,7 @@ private fun SwipeToDeleteItem(
                 onDelete()
             }) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
+                    painter = painterResource(R.drawable.ic_outline_delete),
                     contentDescription = "删除",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp),
@@ -418,36 +485,244 @@ private fun BookGridContent(
     columns: Int,
     onBookClick: (Book) -> Unit,
     onBookLongClick: (Book) -> Unit,
+    showFastScroller: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val rows = books.chunked(columns)
     val spacing = 4.dp
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = spacing, vertical = spacing),
-        verticalArrangement = Arrangement.spacedBy(spacing),
-    ) {
-        items(
-            items = rows,
-            key = { row -> row.joinToString { it.bookUrl } },
-        ) { rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(spacing),
-            ) {
-                rowItems.forEach { book ->
-                    BookGridItem(
-                        book = book,
-                        onClick = { onBookClick(book) },
-                        onLongClick = { onBookLongClick(book) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                // 补齐不满一行的空位
-                repeat(columns - rowItems.size) {
-                    Spacer(modifier = Modifier.weight(1f))
+    val rowSpacing = 8.dp
+    val listState = rememberLazyListState()
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = spacing, vertical = spacing),
+            verticalArrangement = Arrangement.spacedBy(rowSpacing),
+        ) {
+            items(
+                items = rows,
+                key = { row -> row.joinToString { it.bookUrl } },
+            ) { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing),
+                ) {
+                    rowItems.forEach { book ->
+                        BookGridItem(
+                            book = book,
+                            onClick = { onBookClick(book) },
+                            onLongClick = { onBookLongClick(book) },
+                            showTitle = columns < 5,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    // 补齐不满一行的空位
+                    repeat(columns - rowItems.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }
+        FastScrollbar(
+            lazyListState = listState,
+            itemCount = rows.size,
+            visible = showFastScroller,
+            modifier = Modifier.matchParentSize(),
+        )
     }
+}
+
+/**
+ * 文件布局模式：分组头 + 书籍混合列表。
+ * 模拟 Style2 的行为，但使用 Compose 实现。
+ */
+@Composable
+private fun BookGroupMixedContent(
+    books: List<Book>,
+    groups: List<BookGroup>,
+    gridColumns: Int,
+    onBookClick: (Book) -> Unit,
+    onBookLongClick: (Book) -> Unit,
+    onBookDelete: (Book) -> Unit,
+    onGroupClick: (Long) -> Unit,
+    showFastScroller: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    // 仅保留用户自定义分组（groupId > 0），过滤掉系统分组（IdAll/IdLocal/IdAudio 等）
+    val userGroups = remember(groups) { groups.filter { it.groupId > 0 } }
+
+    // 按分组分组书籍
+    val groupedBooks = remember(books, userGroups) {
+        // 预计算所有用户分组 ID 的并集，用于判断"未分组"
+        val allGroupBits = userGroups.fold(0L) { acc, g -> acc or g.groupId }
+
+        val groupMap = mutableMapOf<Long, MutableList<Book>>()
+        val ungrouped = mutableListOf<Book>()
+        books.forEach { book ->
+            val groupIds = getGroupIds(book.group)
+            // 只保留存在于 userGroups 中的分组 ID
+            val validIds = groupIds.filter { gid -> gid > 0 && gid and allGroupBits != 0L }
+            if (validIds.isEmpty()) {
+                // 没有匹配的用户分组，归入"未分组"
+                ungrouped.add(book)
+            } else {
+                validIds.forEach { gid ->
+                    groupMap.getOrPut(gid) { mutableListOf() }.add(book)
+                }
+            }
+        }
+
+        val result = userGroups.map { group ->
+            group to (groupMap[group.groupId] ?: emptyList())
+        }.toMutableList()
+
+        // 添加"未分组"组
+        if (ungrouped.isNotEmpty()) {
+            val noGroup = BookGroup(
+                groupId = 0L,
+                groupName = "",
+            )
+            result.add(noGroup to ungrouped)
+        }
+        result
+    }
+
+    val listState = rememberLazyListState()
+
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            groupedBooks.forEach { (group, groupBooks) ->
+                // 分组头
+                item(key = "group_${group.groupId}") {
+                    GroupHeaderItem(
+                        group = group,
+                        bookCount = groupBooks.size,
+                        onClick = { onGroupClick(group.groupId) },
+                    )
+                }
+                // 分组下的书籍
+                if (gridColumns > 0) {
+                    val rows = groupBooks.chunked(gridColumns)
+                    items(
+                        items = rows,
+                        key = { row -> row.joinToString { "grid_${it.bookUrl}" } },
+                    ) { rowItems ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            rowItems.forEach { book ->
+                                BookGridItem(
+                                    book = book,
+                                    onClick = { onBookClick(book) },
+                                    onLongClick = { onBookLongClick(book) },
+                                    showTitle = gridColumns < 5,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            repeat(gridColumns - rowItems.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                } else {
+                    items(
+                        items = groupBooks,
+                        key = { "list_${it.bookUrl}" },
+                    ) { book ->
+                        BookListItem(
+                            book = book,
+                            onClick = { onBookClick(book) },
+                            onLongClick = { onBookLongClick(book) },
+                            modifier = Modifier.padding(vertical = 2.dp),
+                        )
+                    }
+                }
+            }
+        }
+        FastScrollbar(
+            lazyListState = listState,
+            itemCount = books.size,
+            visible = showFastScroller,
+            modifier = Modifier.matchParentSize(),
+        )
+    }
+}
+
+/**
+ * 分组头组件
+ */
+@Composable
+private fun GroupHeaderItem(
+    group: BookGroup,
+    bookCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_groups),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = when {
+                    group.groupId == 0L -> context.getString(R.string.no_group)
+                    group.groupName.isNotEmpty() -> group.groupName
+                    else -> group.getManageName(context)
+                },
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "$bookCount",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                painter = painterResource(R.drawable.ic_arrow_right),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * 从 Book.group 位运算字段中提取所有分组 ID
+ */
+private fun getGroupIds(group: Long): List<Long> {
+    if (group == 0L) return listOf(0L)
+    val ids = mutableListOf<Long>()
+    var bit = 1L
+    while (bit <= group) {
+        if (group and bit != 0L) {
+            ids.add(bit)
+        }
+        bit = bit shl 1
+    }
+    return ids.ifEmpty { listOf(0L) }
 }
