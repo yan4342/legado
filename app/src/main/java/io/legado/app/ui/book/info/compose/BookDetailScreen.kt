@@ -73,7 +73,6 @@ fun BookDetailScreen(
         WindowInsets.statusBars.getTop(this).toDp()
     }
     // 280dp 与 HeroHeader Box 高度一致，确保 Surface 圆角顶部对齐
-    val heroHeight = 280.dp + statusBarHeightDp
     val surfaceOverlap = 36.dp
     val accent = Color(LocalContext.current.accentColor)
 
@@ -82,12 +81,17 @@ fun BookDetailScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
+        val isLandscape = maxWidth > maxHeight
+        // 横屏时缩小 hero 区域，为内容滚动留出足够空间
+        val heroHeight = if (isLandscape) 160.dp + statusBarHeightDp
+            else 280.dp + statusBarHeightDp
+
         // 顶部深色渐变，从状态栏顶部开始，确保模糊背景在状态栏区域可见
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                // 160dp: 渐变可见区域；+statusBarHeightDp: 延伸到状态栏
-                .height(160.dp + statusBarHeightDp)
+                // 横屏 100dp / 竖屏 160dp: 渐变可见区域；+statusBarHeightDp: 延伸到状态栏
+                .height(if (isLandscape) 100.dp + statusBarHeightDp else 160.dp + statusBarHeightDp)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
@@ -102,6 +106,7 @@ fun BookDetailScreen(
         HeroHeader(
             book = book,
             modifier = Modifier.align(Alignment.TopCenter),
+            isLandscape = isLandscape,
         )
 
         Surface(

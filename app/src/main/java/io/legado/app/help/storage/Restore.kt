@@ -16,6 +16,7 @@ import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.data.entities.DictRule
 import io.legado.app.data.entities.HttpTTS
+import io.legado.app.data.entities.DailyReadRecord
 import io.legado.app.data.entities.KeyboardAssist
 import io.legado.app.data.entities.ReadRecord
 import io.legado.app.data.entities.ReplaceRule
@@ -180,6 +181,9 @@ object Restore {
                     }
                 }
             }
+        }
+        fileToListT<DailyReadRecord>(path, "dailyReadRecord.json")?.let {
+            appDb.dailyReadRecordDao.insert(*it.toTypedArray())
         }
         File(path, "servers.json").takeIf {
             it.exists()

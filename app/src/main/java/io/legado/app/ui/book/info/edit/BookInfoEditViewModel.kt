@@ -5,9 +5,11 @@ import android.database.sqlite.SQLiteConstraintException
 import androidx.lifecycle.MutableLiveData
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.AppLog
+import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.model.ReadBook
+import io.legado.app.utils.postEvent
 
 class BookInfoEditViewModel(application: Application) : BaseViewModel(application) {
     var book: Book? = null
@@ -29,6 +31,7 @@ class BookInfoEditViewModel(application: Application) : BaseViewModel(applicatio
             }
             appDb.bookDao.update(book)
         }.onSuccess {
+            postEvent(EventBus.BOOKSHELF_REFRESH, "")
             success?.invoke()
         }.onError {
             if (it is SQLiteConstraintException) {

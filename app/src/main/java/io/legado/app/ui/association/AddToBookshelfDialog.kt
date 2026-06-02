@@ -19,7 +19,6 @@ import io.legado.app.databinding.DialogAddToBookshelfBinding
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.webBook.WebBook
-import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.info.compose.BookInfoComposeActivity
 import io.legado.app.utils.GSON
 import io.legado.app.utils.NetworkUtils

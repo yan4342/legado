@@ -43,6 +43,7 @@ import io.legado.app.ui.widget.image.CoverImageView
 fun HeroHeader(
     book: Book,
     modifier: Modifier = Modifier,
+    isLandscape: Boolean = false,
 ) {
     val context = LocalContext.current
     val coverUrl = book.getDisplayCover()
@@ -50,14 +51,26 @@ fun HeroHeader(
     val statusBarHeightDp = with(LocalDensity.current) {
         WindowInsets.statusBars.getTop(this).toDp()
     }
+    // 横屏时缩小 hero 区域，为内容滚动留出足够空间
+    val heroTotalHeight = if (isLandscape) 160.dp + statusBarHeightDp
+        else 280.dp + statusBarHeightDp
+    val bgHeight = if (isLandscape) 140.dp + statusBarHeightDp
+        else 260.dp + statusBarHeightDp
+    val topPadding = if (isLandscape) 48.dp + statusBarHeightDp
+        else 80.dp + statusBarHeightDp
+    val coverWidth = if (isLandscape) 70.dp else 90.dp
+    val coverHeight = if (isLandscape) 98.dp else 126.dp
+    val titleStyle = if (isLandscape) MaterialTheme.typography.titleLarge
+        else MaterialTheme.typography.headlineMedium
+    val titleMaxLines = if (isLandscape) 1 else 2
 
     // 260dp: 模糊背景高度；+statusBarHeightDp: 延伸到状态栏
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(280.dp + statusBarHeightDp),
+            .height(heroTotalHeight),
     ) {
-        // 模糊封面背景（260dp = 背景实际高度，20dp 为底部留白）
+        // 模糊封面背景
         AndroidView(
             factory = { ctx ->
                 ImageView(ctx).apply {
@@ -70,16 +83,15 @@ fun HeroHeader(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                // 260dp: 模糊背景高度，与渐变遮罩一致；+statusBarHeightDp 覆盖状态栏
-                .height(260.dp + statusBarHeightDp)
+                .height(bgHeight)
                 .blur(25.dp),
         )
 
-        // 渐变遮罩 — 覆盖模糊背景，统一黑色（260dp + statusBarHeightDp）
+        // 渐变遮罩 — 覆盖模糊背景，统一黑色
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(260.dp + statusBarHeightDp)
+                .height(bgHeight)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
@@ -95,8 +107,8 @@ fun HeroHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 80.dp + statusBarHeightDp, start = 20.dp, end = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(top = topPadding, start = 20.dp, end = 20.dp),
+            verticalAlignment = Alignment.Top,
         ) {
             // 使用 CoverImageView，支持在默认封面上绘制书名/作者
             AndroidView(
@@ -112,21 +124,23 @@ fun HeroHeader(
                     coverView.load(coverUrl, book.name, book.getRealAuthor(), false, null)
                 },
                 modifier = Modifier
-                    .size(width = 90.dp, height = 126.dp)
+                    .size(width = coverWidth, height = coverHeight)
                     .clip(RoundedCornerShape(10.dp)),
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = 8.dp),
+                verticalArrangement = Arrangement.Top,
             ) {
                 Text(
                     text = book.name,
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = titleStyle,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
+                    maxLines = titleMaxLines,
                 )
                 if (book.author.isNotBlank()) {
                     Spacer(modifier = Modifier.height(8.dp))

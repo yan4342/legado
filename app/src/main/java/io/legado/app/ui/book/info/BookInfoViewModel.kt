@@ -492,7 +492,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
     fun upEditBook() {
         bookData.value?.let {
             appDb.bookDao.getBook(it.bookUrl)?.let { book ->
-                bookData.postValue(book)
+                bookData.value = book
             }
         }
     }

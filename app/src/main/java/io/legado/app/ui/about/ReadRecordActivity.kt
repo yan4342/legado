@@ -222,8 +222,11 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
             }
             val heatmapData = dailyRecords.associate { it.date to it.readTime }
 
+            // 排行榜使用全时段总阅读时长数据（来自 readRecord 表）
             val topBooks = withContext(IO) {
-                appDb.dailyReadRecordDao.topBooksByDateRange(startDate, today, 20)
+                appDb.readRecordDao.allShow
+                    .sortedByDescending { it.readTime }
+                    .take(20)
             }
 
             // Today's reading time
