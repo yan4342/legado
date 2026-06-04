@@ -3,7 +3,9 @@ package io.legado.app.ui.book.info.compose
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.view.WindowManager
 import android.widget.CheckBox
 import android.widget.LinearLayout
@@ -11,8 +13,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -140,6 +144,16 @@ class BookInfoComposeActivity :
     @SuppressLint("PrivateResource")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 边到边：让 Compose 内容可以绘制到状态栏后方，确保模糊封面覆盖状态栏区域
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        @Suppress("DEPRECATION")
+        window.run {
+            decorView.systemUiVisibility =
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+            addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            statusBarColor = android.graphics.Color.TRANSPARENT
+        }
         // 避免白屏：在 setContent 之前设置窗口背景色与主题一致
         window.decorView.setBackgroundColor(
             io.legado.app.lib.theme.ThemeStore.backgroundColor(this)
@@ -150,78 +164,83 @@ class BookInfoComposeActivity :
 
         setContent {
             LegadoTheme {
-                var currentBook by remember { mutableStateOf(viewModel.bookData.value) }
-                var chapterList by remember { mutableStateOf(viewModel.chapterListData.value) }
+                val chapterListState = remember { mutableStateOf(viewModel.chapterListData.value) }
+                var refreshTrigger by remember { mutableStateOf(0) }
 
                 DisposableEffect(Unit) {
-                    val bookObserver = Observer<Book?> { currentBook = it }
-                    val chapterObserver = Observer<List<BookChapter>?> { chapterList = it }
-                    viewModel.bookData.observe(this@BookInfoComposeActivity, bookObserver)
-                    viewModel.chapterListData.observe(this@BookInfoComposeActivity, chapterObserver)
+                    val bookObserver = Observer<Book?> {
+                        refreshTrigger++
+                    }
+                    viewModel.bookData.observeForever(bookObserver)
+                    val chObserver = Observer<List<BookChapter>?> { chapterListState.value = it }
+                    viewModel.chapterListData.observeForever(chObserver)
                     onDispose {
                         viewModel.bookData.removeObserver(bookObserver)
-                        viewModel.chapterListData.removeObserver(chapterObserver)
+                        viewModel.chapterListData.removeObserver(chObserver)
                     }
                 }
 
-                if (currentBook != null) {
-                    val book = currentBook!!
-                    var canUpdateState by remember(book) { mutableStateOf(book.canUpdate) }
-                    var splitLongChapterState by remember(book) { mutableStateOf(book.getSplitLongChapter()) }
-                    var inBookshelfState by remember { mutableStateOf(viewModel.inBookshelf) }
-                    BookDetailScreen(
-                        book = book,
-                        latestChapterTitle = book.latestChapterTitle,
-                        totalChapterNum = book.totalChapterNum,
-                        onBack = { finish() },
-                        onReadClick = {
-                            if (book.isWebFile) {
-                                showWebFileDownloadAlert { readBook(it) }
-                            } else {
-                                readBook(book)
-                            }
-                        },
-                        onShelfClick = {
-                            if (book.isWebFile) {
-                                showWebFileDownloadAlert()
-                            } else {
-                                viewModel.addToBookshelf {
-                                    inBookshelfState = true
+                val chapterList = chapterListState.value
+
+                // key(refreshTrigger): LiveData 变化时从 LiveData 直接读取最新值
+                key(refreshTrigger) {
+                    val book = viewModel.bookData.value
+                    if (book != null) {
+                        var canUpdateState by remember(book) { mutableStateOf(book.canUpdate) }
+                        var splitLongChapterState by remember(book) { mutableStateOf(book.getSplitLongChapter()) }
+                        var inBookshelfState by remember { mutableStateOf(viewModel.inBookshelf) }
+                        BookDetailScreen(
+                            book = book,
+                            latestChapterTitle = book.latestChapterTitle,
+                            totalChapterNum = book.totalChapterNum,
+                            onBack = { finish() },
+                            onReadClick = {
+                                if (book.isWebFile) {
+                                    showWebFileDownloadAlert { readBook(it) }
+                                } else {
+                                    readBook(book)
                                 }
-                            }
-                        },
-                        inBookshelf = inBookshelfState,
-                        onTocClick = {
-                            if (chapterList.isNullOrEmpty()) {
-                                toastOnUi(R.string.chapter_list_empty)
-                            } else {
-                                openChapterList()
-                            }
-                        },
-                        onEditClick = {
-                            infoEditResult.launch {
-                                putExtra("bookUrl", book.bookUrl)
-                            }
-                        },
-                        onMenuAction = { action ->
-                            when (action) {
-                                MENU_CAN_UPDATE -> {
-                                    book.canUpdate = !book.canUpdate
-                                    canUpdateState = book.canUpdate
+                            },
+                            onShelfClick = {
+                                if (book.isWebFile) {
+                                    showWebFileDownloadAlert()
+                                } else {
+                                    viewModel.addToBookshelf {
+                                        inBookshelfState = true
+                                    }
                                 }
-                                MENU_SPLIT_LONG_CHAPTER -> {
-                                    book.setSplitLongChapter(!book.getSplitLongChapter())
-                                    splitLongChapterState = book.getSplitLongChapter()
+                            },
+                            inBookshelf = inBookshelfState,
+                            onTocClick = {
+                                if (chapterList.isNullOrEmpty()) {
+                                    toastOnUi(R.string.chapter_list_empty)
+                                } else {
+                                    openChapterList()
                                 }
-                            }
-                            handleMenuAction(action, book)
-                        },
-                        canUpdate = canUpdateState,
-                        splitLongChapter = splitLongChapterState,
-                        isLoginVisible = !viewModel.bookSource?.loginUrl.isNullOrBlank(),
-                        isSourceVariableVisible = viewModel.bookSource != null,
-                        isBookVariableVisible = viewModel.bookSource != null,
-                    )
+                            },
+                            onEditClick = {
+                                infoEditResult.launch { putExtra("bookUrl", book.bookUrl) }
+                            },
+                            onMenuAction = { action ->
+                                when (action) {
+                                    MENU_CAN_UPDATE -> {
+                                        book.canUpdate = !book.canUpdate
+                                        canUpdateState = book.canUpdate
+                                    }
+                                    MENU_SPLIT_LONG_CHAPTER -> {
+                                        book.setSplitLongChapter(!book.getSplitLongChapter())
+                                        splitLongChapterState = book.getSplitLongChapter()
+                                    }
+                                }
+                                handleMenuAction(action, book)
+                            },
+                            canUpdate = canUpdateState,
+                            splitLongChapter = splitLongChapterState,
+                            isLoginVisible = !viewModel.bookSource?.loginUrl.isNullOrBlank(),
+                            isSourceVariableVisible = viewModel.bookSource != null,
+                            isBookVariableVisible = viewModel.bookSource != null,
+                        )
+                    }
                 }
             }
         }

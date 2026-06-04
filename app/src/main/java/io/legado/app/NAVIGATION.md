@@ -56,7 +56,7 @@
 | 书籍详情页简介卡片（可折叠） | `ui/book/info/compose/IntroCard.kt` |
 | 书籍详情页目录卡片 | `ui/book/info/compose/ChapterCard.kt` |
 | 书籍详情页更多菜单（复用 book_info.xml） | `ui/book/info/compose/BookDetailMenu.kt` |
-| 书籍详情页（旧版） | `ui/book/info/BookInfoActivity.kt`、`ui/book/info/BookInfoViewModel.kt` |
+| 书籍详情页 ViewModel | `ui/book/info/BookInfoViewModel.kt` |
 | 书籍详情信息编辑 | `ui/book/info/edit/` |
 | 封面换源 | `ui/book/changecover/ChangeCoverDialog.kt`、`model/BookCover.kt` |
 | 书籍换源 | `ui/book/changesource/ChangeBookSourceDialog.kt`、`ui/book/changesource/ChangeChapterSourceDialog.kt` |
@@ -70,11 +70,12 @@
 | 组件 | 文件路径 | 说明 |
 |------|----------|------|
 | M3 Theme 桥接 | `ui/common/compose/LegadoTheme.kt` | 从 ThemeStore 读取颜色映射到 Material 3 ColorScheme，支持 Light/Dark/E-Ink 三分支 |
-| 封面图片 | `ui/common/compose/BookCoverImage.kt` | GlideImage 加载封面 URL，5:7 比例，8dp 圆角，失败时显示默认封面 |
+| 封面图片 | `ui/common/compose/BookCoverImage.kt`、`CoilCoverImage.kt` | Coil 3 加载封面 URL，5:7 比例，8dp 圆角，失败时显示默认封面 |
 | 卡片容器 | `ui/common/compose/SectionCard.kt` | Card + 12dp 内边距，使用 `legadoCardBackgroundColor()` 背景色 |
 | 信息 Chip | `ui/common/compose/InfoChip.kt` | SuggestionChip，支持 outlined（surfaceVariant）和 filled（primaryContainer） |
 | 可折叠文本 | `ui/common/compose/CollapsibleText.kt` | 默认 3 行，点击展开/折叠，E-Ink 模式禁用动画 |
 | 空状态视图 | `ui/common/compose/EmptyStateView.kt` | 居中图标 + 提示文字 |
+| 动画工具 | `ui/common/compose/Animations.kt` | E-Ink 感知的动画辅助 |
 
 ### 🌐 发现/书源相关
 
@@ -223,7 +224,7 @@ app/src/main/java/io/legado/app/
 │   ├── coroutine/                  ← 协程封装
 │   ├── crypto/                     ← 加解密
 │   ├── exoplayer/                  ← 音频播放器
-│   ├── glide/                      ← 图片加载
+│   ├── coil/                       ← 图片加载（Coil 3）
 │   ├── http/                       ← HTTP 客户端（OkHttp + Cronet）
 │   ├── rhino/                      ← JS 引擎封装
 │   ├── source/                     ← 书源扩展函数
@@ -265,11 +266,13 @@ app/src/main/java/io/legado/app/
 │   ├── common/                     ← ⭐ Compose 共享组件
 │   │   └── compose/
 │   │       ├── LegadoTheme.kt      ← M3 Theme 桥接（ThemeStore → ColorScheme）
-│   │       ├── BookCoverImage.kt   ← GlideImage 封面加载
+│   │       ├── BookCoverImage.kt   ← Coil 封面加载
+│   │       ├── CoilCoverImage.kt  ← Coil 3 原生封面加载
 │   │       ├── SectionCard.kt      ← 通用卡片容器
 │   │       ├── InfoChip.kt         ← 信息 Chip（outlined/filled）
 │   │       ├── CollapsibleText.kt  ← 可折叠文本
-│   │       └── EmptyStateView.kt   ← 空状态视图
+│   │       ├── EmptyStateView.kt   ← 空状态视图
+│   │       └── Animations.kt       ← E-Ink 感知动画辅助
 │   ├── book/                       ← 书籍相关
 │   │   ├── audio/                  ← 音频播放
 │   │   ├── bookmark/               ← 书签管理
@@ -290,6 +293,8 @@ app/src/main/java/io/legado/app/
 │   │   │       └── BookDetailMenu.kt ← 更多菜单（复用 book_info.xml）
 │   │   ├── manage/                 ← 书架管理
 │   │   ├── manga/                  ← 漫画阅读
+│   │   │   └── recyclerview/       ← 漫画预加载
+│   │   │       └── MangaPreloader.kt
 │   │   ├── read/                   ← ⭐ 阅读界面（核心）
 │   │   │   ├── config/             ← 阅读设置弹窗
 │   │   │   └── page/               ← 翻页/绘制引擎
@@ -311,8 +316,6 @@ app/src/main/java/io/legado/app/
 │   │   │   │   ├── BookshelfComposeFragment.kt ← Fragment 宿主（ComposeView + 数据桥接）
 │   │   │   │   ├── BookListItem.kt          ← 列表项（封面72×102 + 书名 + 作者 + 章节）
 │   │   │   │   └── BookGridItem.kt          ← 网格项（封面 + 书名）
-│   │   │   ├── style1/             ← 旧版 Style1（已由 Compose 版替换）
-│   │   │   ├── style2/             ← 旧版 Style2
 │   │   │   ├── BaseBookshelfFragment.kt ← 书架基类（菜单/导入导出/分组管理）
 │   │   │   └── BookshelfViewModel.kt ← 书架 ViewModel
 │   │   ├── explore/                ← 发现标签
@@ -371,12 +374,12 @@ app/src/main/java/io/legado/app/
 | 修改全局对话框样式 | `lib/dialogs/`、`ui/widget/dialog/` |
 | 修改设置页面 | `ui/config/` |
 | 修改朗读引擎 | `service/TTSReadAloudService.kt`、`service/HttpReadAloudService.kt`、`help/TTS.kt` |
-| 修改封面加载逻辑 | `model/BookCover.kt`、`help/glide/ImageLoader.kt` |
+| 修改封面加载逻辑 | `model/BookCover.kt`、`help/coil/CoilInitializer.kt`、`help/coil/LegadoFetcher.kt` |
 | 修改 JS 书源可用方法 | `help/JsExtensions.kt`、`help/rhino/NativeBaseSource.kt` |
 | 修改 MOBI 解析 | `lib/mobi/` |
 | 修改编码检测 | `lib/icu4j/`、`utils/EncodingDetect.kt` |
 | 修改权限请求流程 | `lib/permission/` |
 | 修改浮窗样式（背景/文字/圆角） | `ui/widget/ThemedPopupWindow.kt`、`lib/theme/MaterialValueHelper.kt`（`popupBackgroundColor`/`popupPrimaryTextColor`）、`utils/PopupThemeApplier.kt` |
 | 修改 Compose 主题颜色映射 | `ui/common/compose/LegadoTheme.kt`（从 ThemeStore 读取，映射到 M3 ColorScheme） |
-| 修改 Compose 封面加载 | `ui/common/compose/BookCoverImage.kt`（GlideImage + 默认封面 fallback） |
+| 修改 Compose 封面加载 | `ui/common/compose/CoilCoverImage.kt`（Coil 3 + 默认封面 fallback） |
 | 修改 Compose 卡片样式 | `ui/common/compose/SectionCard.kt`（圆角、内边距、背景色） |

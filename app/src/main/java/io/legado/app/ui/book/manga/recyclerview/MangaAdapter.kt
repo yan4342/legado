@@ -7,7 +7,6 @@ import android.util.SparseArray
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
-import android.view.ViewGroup.MarginLayoutParams
 import androidx.annotation.IntRange
 import androidx.core.util.size
 import androidx.core.view.updateLayoutParams
@@ -181,8 +180,6 @@ class MangaAdapter(private val context: Context) :
                 vh.itemView.updateLayoutParams<ViewGroup.LayoutParams> {
                     height = MATCH_PARENT
                 }
-                // 重置下边距
-                (vh.itemView.layoutParams as? MarginLayoutParams)?.bottomMargin = 0
                 // Clear image and cancel loading for recycled view
                 vh.binding.image.setImageDrawable(null)
                 if (vh.binding.image.tag is String) {
@@ -194,22 +191,7 @@ class MangaAdapter(private val context: Context) :
 
     override fun onBindViewHolder(vh: RecyclerView.ViewHolder, position: Int) {
         when (vh) {
-            is PageViewHolder -> {
-                vh.onBind(getItem(position) as MangaPage)
-                // 最后一个实际 item 增加下边距（屏幕高度的 15%，确保不同手机都有足够间距）
-                val isLast = position == getActualItemCount() - 1
-                (vh.itemView.layoutParams as? MarginLayoutParams)?.let { lp ->
-                    val marginBottom = if (isLast) {
-                        (context.resources.displayMetrics.heightPixels * 0.15f).toInt()
-                    } else {
-                        0
-                    }
-                    if (lp.bottomMargin != marginBottom) {
-                        lp.bottomMargin = marginBottom
-                        vh.itemView.layoutParams = lp
-                    }
-                }
-            }
+            is PageViewHolder -> vh.onBind(getItem(position) as MangaPage)
             is PageMoreViewHolder -> vh.onBind(getItem(position) as ReaderLoading)
         }
     }

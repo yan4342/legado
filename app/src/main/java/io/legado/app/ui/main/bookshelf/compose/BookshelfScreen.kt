@@ -1,7 +1,6 @@
 package io.legado.app.ui.main.bookshelf.compose
 
 import android.view.View as AndroidView
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -9,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitHorizontalDragOrCancellation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +27,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,7 +52,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -60,7 +62,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -69,6 +70,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
+import io.legado.app.constant.BookType
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.help.config.AppConfig
@@ -76,22 +78,22 @@ import io.legado.app.ui.common.compose.EmptyStateView
 import io.legado.app.ui.common.compose.LocalAnimationsEnabled
 import io.legado.app.ui.common.compose.legadoPopupBackgroundColor
 import io.legado.app.ui.common.compose.legadoPopupPrimaryTextColor
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
  * 书架页主 Composable。
  *
- * @param books 当前分组的书籍列表
- * @param groups 所有分组
+ * Tab 分组模式下，使用 [HorizontalPager] 实现分组间跟手平移滑动；
+ * 书籍列表项左滑删除优先于页面切换；最后一组左滑时放行给外层 ViewPager。
+ *
+ * @param books 全量书籍列表（Tab 模式），或当前分组的书籍列表（其他模式）
+ * @param groups 所有可见分组
  * @param selectedGroupId 当前选中的分组 ID
- * @param isGrid 是否为网格模式
+ * @param gridColumns 0 = 列表, 3-6 = 网格列数
+ * @param bookGroupStyle 0 = Tab 分组, 1 = 文件布局
  * @param onGroupSelected 分组切换回调
- * @param onConfigBookshelf 打开书架布局设置对话框
- * @param onBookClick 书籍点击回调
- * @param onBookLongClick 书籍长按回调
- * @param onSearchClick 搜索按钮回调
- * @param onSort 排序回调
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,32 +134,35 @@ fun BookshelfScreen(
     val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
     val animationsEnabled = LocalAnimationsEnabled.current
-    val groupContentOffsetX = remember { Animatable(0f) }
-    var groupContentWidthPx by remember { mutableFloatStateOf(0f) }
-    var previousAnimatedGroupId by remember { mutableStateOf(selectedGroupId) }
+    val view = LocalView.current
 
-    LaunchedEffect(selectedGroupId, bookGroupStyle, animationsEnabled, groupContentWidthPx) {
-        val previousGroupId = previousAnimatedGroupId
-        previousAnimatedGroupId = selectedGroupId
-        val previousIndex = groups.indexOfFirst { it.groupId == previousGroupId }
-        val selectedIndex = groups.indexOfFirst { it.groupId == selectedGroupId }
-        val shouldAnimate = bookGroupStyle == 0 &&
-                animationsEnabled &&
-                groupContentWidthPx > 0f &&
-                previousGroupId != selectedGroupId &&
-                previousIndex >= 0 &&
-                selectedIndex >= 0
-        if (shouldAnimate) {
-            val direction = if (selectedIndex > previousIndex) 1 else -1
-            groupContentOffsetX.snapTo(groupContentWidthPx * direction)
-            groupContentOffsetX.animateTo(
-                targetValue = 0f,
-                animationSpec = tween(durationMillis = 220),
-            )
-        } else {
-            groupContentOffsetX.snapTo(0f)
+    // 是否为 Tab 分组模式且有多于一个分组可用
+    val usePager = bookGroupStyle == 0 && groups.size > 1
+    val selectedIndex = if (usePager) {
+        groups.indexOfFirst { it.groupId == selectedGroupId }.coerceAtLeast(0)
+    } else {
+        0
+    }
+    val pagerState = if (usePager) {
+        rememberPagerState(initialPage = selectedIndex) { groups.size }
+    } else {
+        null
+    }
+
+    // 同步：Tab 点击 → pager 滚动
+    if (usePager && pagerState != null) {
+        // 同步：pager 滑动 → 更新 selectedGroupId（仅在 pager 完全停止后）
+        LaunchedEffect(pagerState) {
+            snapshotFlow { pagerState.currentPage to pagerState.isScrollInProgress }
+                .collect { (page, isScrolling) ->
+                    if (!isScrolling && page in groups.indices) {
+                        onGroupSelected(groups[page].groupId)
+                    }
+                }
         }
     }
+
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -296,164 +301,101 @@ fun BookshelfScreen(
         val contentModifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
-        val view = LocalView.current
         val content: @Composable () -> Unit = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(groups, selectedGroupId, bookGroupStyle) {
-                        // 仅 Tab 分组模式下启用左右滑切换分组
-                        if (groups.size <= 1 || bookGroupStyle != 0)
-                            return@pointerInput
-                        val thresholdPx = with(this) { 100.dp.toPx() }
-                        val directionSlop = with(this) { 8.dp.toPx() }
-                        awaitEachGesture {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            val selectedIndexAtDown = groups
-                                .indexOfFirst { it.groupId == selectedGroupId }
-                                .coerceAtLeast(0)
-                            var disallowingParent = selectedIndexAtDown < groups.lastIndex
-                            if (disallowingParent) {
-                                view.requestParentDisallowIntercept(true)
-                            }
-                            var totalDragX = 0f
-                            var directionDecided = false
-                            var weHandle = false
-
-                            var lastX = down.position.x
-                            while (true) {
-                                val event =
-                                    awaitHorizontalDragOrCancellation(down.id) ?: break
-                                val currentX = event.position.x
-                                totalDragX += currentX - lastX
-                                lastX = currentX
-                                // 方向确定后决定是否由我们处理
-                                if (!directionDecided
-                                    && abs(totalDragX) > directionSlop
-                                ) {
-                                    directionDecided = true
-                                    val idx = groups
-                                        .indexOfFirst { it.groupId == selectedGroupId }
-                                        .coerceAtLeast(0)
-                                    weHandle = if (totalDragX < 0) {
-                                        idx < groups.size - 1 // 左滑：还有下一组
-                                    } else {
-                                        idx > 0              // 右滑：还有上一组
-                                    }
-                                    // 阻止父级 ViewPager 拦截水平滑动
-                                    if (weHandle && !disallowingParent) {
-                                        view.requestParentDisallowIntercept(true)
-                                        disallowingParent = true
-                                    } else if (!weHandle && disallowingParent) {
-                                        view.requestParentDisallowIntercept(false)
-                                        disallowingParent = false
-                                    }
-                                }
-                                if (weHandle) event.consume()
-                            }
-
-                            // 手势结束，恢复 ViewPager 拦截能力
-                            if (disallowingParent) {
-                                view.requestParentDisallowIntercept(false)
-                            }
-
-                            if (weHandle && abs(totalDragX) > thresholdPx) {
-                                val idx = groups
-                                    .indexOfFirst { it.groupId == selectedGroupId }
-                                    .coerceAtLeast(0)
-                                if (totalDragX < -thresholdPx
-                                    && idx < groups.size - 1
-                                ) {
-                                    onGroupSelected(groups[idx + 1].groupId)
-                                } else if (totalDragX > thresholdPx && idx > 0) {
-                                    onGroupSelected(groups[idx - 1].groupId)
-                                }
-                            }
-                        }
-                    },
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // 分组 Tab 行（仅 Tab 分组模式）
-                    if (bookGroupStyle == 0 && groups.isNotEmpty()) {
-                        val selectedIndex = groups.indexOfFirst { it.groupId == selectedGroupId }
+            Column(modifier = Modifier.fillMaxSize()) {
+                // 分组 Tab 行（仅 Tab 分组模式）
+                if (bookGroupStyle == 0 && groups.isNotEmpty()) {
+                    val tabSelectedIndex = if (usePager && pagerState != null) {
+                        pagerState.currentPage
+                    } else {
+                        groups.indexOfFirst { it.groupId == selectedGroupId }
                             .coerceAtLeast(0)
-                        @Suppress("DEPRECATION")
-                        ScrollableTabRow(
-                            selectedTabIndex = selectedIndex,
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                            edgePadding = 8.dp,
-                            indicator = { tabPositions ->
-                                if (selectedIndex in tabPositions.indices) {
-                                    @Suppress("DEPRECATION")
-                                    TabRowDefaults.SecondaryIndicator(
-                                        Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
-                                        color = if (AppConfig.isEInkMode) {
-                                            MaterialTheme.colorScheme.onSurface
-                                        } else {
-                                            MaterialTheme.colorScheme.primary
-                                        },
-                                        height = 2.dp,
-                                    )
-                                }
-                            },
-                        ) {
-                            groups.forEachIndexed { index, group ->
-                                Tab(
-                                    selected = index == selectedIndex,
-                                    onClick = { onGroupSelected(group.groupId) },
-                                    selectedContentColor = if (AppConfig.isEInkMode) {
+                    }
+                    @Suppress("DEPRECATION")
+                    ScrollableTabRow(
+                        selectedTabIndex = tabSelectedIndex,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        edgePadding = 8.dp,
+                        indicator = { tabPositions ->
+                            if (tabSelectedIndex in tabPositions.indices) {
+                                @Suppress("DEPRECATION")
+                                TabRowDefaults.SecondaryIndicator(
+                                    Modifier.tabIndicatorOffset(tabPositions[tabSelectedIndex]),
+                                    color = if (AppConfig.isEInkMode) {
                                         MaterialTheme.colorScheme.onSurface
                                     } else {
                                         MaterialTheme.colorScheme.primary
                                     },
-                                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    text = {
-                                        Text(
-                                            text = group.groupName.ifEmpty {
-                                                group.getManageName(context)
-                                            },
-                                            style = if (index == selectedIndex) {
-                                                MaterialTheme.typography.labelLarge
-                                            } else {
-                                                MaterialTheme.typography.labelMedium
-                                            },
-                                            maxLines = 1,
-                                        )
-                                    },
+                                    height = 2.dp,
                                 )
                             }
+                        },
+                    ) {
+                        groups.forEachIndexed { index, group ->
+                            Tab(
+                                selected = index == tabSelectedIndex,
+                                onClick = {
+                                    onGroupSelected(group.groupId)
+                                    if (pagerState != null && index != pagerState.currentPage) {
+                                        coroutineScope.launch {
+                                            pagerState.animateScrollToPage(index)
+                                        }
+                                    }
+                                },
+                                selectedContentColor = if (AppConfig.isEInkMode) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                text = {
+                                    Text(
+                                        text = group.groupName.ifEmpty {
+                                            group.getManageName(context)
+                                        },
+                                        style = if (index == tabSelectedIndex) {
+                                            MaterialTheme.typography.labelLarge
+                                        } else {
+                                            MaterialTheme.typography.labelMedium
+                                        },
+                                        maxLines = 1,
+                                    )
+                                },
+                            )
                         }
                     }
+                }
 
-                    // 书籍列表/网格/空状态
-                    val bookshelfContent: @Composable () -> Unit = {
-                        if (books.isEmpty()) {
-                            EmptyStateView()
-                        } else if (bookGroupStyle == 1) {
-                            BookGroupMixedContent(
-                                books = books,
-                                groups = groups,
+                // 内容区：HorizontalPager（多分组）或直接渲染
+                if (usePager && pagerState != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false)
+                                    // 阻止外层 ViewPager 拦截，让 HorizontalPager 正常处理
+                                    view.requestParentDisallowIntercept(true)
+                                    // 等到手指抬起
+                                    do {
+                                        val event = awaitPointerEvent()
+                                    } while (event.changes.any { it.pressed })
+                                    view.requestParentDisallowIntercept(false)
+                                }
+                            },
+                    ) {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize(),
+                        ) { page ->
+                            val group = groups[page]
+                            val groupBooks = remember(books, group) {
+                                filterBooksForGroup(books, group.groupId, groups)
+                            }
+                            GroupPageContent(
+                                books = groupBooks,
                                 gridColumns = gridColumns,
-                                onBookClick = onBookClick,
-                                onBookLongClick = onBookLongClick,
-                                onBookDelete = onBookDelete,
-                                onGroupClick = onGroupSelected,
-                                showFastScroller = showFastScroller,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        } else if (gridColumns > 0) {
-                            BookGridContent(
-                                books = books,
-                                columns = gridColumns,
-                                onBookClick = onBookClick,
-                                onBookLongClick = onBookLongClick,
-                                showFastScroller = showFastScroller,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        } else {
-                            BookListContent(
-                                books = books,
                                 onBookClick = onBookClick,
                                 onBookLongClick = onBookLongClick,
                                 onBookDelete = onBookDelete,
@@ -466,21 +408,44 @@ fun BookshelfScreen(
                             )
                         }
                     }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clipToBounds()
-                            .onSizeChanged { groupContentWidthPx = it.width.toFloat() },
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .offset {
-                                    IntOffset(groupContentOffsetX.value.roundToInt(), 0)
-                                },
-                        ) {
-                            bookshelfContent()
-                        }
+                } else {
+                    // 非 Pager 模式：直接渲染当前分组内容
+                    if (books.isEmpty()) {
+                        EmptyStateView()
+                    } else if (bookGroupStyle == 1) {
+                        BookGroupMixedContent(
+                            books = books,
+                            groups = groups,
+                            gridColumns = gridColumns,
+                            onBookClick = onBookClick,
+                            onBookLongClick = onBookLongClick,
+                            onBookDelete = onBookDelete,
+                            onGroupClick = onGroupSelected,
+                            showFastScroller = showFastScroller,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else if (gridColumns > 0) {
+                        BookGridContent(
+                            books = books,
+                            columns = gridColumns,
+                            onBookClick = onBookClick,
+                            onBookLongClick = onBookLongClick,
+                            showFastScroller = showFastScroller,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        BookListContent(
+                            books = books,
+                            onBookClick = onBookClick,
+                            onBookLongClick = onBookLongClick,
+                            onBookDelete = onBookDelete,
+                            isUpdating = isUpdating,
+                            lastUpdateVersion = lastUpdateVersion,
+                            showUnread = showUnread,
+                            showLastUpdateTime = showLastUpdateTime,
+                            showFastScroller = showFastScroller,
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
                 }
             }
@@ -494,6 +459,88 @@ fun BookshelfScreen(
         } else {
             Box(modifier = contentModifier) { content() }
         }
+    }
+}
+
+/**
+ * 渲染单个分组页面的内容：列表或网格。
+ */
+@Composable
+private fun GroupPageContent(
+    books: List<Book>,
+    gridColumns: Int,
+    onBookClick: (Book) -> Unit,
+    onBookLongClick: (Book) -> Unit,
+    onBookDelete: (Book) -> Unit,
+    isUpdating: (String) -> Boolean = { false },
+    lastUpdateVersion: Int = 0,
+    showUnread: Boolean = true,
+    showLastUpdateTime: Boolean = false,
+    showFastScroller: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    if (books.isEmpty()) {
+        EmptyStateView()
+    } else if (gridColumns > 0) {
+        BookGridContent(
+            books = books,
+            columns = gridColumns,
+            onBookClick = onBookClick,
+            onBookLongClick = onBookLongClick,
+            showFastScroller = showFastScroller,
+            modifier = modifier,
+        )
+    } else {
+        BookListContent(
+            books = books,
+            onBookClick = onBookClick,
+            onBookLongClick = onBookLongClick,
+            onBookDelete = onBookDelete,
+            isUpdating = isUpdating,
+            lastUpdateVersion = lastUpdateVersion,
+            showUnread = showUnread,
+            showLastUpdateTime = showLastUpdateTime,
+            showFastScroller = showFastScroller,
+            modifier = modifier,
+        )
+    }
+}
+
+/**
+ * 从全量书籍中过滤出指定分组的书籍。
+ * 系统分组按类型位掩码筛选，用户分组按 [Book.group] 位掩码匹配。
+ */
+internal fun filterBooksForGroup(
+    allBooks: List<Book>,
+    groupId: Long,
+    allGroups: List<BookGroup>,
+): List<Book> {
+    // 所有用户分组的位掩码之和
+    val sumUserGroupIds = allGroups.fold(0L) { acc, g ->
+        if (g.groupId > 0) acc or g.groupId else acc
+    }
+    return when (groupId) {
+        BookGroup.IdAll -> allBooks
+        BookGroup.IdRoot -> allBooks.filter { book ->
+            (book.type and BookType.text) != 0 &&
+                    (book.type and BookType.local) == 0 &&
+                    (sumUserGroupIds and book.group) == 0L
+        }
+        BookGroup.IdLocal -> allBooks.filter { (it.type and BookType.local) != 0 }
+        BookGroup.IdAudio -> allBooks.filter { (it.type and BookType.audio) != 0 }
+        BookGroup.IdNetNone -> allBooks.filter { book ->
+            (book.type and BookType.audio) == 0 &&
+                    (book.type and BookType.local) == 0 &&
+                    (sumUserGroupIds and book.group) == 0L
+        }
+        BookGroup.IdLocalNone -> allBooks.filter { book ->
+            (book.type and BookType.local) != 0 &&
+                    (sumUserGroupIds and book.group) == 0L
+        }
+        BookGroup.IdError -> allBooks.filter {
+            (it.type and BookType.updateError) != 0
+        }
+        else -> allBooks.filter { (it.group and groupId) != 0L }
     }
 }
 

@@ -12,7 +12,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.neverEqualPolicy
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
@@ -107,7 +109,6 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
             setContent {
                 LegadoTheme {
                     var groups by remember { mutableStateOf(emptyList<BookGroup>()) }
-                    var books by remember { mutableStateOf(emptyList<Book>()) }
                     var currentGroupId by remember { mutableStateOf(selectedGroupId) }
                     val sortVersion by sortVersionFlow.collectAsState()
                     val refreshVersion by refreshVersionFlow.collectAsState()
@@ -124,24 +125,21 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                     // groupStyleVersion 变化时重新读取 AppConfig.bookGroupStyle
                     val bookGroupStyle = remember(groupStyleVersion) { AppConfig.bookGroupStyle }
 
-                    // 文件布局模式需要全量书籍才能按分组归类
-                    val queryGroupId = if (bookGroupStyle == 1) BookGroup.IdAll else currentGroupId
-                    val lifecycleOwner = LocalLifecycleOwner.current
-                    // 使用 LifecycleResumeEffect 确保 Flow 收集绑定 Fragment 生命周期，
-                    // 每次 RESUMED 时重新订阅，避免从编辑页返回后数据不同步
-                    LaunchedEffect(lifecycleOwner, queryGroupId, sortVersion, refreshVersion, gridVersion, groupStyleVersion) {
-                        lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-                            appDb.bookDao.flowByGroup(queryGroupId).collect {
-                                books = sortBooks(it)
-                            }
+                    // Tab 分组模式和文件布局模式都需要全量书籍以便按分组归类
+                    val queryGroupId = if (bookGroupStyle == 1 || bookGroupStyle == 0) BookGroup.IdAll else currentGroupId
+
+                    // Book.equals() 仅比较 bookUrl，默认结构相等策略会吞掉名称/作者等字段更新。
+                    // 这里使用 neverEqualPolicy()，确保 Room 每次发射的新列表都会触发 Compose 更新。
+                    var books by remember(refreshVersion) {
+                        mutableStateOf(emptyList<Book>(), neverEqualPolicy())
+                    }
+                    LaunchedEffect(refreshVersion) {
+                        appDb.bookDao.flowByGroup(BookGroup.IdAll).collect { latestBooks ->
+                            books = latestBooks
                         }
                     }
-                    // 每次 Fragment 重新可见时强制重新查询，确保从编辑页返回后数据同步
-                    LaunchedEffect(lifecycleOwner) {
-                        lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
-                            refreshVersionFlow.value++
-                        }
-                    }
+                    val sortedBooks = remember(books, sortVersion) { sortBooks(books) }
+
                     DisposableEffect(Unit) {
                         val groupsObserver = Observer<List<BookGroup>> { groups = it }
                         appDb.bookGroupDao.show.observeForever(groupsObserver)
@@ -150,18 +148,35 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                         }
                     }
 
+                    // 每次从后台返回时强制递增 refreshVersion，触发 key() 重组
+                    val lifecycleOwner = LocalLifecycleOwner.current
+                    LaunchedEffect(lifecycleOwner) {
+                        lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+                            refreshVersionFlow.value++
+                        }
+                    }
+
                     // 计算当前分组是否允许下拉刷新
                     // 根分组（IdAll / IdRoot）始终允许
-                    val enableRefresh = remember(currentGroupId, groups, books.isNotEmpty()) {
+                    val currentGroupBooks = remember(sortedBooks, currentGroupId, groups, bookGroupStyle) {
+                        if (bookGroupStyle == 0) {
+                            filterBooksForGroup(sortedBooks, currentGroupId, groups)
+                        } else {
+                            sortedBooks
+                        }
+                    }
+                    val enableRefresh = remember(currentGroupId, groups, currentGroupBooks.isNotEmpty()) {
                         when {
-                            !books.isNotEmpty() -> false
+                            !currentGroupBooks.isNotEmpty() -> false
                             currentGroupId == BookGroup.IdAll || currentGroupId == BookGroup.IdRoot -> true
                             else -> groups.firstOrNull { it.groupId == currentGroupId }?.enableRefresh != false
                         }
                     }
 
+                    // key(refreshVersion) 强制每次 BOOKSHELF_REFRESH 事件后重组
+                    key(refreshVersion) {
                     BookshelfScreen(
-                        books = books,
+                        books = sortedBooks,
                         groups = groups,
                         selectedGroupId = currentGroupId,
                         gridColumns = gridColumns,
@@ -196,7 +211,12 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                             sortVersionFlow.value++
                         },
                         onUpdateToc = {
-                            activityViewModel.upToc(books)
+                            val booksToUpdate = if (bookGroupStyle == 0) {
+                                filterBooksForGroup(sortedBooks, selectedGroupId, groups)
+                            } else {
+                                sortedBooks
+                            }
+                            activityViewModel.upToc(booksToUpdate)
                         },
                         onAddLocal = {
                             startActivity<ImportBookActivity>()
@@ -221,7 +241,12 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                             showDialogFragment<GroupManageDialog>()
                         },
                         onExportBookshelf = {
-                            viewModel.exportBookshelf(books) { file ->
+                            val booksToExport = if (bookGroupStyle == 0) {
+                                filterBooksForGroup(sortedBooks, selectedGroupId, groups)
+                            } else {
+                                sortedBooks
+                            }
+                            viewModel.exportBookshelf(booksToExport) { file ->
                                 exportResult.launch {
                                     mode = HandleFileContract.EXPORT
                                     fileData = HandleFileContract.FileData(
@@ -247,7 +272,12 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                         isRefreshing = isRefreshing,
                         onRefresh = {
                             isRefreshingFlow.value = true
-                            activityViewModel.upToc(books)
+                            val booksToUpdate = if (bookGroupStyle == 0) {
+                                filterBooksForGroup(sortedBooks, selectedGroupId, groups)
+                            } else {
+                                sortedBooks
+                            }
+                            activityViewModel.upToc(booksToUpdate)
                             // upToc 是异步操作，刷新完成后通过 EventBus 或手动延迟关闭指示器
                             // 使用短延迟模拟完成反馈（与旧版 SwipeRefreshLayout 行为一致：立即停止动画）
                             isRefreshingFlow.value = false
@@ -258,6 +288,7 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                         showLastUpdateTime = showLastUpdateTime,
                         showFastScroller = showFastScroller,
                     )
+                    } // key(refreshVersion)
                 }
             }
         }

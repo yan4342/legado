@@ -243,9 +243,6 @@ dependencies {
     implementation(fileTree(dir: 'cronetlib', include: ['*.jar', '*.aar']))
     implementation(libs.protobuf.javalite)
 
-    //Glide (保留用于 Markwon 图片渲染)
-    implementation(libs.glide.glide)
-
     //Coil 3
     implementation(libs.coil.compose)
     implementation(libs.coil.okhttp)
@@ -273,7 +270,7 @@ dependencies {
 
     //MarkDown
     implementation(libs.markwon.core)
-    implementation(libs.markwon.image.glide)
+    implementation(libs.markwon.image)
     implementation(libs.markwon.ext.tables)
     implementation(libs.markwon.html)
 

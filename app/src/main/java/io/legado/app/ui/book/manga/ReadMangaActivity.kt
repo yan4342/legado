@@ -57,6 +57,7 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.StartActivityContract
 import io.legado.app.utils.canScroll
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.fastBinarySearch
 import io.legado.app.utils.findCenterViewPosition
 import io.legado.app.utils.fromJsonObject
@@ -194,6 +195,16 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
             itemAnimator = null
             layoutManager = mLayoutManager
             setHasFixedSize(true)
+            // 最后一个卡片下边距：屏幕高度的 20% 或 80dp，取较大值
+            clipToPadding = false
+            val minPadding = 80.dpToPx()
+            val screenPadding = (resources.displayMetrics.heightPixels * 0.20f).toInt()
+            setPadding(
+                paddingLeft,
+                paddingTop,
+                paddingRight,
+                maxOf(minPadding, screenPadding)
+            )
             setDisableClickScroll(AppConfig.disableClickScroll)
             setDisableMangaScale(AppConfig.disableMangaScale)
             setRecyclerViewPreloader(AppConfig.mangaPreDownloadNum)

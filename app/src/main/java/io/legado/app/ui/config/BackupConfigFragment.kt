@@ -133,6 +133,11 @@ class BackupConfigFragment : PreferenceFragment(),
         upPreferenceSummary(PreferKey.webDavDir, AppConfig.webDavDir)
         upPreferenceSummary(PreferKey.webDavDeviceName, AppConfig.webDavDeviceName)
         upPreferenceSummary(PreferKey.backupPath, getPrefString(PreferKey.backupPath))
+        findPreference<io.legado.app.lib.prefs.Preference>("web_dav_restore")
+            ?.onLongClick {
+                restoreFromLocal()
+                true
+            }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

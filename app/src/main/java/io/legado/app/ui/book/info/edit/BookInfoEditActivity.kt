@@ -9,6 +9,8 @@ import androidx.core.view.WindowInsetsCompat
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.BookType
+import io.legado.app.constant.EventBus
+import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.databinding.ActivityBookInfoEditBinding
 import io.legado.app.help.book.BookHelp
@@ -17,12 +19,14 @@ import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.isImage
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.removeType
+import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.changecover.ChangeCoverDialog
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.inputStream
+import io.legado.app.utils.postEvent
 import io.legado.app.utils.readUri
 import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
 import io.legado.app.utils.showDialogFragment
@@ -135,10 +139,14 @@ class BookInfoEditActivity :
         val customIntro = tieBookIntro.text?.toString()
         book.customIntro = if (customIntro == book.intro) null else customIntro
         BookHelp.updateCacheFolder(oldBook, book)
-        viewModel.saveBook(book) {
-            setResult(RESULT_OK)
-            finish()
+        // 同步保存到数据库，确保 finish() 前数据已写入
+        if (ReadBook.book?.bookUrl == book.bookUrl) {
+            ReadBook.book = book
         }
+        appDb.bookDao.update(book)
+        postEvent(EventBus.BOOKSHELF_REFRESH, "")
+        setResult(RESULT_OK)
+        finish()
     }
 
     override fun coverChangeTo(coverUrl: String) {
