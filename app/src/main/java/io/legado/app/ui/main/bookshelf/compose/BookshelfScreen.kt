@@ -86,7 +86,7 @@ import kotlin.math.roundToInt
  * 书架页主 Composable。
  *
  * Tab 分组模式下，使用 [HorizontalPager] 实现分组间跟手平移滑动；
- * 书籍列表项左滑删除优先于页面切换；最后一组左滑时放行给外层 ViewPager。
+ * 书籍列表项左滑删除优先于页面切换；在首尾分组继续越界拖动时放行给外层 ViewPager。
  *
  * @param books 全量书籍列表（Tab 模式），或当前分组的书籍列表（其他模式）
  * @param groups 所有可见分组
@@ -135,6 +135,8 @@ fun BookshelfScreen(
     var menuExpanded by remember { mutableStateOf(false) }
     val animationsEnabled = LocalAnimationsEnabled.current
     val view = LocalView.current
+    val coroutineScope = rememberCoroutineScope()
+    val touchSlopPx = with(LocalDensity.current) { 8.dp.toPx() }
 
     // 是否为 Tab 分组模式且有多于一个分组可用
     val usePager = bookGroupStyle == 0 && groups.size > 1
@@ -151,18 +153,37 @@ fun BookshelfScreen(
 
     // 同步：Tab 点击 → pager 滚动
     if (usePager && pagerState != null) {
-        // 同步：pager 滑动 → 更新 selectedGroupId（仅在 pager 完全停止后）
+        // 仅在 pager 真正停稳并回到整页位置时，才同步分组选中状态。
         LaunchedEffect(pagerState) {
-            snapshotFlow { pagerState.currentPage to pagerState.isScrollInProgress }
-                .collect { (page, isScrolling) ->
-                    if (!isScrolling && page in groups.indices) {
-                        onGroupSelected(groups[page].groupId)
+            snapshotFlow {
+                PagerScrollSnapshot(
+                    page = pagerState.currentPage,
+                    targetPage = pagerState.targetPage,
+                    offset = pagerState.currentPageOffsetFraction,
+                    scrolling = pagerState.isScrollInProgress,
+                )
+            }.collect { state ->
+                val isStable = !state.scrolling && abs(state.offset) < 0.001f
+                if (isStable && state.page in groups.indices) {
+                    onGroupSelected(groups[state.page].groupId)
+                }
+            }
+        }
+        // pager 停止滚动时释放父级拦截
+        LaunchedEffect(pagerState) {
+            snapshotFlow { pagerState.isScrollInProgress }
+                .collect { isScrolling ->
+                    if (!isScrolling) {
+                        if (abs(pagerState.currentPageOffsetFraction) > 0.001f) {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage)
+                            }
+                        }
+                        view.requestParentDisallowIntercept(false)
                     }
                 }
         }
     }
-
-    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -306,7 +327,8 @@ fun BookshelfScreen(
                 // 分组 Tab 行（仅 Tab 分组模式）
                 if (bookGroupStyle == 0 && groups.isNotEmpty()) {
                     val tabSelectedIndex = if (usePager && pagerState != null) {
-                        pagerState.currentPage
+                        groups.indexOfFirst { it.groupId == selectedGroupId }
+                            .coerceAtLeast(0)
                     } else {
                         groups.indexOfFirst { it.groupId == selectedGroupId }
                             .coerceAtLeast(0)
@@ -374,14 +396,30 @@ fun BookshelfScreen(
                             .fillMaxSize()
                             .pointerInput(Unit) {
                                 awaitEachGesture {
-                                    awaitFirstDown(requireUnconsumed = false)
-                                    // 阻止外层 ViewPager 拦截，让 HorizontalPager 正常处理
-                                    view.requestParentDisallowIntercept(true)
-                                    // 等到手指抬起
+                                    val down = awaitFirstDown(requireUnconsumed = false)
+                                    val pageAtDown = pagerState.currentPage
+                                    val atExactFirstPage =
+                                        pageAtDown == 0 && abs(pagerState.currentPageOffsetFraction) < 0.001f
+                                    val atExactLastPage =
+                                        pageAtDown == groups.lastIndex && abs(pagerState.currentPageOffsetFraction) < 0.001f
+                                    var totalDx = 0f
+                                    var parentDecisionMade = false
+                                    if (!atExactFirstPage && !atExactLastPage) {
+                                        parentDecisionMade = true
+                                        view.requestParentDisallowIntercept(true)
+                                    }
+                                    // 等到手指抬起（不释放，交由 pager 状态观察者处理）
                                     do {
                                         val event = awaitPointerEvent()
+                                        totalDx += event.changes.firstOrNull()?.positionChange()?.x ?: 0f
+                                        if (!parentDecisionMade && abs(totalDx) > touchSlopPx) {
+                                            val handOffToParent =
+                                                (atExactFirstPage && totalDx < -touchSlopPx) ||
+                                                    (atExactLastPage && totalDx > touchSlopPx)
+                                            parentDecisionMade = true
+                                            view.requestParentDisallowIntercept(!handOffToParent)
+                                        }
                                     } while (event.changes.any { it.pressed })
-                                    view.requestParentDisallowIntercept(false)
                                 }
                             },
                     ) {
@@ -975,3 +1013,10 @@ private fun AndroidView.requestParentDisallowIntercept(disallow: Boolean) {
         viewParent = viewParent.parent
     }
 }
+
+private data class PagerScrollSnapshot(
+    val page: Int,
+    val targetPage: Int,
+    val offset: Float,
+    val scrolling: Boolean,
+)

@@ -195,10 +195,10 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
             itemAnimator = null
             layoutManager = mLayoutManager
             setHasFixedSize(true)
-            // 最后一个卡片下边距：屏幕高度的 20% 或 80dp，取较大值
+            // 最后一个卡片下边距：屏幕高度的 25% 或 80dp，取较大值
             clipToPadding = false
             val minPadding = 80.dpToPx()
-            val screenPadding = (resources.displayMetrics.heightPixels * 0.20f).toInt()
+            val screenPadding = (resources.displayMetrics.heightPixels * 0.25f).toInt()
             setPadding(
                 paddingLeft,
                 paddingTop,

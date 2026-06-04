@@ -3,7 +3,6 @@ package io.legado.app.ui.welcome
 import android.content.Intent
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
-import androidx.core.view.postDelayed
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.base.BaseActivity
 import io.legado.app.constant.PreferKey
@@ -40,7 +39,7 @@ open class WelcomeActivity : BaseActivity<ActivityWelcomeBinding>() {
         if (intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT != 0) {
             finish()
         } else {
-            binding.root.postDelayed(600) { startMainActivity() }
+            startMainActivity()
         }
     }
 

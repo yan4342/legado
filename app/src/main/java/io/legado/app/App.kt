@@ -57,6 +57,7 @@ import io.legado.app.utils.LogUtils
 import io.legado.app.utils.defaultSharedPreferences
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.isDebuggable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.chromium.base.ThreadUtils
 import splitties.init.appCtx
@@ -82,9 +83,6 @@ class App : Application() {
         Coroutine.async {
             LogUtils.init(this@App)
             LogUtils.d("App", "onCreate")
-            LogUtils.logDeviceInfo()
-            //预下载Cronet so
-            Cronet.preDownload()
             createNotificationChannels()
             LiveEventBus.config()
                 .lifecycleObserverAlwaysActive(true)
@@ -139,7 +137,11 @@ class App : Application() {
             SourceHelp.adjustSortNumber()
             //同步阅读记录
             if (AppConfig.syncBookProgress) {
-                AppWebDav.downloadAllBookProgress()
+                AppWebDav.downloadAllBookProgress()   
+            }         
+            launch {
+                delay(2_000)
+                warmUpAfterLaunch()
             }
         }
     }
@@ -249,6 +251,12 @@ class App : Application() {
         RhinoWrapFactory.register(ContentRule::class.java, ReadOnlyJavaObject.factory)
         RhinoWrapFactory.register(BookChapter::class.java, ReadOnlyJavaObject.factory)
         RhinoWrapFactory.register(Book.ReadConfig::class.java, ReadOnlyJavaObject.factory)
+    }
+
+    private suspend fun warmUpAfterLaunch() {
+        LogUtils.logDeviceInfo()
+        // 避免冷启动阶段提前拉起 WebView / Cronet，延后到首屏稳定后再预热。
+        Cronet.preDownload()
     }
 
     class EventLogger : DefaultLogger() {

@@ -135,7 +135,7 @@ class BackupConfigFragment : PreferenceFragment(),
         upPreferenceSummary(PreferKey.backupPath, getPrefString(PreferKey.backupPath))
         findPreference<io.legado.app.lib.prefs.Preference>("web_dav_restore")
             ?.onLongClick {
-                restoreFromLocal()
+                webDavRestore()
                 true
             }
     }
