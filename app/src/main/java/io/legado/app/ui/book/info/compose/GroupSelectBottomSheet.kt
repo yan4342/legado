@@ -76,6 +76,7 @@ fun GroupSelectBottomSheet(
                     .fillMaxWidth()
                     .padding(24.dp),
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         } else {
             LazyColumn(
@@ -104,7 +105,7 @@ fun GroupSelectBottomSheet(
                             text = group.groupName,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
-                            color = LocalContentColor.current,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(start = 8.dp),

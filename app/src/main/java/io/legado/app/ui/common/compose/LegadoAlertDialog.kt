@@ -57,7 +57,7 @@ fun LegadoAlertDialog(
     dialogTitle: String? = null,
     text: String? = null,
     content: (@Composable () -> Unit)? = null,
-    confirmText: String = "换源",
+    confirmText: String = "确定",
     onConfirm: (() -> Unit)? = null,
     confirmIcon: Painter? = null,
     dismissText: String = "取消",
@@ -68,6 +68,8 @@ fun LegadoAlertDialog(
 
     val colorScheme = rememberLegadoColorScheme()
     val containerColor = legadoPopupBackgroundColor()
+    val popupTextColor = legadoPopupPrimaryTextColor()
+    val popupTextSecondary = legadoPopupPrimaryTextColor().copy(alpha = 0.7f)
 
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
@@ -84,8 +86,8 @@ fun LegadoAlertDialog(
             modifier = modifier,
             containerColor = containerColor,
             iconContentColor = colorScheme.primary,
-            titleContentColor = colorScheme.onSurface,
-            textContentColor = colorScheme.onSurfaceVariant,
+            titleContentColor = popupTextColor,
+            textContentColor = popupTextSecondary,
             tonalElevation = AlertDialogDefaults.TonalElevation,
             title = if (dialogTitle != null) { { Text(text = dialogTitle) } } else null,
             text = if (hasText) {

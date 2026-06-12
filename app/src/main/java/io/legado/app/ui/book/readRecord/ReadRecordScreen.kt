@@ -1,7 +1,6 @@
 package io.legado.app.ui.book.readRecord
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -42,7 +41,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,7 +62,6 @@ import io.legado.app.ui.common.compose.BookCoverImage
 import io.legado.app.ui.common.compose.RoundDropdownMenu
 import io.legado.app.ui.common.compose.RoundDropdownMenuItem
 import io.legado.app.ui.common.compose.legadoCardBackgroundColor
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,28 +102,11 @@ fun ReadRecordScreen(
         showMenu = false
     }
 
-    // 预测性返回手势：无子状态时整个页面跟手右滑（标准 Android 平移动画）
-    var backProgress by remember { mutableFloatStateOf(0f) }
-    PredictiveBackHandler(enabled = !showSearch && !showMenu) { progress ->
-        try {
-            progress.collect { event ->
-                backProgress = event.progress
-            }
-            onBack()
-        } catch (_: CancellationException) {
-            // 手势取消，恢复原状
-        } finally {
-            backProgress = 0f
-        }
-    }
+    // 跨 Activity 返回由系统处理预测返回动画，无需手动拦截
 
     Scaffold(
         modifier = Modifier
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .graphicsLayer {
-                translationX = size.width * backProgress
-                alpha = 1f - (backProgress * 0.3f)
-            },
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             Column {
                 TopAppBar(

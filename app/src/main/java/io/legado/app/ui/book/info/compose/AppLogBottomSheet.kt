@@ -93,6 +93,7 @@ fun AppLogBottomSheet(
                             text = msg,
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }
@@ -113,6 +114,7 @@ fun AppLogBottomSheet(
                 .padding(16.dp),
             style = MaterialTheme.typography.bodySmall,
             fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

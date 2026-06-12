@@ -18,10 +18,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.neverEqualPolicy
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -118,7 +119,7 @@ fun BookInfoRouteScreen(
             customCoverUrl = coverPath,
         ) else null
     }
-    var book by remember { mutableStateOf(eagerBook) }
+    var book by remember { mutableStateOf(eagerBook, neverEqualPolicy()) }
     var chapters by remember { mutableStateOf<List<BookChapter>?>(null) }
     var inShelf by remember { mutableStateOf(false) }
 
@@ -366,25 +367,26 @@ fun BookInfoRouteScreen(
         // 换源预确认弹窗
         if (showChangeSourceAlert) {
             val sourceName = appDb.bookSourceDao.getBookSource(b.origin)?.bookSourceName ?: b.originName
+            val hasSource = !b.isLocal && appDb.bookSourceDao.has(b.origin)
             LegadoAlertDialog(
                 show = showChangeSourceAlert,
                 onDismissRequest = { showChangeSourceAlert = false },
                 dialogTitle = stringResource(R.string.change_origin),
                 text = sourceName.takeIf { it.isNotBlank() },
                 content = {
-                    TextButton(
-                        onClick = {
-                            showChangeSourceAlert = false
-                            if (!b.isLocal && appDb.bookSourceDao.has(b.origin)) {
+                    if (hasSource) {
+                        FilledTonalButton(
+                            onClick = {
+                                showChangeSourceAlert = false
                                 srcLauncher.launch { putExtra("sourceUrl", b.origin) }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.view_source), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.view_source))
+                        }
                     }
                 },
-                confirmText = stringResource(R.string.ok),
+                confirmText = stringResource(R.string.change_origin),
                 onConfirm = {
                     showChangeSourceAlert = false
                     activity?.showDialogFragment(ChangeBookSourceDialog(b.name, b.author))
