@@ -1,21 +1,18 @@
 package io.legado.app.ui.common.compose
 
 import android.content.Context
-import android.graphics.drawable.ColorDrawable
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupWindow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,12 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewTreeLifecycleOwner
-import androidx.lifecycle.findViewTreeLifecycleOwner
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
+import io.legado.app.utils.activity
 
 // ── Unified factory: ComposeView { ⋮ or label + RoundDropdownMenu } ──
 
@@ -134,38 +130,50 @@ fun OverflowMenuAnchor(
 /**
  * Shows a Compose [RoundDropdownMenu] anchored below [anchor], replacing
  * [androidx.appcompat.widget.PopupMenu] in View-based RecyclerView adapters.
+ *
+ * The ComposeView is attached directly to the Activity's decorView so that
+ * ViewTreeLifecycleOwner is naturally available — no manual injection needed.
+ * This avoids the double-PopupWindow crash that occurs when nesting a
+ * DropdownMenu inside a PopupWindow.
  */
 fun showComposeDropdownMenu(
     context: Context,
     anchor: View,
     menuContent: @Composable ColumnScope.(dismiss: () -> Unit) -> Unit
 ) {
-    var popup: PopupWindow? = null
-    val cv = ComposeView(context).apply {
-        setContent {
-            LegadoTheme {
-                var open by remember { mutableStateOf(true) }
-                val bg = legadoPopupBackgroundColor()
-                Surface(shape = MaterialTheme.shapes.medium, color = bg, shadowElevation = 4.dp) {
+    val decorView = anchor.activity?.window?.decorView as? ViewGroup ?: return
+    val loc = intArrayOf(0, 0)
+    anchor.getLocationInWindow(loc)
+    val anchorX = loc[0]
+    val anchorY = loc[1] + anchor.height
+
+    val cv = ComposeView(context)
+    cv.setContent {
+        LegadoTheme {
+            var expanded by remember { mutableStateOf(true) }
+
+            fun dismiss() {
+                expanded = false
+                decorView.removeView(cv)
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.offset { IntOffset(anchorX, anchorY) }) {
                     RoundDropdownMenu(
-                        expanded = open,
-                        onDismissRequest = { open = false },
-                        content = menuContent,
+                        expanded = expanded,
+                        onDismissRequest = ::dismiss,
+                        content = { menuContent(::dismiss) },
                     )
-                }
-                if (!open) {
-                    SideEffect { popup?.let { if (it.isShowing) it.dismiss() } }
                 }
             }
         }
     }
-    popup = PopupWindow(cv, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
-        setBackgroundDrawable(ColorDrawable(0x00000000))
-        isOutsideTouchable = true
-        isFocusable = true
-    }
-    val loc = intArrayOf(0, 0); anchor.getLocationInWindow(loc)
-    // Inject LifecycleOwner for ComposeView inside PopupWindow
-    anchor.findViewTreeLifecycleOwner()?.let { ViewTreeLifecycleOwner.set(cv, it) }
-    popup.showAtLocation(anchor, Gravity.TOP or Gravity.START, loc[0], loc[1] + anchor.height)
+
+    decorView.addView(
+        cv,
+        ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
+    )
 }
