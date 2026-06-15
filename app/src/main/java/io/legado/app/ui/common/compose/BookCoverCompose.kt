@@ -30,8 +30,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import io.legado.app.help.config.AppConfig
-import io.legado.app.model.BookCover
 import io.legado.app.ui.widget.image.CoverImageView
 
 private const val SharedCoverRadiusCacheMaxSize = 256
@@ -63,9 +63,14 @@ fun BookCoverCompose(
         || AppConfig.useDefaultCover
     val finalPath = if (useDefaultCover) null else coverUrl
 
+    // 参与共享元素过渡时，乐观假定在线封面已缓存命中，避免过渡动画中
+    // 目标侧短暂显示默认封面再切换为在线封面造成的闪烁。
+    // hasEverLoadedSuccessfully 用于区分：封面确实缓存命中（应保持乐观状态）
+    // 与封面从未加载成功（应回退到默认封面）两种情况。
     var isOnlineCoverLoaded by remember(finalPath) {
         mutableStateOf(sharedCoverKey != null && finalPath != null)
     }
+    var hasEverLoadedSuccessfully by remember(finalPath) { mutableStateOf(false) }
 
     LaunchedEffect(finalPath) {
         if (finalPath == null) {
@@ -73,7 +78,9 @@ fun BookCoverCompose(
         }
     }
 
-    val transitionRadius = if (sharedCoverKey != null && animatedVisibilityScope != null) {
+    val isInSharedTransition = sharedCoverKey != null && animatedVisibilityScope != null
+
+    val transitionRadius = if (isInSharedTransition) {
         rememberSharedCoverTransitionRadius(
             sharedCoverKey = sharedCoverKey,
             radius = radius,
@@ -94,32 +101,51 @@ fun BookCoverCompose(
         } else Modifier
     }
 
+    val showDefaultCover = !isOnlineCoverLoaded
+
     Box(
         modifier = modifier
             .then(sharedElementModifier)
             .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
+            // 始终使用相同底色，避免 isOnlineCoverLoaded 状态切换时
+            // 背景色跳变导致闪烁；在线封面图片加载完后完全覆盖此底色。
             .background(
-                if (!isOnlineCoverLoaded) {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                } else Color.Transparent,
-                shape
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape,
             )
             .clip(shape)
     ) {
-        // Cover image
+        // Cover image — 无 placeholder，加载前保持透明让底层 CoverImageView 显现
         if (finalPath != null) {
+            val requestNoPlaceholder = remember(context, finalPath) {
+                ImageRequest.Builder(context)
+                    .data(finalPath)
+                    .apply {
+                        extras[io.legado.app.help.coil.LegadoFetcher.loadOnlyWifiKey] = false
+                    }
+                    .build()
+            }
             AsyncImage(
-                model = BookCover.loadRequest(context, finalPath),
+                model = requestNoPlaceholder,
                 contentDescription = null,
                 contentScale = contentScale,
                 modifier = Modifier.fillMaxSize(),
-                onSuccess = { isOnlineCoverLoaded = true },
-                onError = { isOnlineCoverLoaded = false },
+                onSuccess = {
+                    isOnlineCoverLoaded = true
+                    hasEverLoadedSuccessfully = true
+                },
+                onError = {
+                    // 共享过渡中，如果曾经成功加载过（缓存命中），忽略短暂 onError；
+                    // 如果从未成功过（本地文件已丢失等真实失败），允许回退到默认封面
+                    if (sharedCoverKey == null || !hasEverLoadedSuccessfully) {
+                        isOnlineCoverLoaded = false
+                    }
+                },
             )
         }
 
-        // Default cover: CoverImageView (onError keeps defaultCover=true → draws text)
-        if (!isOnlineCoverLoaded) {
+        // Default cover: CoverImageView draws book name/author on default cover background.
+        if (showDefaultCover) {
             AndroidView(
                 factory = { ctx ->
                     io.legado.app.ui.widget.image.CoverImageView(ctx).apply {
@@ -129,7 +155,12 @@ fun BookCoverCompose(
                         )
                     }
                 },
-                update = { it.load(null, name, author) },
+                update = { coverView ->
+                    val path = if (useDefaultCover) null else coverUrl
+                    // CoverImageView.load() 内部做了路径/文字去重，
+                    // 路径和文字都没变时跳过重新加载，不会触发 defaultCover=true 闪烁
+                    coverView.load(path, name, author)
+                },
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -173,4 +204,3 @@ private fun rememberSharedCoverTransitionRadius(
 
     return animatedRadiusValue.dp
 }
-

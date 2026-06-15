@@ -51,6 +51,7 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookSource
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.book.addType
 import io.legado.app.help.book.isAudio
@@ -122,6 +123,8 @@ fun BookInfoRouteScreen(
     var book by remember { mutableStateOf(eagerBook, neverEqualPolicy()) }
     var chapters by remember { mutableStateOf<List<BookChapter>?>(null) }
     var inShelf by remember { mutableStateOf(false) }
+    // Track the active book URL — starts from route params, updates after source change
+    var activeBookUrl by remember { mutableStateOf(bookUrl) }
 
     // ── ActivityResult launchers ──
     var refreshTrigger by remember { mutableIntStateOf(0) }
@@ -181,8 +184,9 @@ fun BookInfoRouteScreen(
     DisposableEffect(Unit) {
         val bo = Observer<Book?> { received ->
             // 过滤旧书籍的残留 LiveData 值（bookUrl 不匹配则丢弃）
+            // 换源后 activeBookUrl 会同步更新，确保新书籍的更新能通过
             if (received != null) {
-                if (received.bookUrl != bookUrl) return@Observer
+                if (received.bookUrl != activeBookUrl) return@Observer
                 book = received
                 inShelf = vm.inBookshelf
             } else {
@@ -397,7 +401,15 @@ fun BookInfoRouteScreen(
                 confirmText = stringResource(R.string.change_origin),
                 onConfirm = {
                     showChangeSourceAlert = false
-                    activity?.showDialogFragment(ChangeBookSourceDialog(b.name, b.author))
+                    val dialog = ChangeBookSourceDialog(b.name, b.author)
+                    dialog.changeSourceCallback = object : ChangeBookSourceDialog.CallBack {
+                        override val oldBook: Book? = vm.bookData.value
+                        override fun changeTo(source: BookSource, book: Book, toc: List<BookChapter>) {
+                            activeBookUrl = book.bookUrl
+                            vm.changeTo(source, book, toc)
+                        }
+                    }
+                    activity?.showDialogFragment(dialog)
                 },
                 dismissText = stringResource(R.string.cancel),
                 onDismiss = { showChangeSourceAlert = false },

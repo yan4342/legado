@@ -25,6 +25,8 @@ data class BookReadRecordItem(
     val bookName: String, val author: String = "",
     val readTime: Long = 0L, val lastRead: Long = 0L,
     val coverPath: String? = null,
+    val durChapterIndex: Int = 0,
+    val durChapterTitle: String? = null,
 )
 
 sealed interface ReadRecordIntent {

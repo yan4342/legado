@@ -69,7 +69,14 @@ class ChangeBookSourceDialog() : BaseDialogFragment(R.layout.dialog_book_change_
 
     private val binding by viewBinding(DialogBookChangeSourceBinding::bind)
     private val groups = linkedSetOf<String>()
-    private val callBack: CallBack? get() = activity as? CallBack
+
+    /**
+     * Optional explicit callback — takes priority over activity-as-CallBack.
+     * Used by Compose routes where the hosting Activity doesn't implement CallBack.
+     */
+    var changeSourceCallback: CallBack? = null
+
+    private val callBack: CallBack? get() = changeSourceCallback ?: activity as? CallBack
     private val viewModel: ChangeBookSourceViewModel by viewModels()
     private val waitDialog by lazy { WaitDialog(requireContext()) }
     private val adapter by lazy { ChangeBookSourceAdapter(requireContext(), viewModel, this) }

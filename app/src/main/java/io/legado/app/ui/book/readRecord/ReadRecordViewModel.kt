@@ -70,12 +70,12 @@ class ReadRecordViewModel : ViewModel() {
 
                 val bookNames = filtered.map { it.bookName }.distinct()
                 val booksMap = withContext(Dispatchers.IO) { bookNames.mapNotNull { n -> appDb.bookDao.findByName(n).firstOrNull()?.let { it.name to it } }.toMap() }
-                allItems = filtered.map { r -> val b = booksMap[r.bookName]; BookReadRecordItem(r.bookName, b?.author ?: "", r.readTime, r.lastRead, b?.getDisplayCover()) }
+                allItems = filtered.map { r -> val b = booksMap[r.bookName]; BookReadRecordItem(r.bookName, b?.author ?: "", r.readTime, r.lastRead, b?.getDisplayCover(), b?.durChapterIndex ?: 0, b?.durChapterTitle) }
 
                 // top 5 covers
                 val top5 = showRecords.sortedByDescending { it.readTime }.take(5).map { it.bookName }
                 val top5Map = withContext(Dispatchers.IO) { top5.mapNotNull { n -> appDb.bookDao.findByName(n).firstOrNull()?.let { it.name to it } }.toMap() }
-                val covers = top5.mapNotNull { n -> val b = top5Map[n]; val r = showRecords.firstOrNull { it.bookName == n } ?: return@mapNotNull null; BookReadRecordItem(r.bookName, b?.author ?: "", r.readTime, r.lastRead, b?.getDisplayCover()) }
+                val covers = top5.mapNotNull { n -> val b = top5Map[n]; val r = showRecords.firstOrNull { it.bookName == n } ?: return@mapNotNull null; BookReadRecordItem(r.bookName, b?.author ?: "", r.readTime, r.lastRead, b?.getDisplayCover(), b?.durChapterIndex ?: 0, b?.durChapterTitle) }
 
                 val page = allItems.take(pageSize)
                 _uiState.update { it.copy(isLoading = false, books = page, totalReadTime = allTime, todayReadTime = todayTime, consecutiveDays = consecutiveDays, totalBooks = showRecords.size, summaryCovers = covers, enableRecord = AppConfig.enableReadRecord, hasMore = allItems.size > pageSize) }

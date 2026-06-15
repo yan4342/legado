@@ -92,7 +92,7 @@ object BookCover {
     }
 
     /** Safe access to AppConfig.useDefaultCover (Preview-compatible) */
-    private fun useDefaultCover(): Boolean = try {
+    internal fun useDefaultCover(): Boolean = try {
         AppConfig.useDefaultCover
     } catch (_: Throwable) {
         false

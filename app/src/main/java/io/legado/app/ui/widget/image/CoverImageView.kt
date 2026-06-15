@@ -30,7 +30,8 @@ class CoverImageView @JvmOverloads constructor(
     private var filletPath = Path()
     private var viewWidth: Float = 0f
     private var viewHeight: Float = 0f
-    private var defaultCover = true
+    var defaultCover = true
+        private set
     var bitmapPath: String? = null
         private set
     private var name: String? = null
@@ -161,9 +162,20 @@ class CoverImageView @JvmOverloads constructor(
         sourceOrigin: String? = null,
         onLoadFinish: (() -> Unit)? = null
     ) {
+        val newName = name?.replace(AppPattern.bdRegex, "")?.trim()
+        val newAuthor = author?.replace(AppPattern.bdRegex, "")?.trim()
+        // 路径和文字都没变时跳过重新加载，避免每次重组都触发
+        // defaultCover=true + invalidate() 导致默认封面闪烁
+        if (bitmapPath == path && this.name == newName && this.author == newAuthor) return
+
         this.bitmapPath = path
-        this.name = name?.replace(AppPattern.bdRegex, "")?.trim()
-        this.author = author?.replace(AppPattern.bdRegex, "")?.trim()
+        this.name = newName
+        this.author = newAuthor
+        // 当封面路径为空、哨兵值 use_default_cover、或全局默认封面开关打开时，
+        // 加载的 defaultDrawable 即使成功也是"默认封面"，应始终叠加绘制书名/作者文字。
+        val isDefaultCoverPath = path.isNullOrBlank()
+            || path == "use_default_cover"
+            || BookCover.useDefaultCover()
         defaultCover = true
         invalidate()
         val request = BookCover.loadRequest(
@@ -179,7 +191,8 @@ class CoverImageView @JvmOverloads constructor(
                     invalidate()
                 },
                 onSuccess = { result ->
-                    defaultCover = false
+                    // 默认封面路径加载成功后仍需绘制文字；真正在线封面成功后不绘制
+                    defaultCover = isDefaultCoverPath
                     setImageDrawable(result.asDrawable(context.resources))
                     invalidate()
                     onLoadFinish?.invoke()

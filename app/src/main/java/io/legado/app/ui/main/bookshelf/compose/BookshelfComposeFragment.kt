@@ -191,8 +191,8 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                                 )
 
                                 // ── Book info: overlay with responsive shared element timing ──
-                                // LinearOutSlowInEasing: moves immediately, decelerates at end
-                                // 400ms total — no dead zone at start
+                                // Linear fade avoids "stalled at start" feeling — shared element
+                                // movement starts immediately instead of lingering at origin.
                                 AnimatedVisibility(
                                     visible = activeBookInfoRoute != null,
                                     modifier = Modifier
@@ -200,10 +200,8 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                                         .graphicsLayer {
                                             translationX = size.width * backProgress
                                         },
-                                    enter = fadeIn(animationSpec = tween(400,
-                                        easing = androidx.compose.animation.core.LinearOutSlowInEasing)),
-                                    exit = fadeOut(animationSpec = tween(360,
-                                        easing = androidx.compose.animation.core.LinearOutSlowInEasing)),
+                                    enter = fadeIn(animationSpec = tween(300)),
+                                    exit = fadeOut(animationSpec = tween(250)),
                                 ) {
                                     activeBookInfoRoute?.let { route ->
                                         key(route.bookUrl + showCount) {

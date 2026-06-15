@@ -1,7 +1,6 @@
 package io.legado.app.ui.book.readRecord
 
-import android.view.View
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -57,6 +56,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -76,13 +76,15 @@ import io.legado.app.ui.common.compose.RoundDropdownMenuItem
 import io.legado.app.ui.common.compose.legadoCardBackgroundColor
 import kotlinx.coroutines.flow.Flow
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CancellationException
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
-import androidx.compose.ui.viewinterop.AndroidView
-import kotlinx.coroutines.NonDisposableHandle.parent
+import android.view.View as AndroidView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,14 +114,30 @@ fun ReadRecordScreen(
         }
     }
 
-    // 返回键拦截：搜索栏打开时关闭搜索栏，菜单打开时关闭菜单
-    BackHandler(enabled = showSearch) {
-        showSearch = false
-        searchText = ""
-        onIntent(ReadRecordIntent.Search(null))
+    // 预测性返回手势：搜索栏/菜单打开时跟手滑动关闭，系统处理跨 Activity 返回动画
+    var searchBackProgress by remember { mutableFloatStateOf(0f) }
+    PredictiveBackHandler(enabled = showSearch) { progress ->
+        try {
+            progress.collect { event -> searchBackProgress = event.progress }
+            showSearch = false
+            searchText = ""
+            onIntent(ReadRecordIntent.Search(null))
+        } catch (_: CancellationException) {
+            // 手势取消
+        } finally {
+            searchBackProgress = 0f
+        }
     }
-    BackHandler(enabled = showMenu) {
-        showMenu = false
+    var menuBackProgress by remember { mutableFloatStateOf(0f) }
+    PredictiveBackHandler(enabled = showMenu) { progress ->
+        try {
+            progress.collect { event -> menuBackProgress = event.progress }
+            showMenu = false
+        } catch (_: CancellationException) {
+            // 手势取消
+        } finally {
+            menuBackProgress = 0f
+        }
     }
 
     // 跨 Activity 返回由系统处理预测返回动画，无需手动拦截
@@ -214,7 +232,43 @@ fun ReadRecordScreen(
                         item(key = "list_header") { Text("${state.displayMode.label}（${state.totalBooks}）", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
                         // 3. Book list
                         items(state.books, key = { "book_${it.bookName}" }) { item ->
-                            BookItem(item, onClick = { onIntent(ReadRecordIntent.ClickBook(item.bookName, item.author)) }, onDelete = { onIntent(ReadRecordIntent.DeleteBook(item.bookName)) })
+                            var showChapterInfo by remember { mutableStateOf(false) }
+                            if (showChapterInfo) {
+                                AlertDialog(
+                                    onDismissRequest = { showChapterInfo = false },
+                                    title = { Text(item.bookName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    text = {
+                                        val chapterTitle = item.durChapterTitle
+                                        if (chapterTitle != null) {
+                                            Text("最新读到：第${item.durChapterIndex + 1}章 $chapterTitle")
+                                        } else {
+                                            Text("暂无章节信息")
+                                        }
+                                    },
+                                    confirmButton = { TextButton(onClick = { showChapterInfo = false }) { Text("确定") } },
+                                )
+                            }
+                            val animationsEnabled = LocalAnimationsEnabled.current
+                            val itemModifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp)
+                            if (!animationsEnabled) {
+                                BookItem(
+                                    item,
+                                    onClick = { onIntent(ReadRecordIntent.ClickBook(item.bookName, item.author)) },
+                                    onLongClick = { showChapterInfo = true },
+                                    modifier = itemModifier,
+                                )
+                            } else {
+                                SwipeToDeleteItem(
+                                    onDelete = { onIntent(ReadRecordIntent.DeleteBook(item.bookName)) },
+                                    modifier = itemModifier,
+                                ) {
+                                    BookItem(
+                                        item,
+                                        onClick = { onIntent(ReadRecordIntent.ClickBook(item.bookName, item.author)) },
+                                        onLongClick = { showChapterInfo = true },
+                                    )
+                                }
+                            }
                         }
                         // 4. Load more indicator
                         if (state.isLoadingMore) {
@@ -317,13 +371,23 @@ private fun BookStackView(covers: List<BookReadRecordItem>) {
 
 // ── Book Item ──
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BookItem(item: BookReadRecordItem, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun BookItem(
+    item: BookReadRecordItem,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val cardBg = legadoCardBackgroundColor()
-    var showDelete by remember { mutableStateOf(false) }
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp)
-            .clip(RoundedCornerShape(12.dp)).clickable(remember { MutableInteractionSource() }, null, onClick = onClick),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
         shape = RoundedCornerShape(12.dp), color = cardBg, shadowElevation = 0.dp,
     ) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -335,116 +399,110 @@ private fun BookItem(item: BookReadRecordItem, onClick: () -> Unit, onDelete: ()
                 Text("最后阅读: ${ReadRecordFormatter.formatDateShort(item.lastRead)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
             }
             Text(ReadRecordFormatter.formatDuring(item.readTime), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-            IconButton(onClick = { showDelete = true }) { Icon(painterResource(R.drawable.ic_outline_delete), "删除", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp)) }
         }
     }
-    if (showDelete) AlertDialog(
-        onDismissRequest = { showDelete = false }, title = { Text("确认删除") }, text = { Text("确定要删除「${item.bookName}」的阅读记录吗？") },
-        confirmButton = { TextButton(onClick = { showDelete = false; onDelete() }) { Text("删除", color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = { showDelete = false }) { Text("取消") } },
-    )
 }
 
-///**
-// * 左滑露出删除按钮，滑到固定距离后停住，点击按钮才删除。
-// * 使用动画实现平滑滑动和回弹。
-// */
-//@Composable
-//private fun SwipeToDeleteItem(
-//    onDelete: () -> Unit,
-//    modifier: Modifier = Modifier,
-//    content: @Composable () -> Unit,
-//) {
-//    val density = LocalDensity.current
-//    val revealDp = 120.dp
-//    val revealPx = with(density) { revealDp.toPx() }
-//    val directionSlopPx = with(density) { 8.dp.toPx() }
-//    var offsetX by remember { mutableFloatStateOf(0f) }
-//    val animationsEnabled = LocalAnimationsEnabled.current
-//    val view = LocalView.current
-//
-//    Box(modifier = modifier.clipToBounds()) {
-//        // 底层：删除按钮（固定在右侧）
-//        Box(
-//            modifier = Modifier
-//                .matchParentSize()
-//                .background(
-//                    MaterialTheme.colorScheme.error,
-//                    MaterialTheme.shapes.large,
-//                )
-//                .padding(horizontal = 16.dp),
-//            contentAlignment = Alignment.CenterEnd,
-//        ) {
-//            IconButton(onClick = {
-//                // 点击删除后先弹回再执行删除
-//                onDelete()
-//            }) {
-//                Icon(
-//                    painter = painterResource(R.drawable.ic_outline_delete),
-//                    contentDescription = "删除",
-//                    tint = Color.White,
-//                    modifier = Modifier.size(24.dp),
-//                )
-//            }
-//        }
-//        // 上层：书籍卡片，可左滑偏移
-//        Box(
-//            modifier = Modifier
-//                .offset { IntOffset(offsetX.roundToInt(), 0) }
-//                .pointerInput(Unit) {
-//                    awaitEachGesture {
-//                        val down = awaitFirstDown(requireUnconsumed = false)
-//                        var totalDragX = 0f
-//                        var disallowingParent = false
-//                        while (true) {
-//                            val event = awaitPointerEvent()
-//                            val change = event.changes
-//                                .firstOrNull { it.id == down.id }
-//                                ?: break
-//                            if (!change.pressed) break
-//                            totalDragX += change.positionChange().x
-//                            if (totalDragX < -directionSlopPx && !disallowingParent) {
-//                                view.requestParentDisallowIntercept(true)
-//                                disallowingParent = true
-//                            }
-//                        }
-//                        if (disallowingParent) {
-//                            view.requestParentDisallowIntercept(false)
-//                        }
-//                    }
-//                }
-//                .draggable(
-//                    orientation = Orientation.Horizontal,
-//                    state = rememberDraggableState { delta ->
-//                        // 只允许左滑（delta < 0）
-//                        val newOffset = (offsetX + delta).coerceIn(-revealPx, 0f)
-//                        offsetX = newOffset
-//                    },
-//                    onDragStopped = {
-//                        // 松手后：滑过 50% 则保持露出，否则弹回
-//                        val target = if (offsetX < -revealPx * 0.5f) -revealPx else 0f
-//                        if (animationsEnabled) {
-//                            animate(
-//                                initialValue = offsetX,
-//                                targetValue = target,
-//                                animationSpec = tween(durationMillis = 200),
-//                            ) { value, _ -> offsetX = value }
-//                        } else {
-//                            // E-Ink 模式：瞬间跳转，无动画
-//                            offsetX = target
-//                        }
-//                    },
-//                ),
-//        ) {
-//            content()
-//        }
-//    }
-//}
-//
-//private fun AndroidView.requestParentDisallowIntercept(disallow: Boolean) {
-//    var viewParent = parent
-//    while (viewParent != null) {
-//        viewParent.requestDisallowInterceptTouchEvent(disallow)
-//        viewParent = viewParent.parent
-//    }
-//}
+/**
+ * 左滑露出删除按钮，滑到固定距离后停住，点击按钮才删除。
+ * 使用动画实现平滑滑动和回弹。
+ */
+@Composable
+private fun SwipeToDeleteItem(
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    val revealDp = 120.dp
+    val revealPx = with(density) { revealDp.toPx() }
+    val directionSlopPx = with(density) { 8.dp.toPx() }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val view = LocalView.current
+
+    Box(modifier = modifier.clipToBounds()) {
+        // 底层：删除按钮（固定在右侧）
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    MaterialTheme.colorScheme.error,
+                    MaterialTheme.shapes.large,
+                )
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            IconButton(onClick = {
+                // 点击删除后先弹回再执行删除
+                onDelete()
+            }) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_outline_delete),
+                    contentDescription = "删除",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+        // 上层：书籍卡片，可左滑偏移
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.roundToInt(), 0) }
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        var totalDragX = 0f
+                        var disallowingParent = false
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes
+                                .firstOrNull { it.id == down.id }
+                                ?: break
+                            if (!change.pressed) break
+                            totalDragX += change.positionChange().x
+                            if (totalDragX < -directionSlopPx && !disallowingParent) {
+                                view.requestParentDisallowIntercept(true)
+                                disallowingParent = true
+                            }
+                        }
+                        if (disallowingParent) {
+                            view.requestParentDisallowIntercept(false)
+                        }
+                    }
+                }
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta ->
+                        // 只允许左滑（delta < 0）
+                        val newOffset = (offsetX + delta).coerceIn(-revealPx, 0f)
+                        offsetX = newOffset
+                    },
+                    onDragStopped = {
+                        // 松手后：滑过 50% 则保持露出，否则弹回
+                        val target = if (offsetX < -revealPx * 0.5f) -revealPx else 0f
+                        if (animationsEnabled) {
+                            animate(
+                                initialValue = offsetX,
+                                targetValue = target,
+                                animationSpec = tween(durationMillis = 200),
+                            ) { value, _ -> offsetX = value }
+                        } else {
+                            // E-Ink 模式：瞬间跳转，无动画
+                            offsetX = target
+                        }
+                    },
+                ),
+        ) {
+            content()
+        }
+    }
+}
+
+private fun AndroidView.requestParentDisallowIntercept(disallow: Boolean) {
+    var viewParent = parent
+    while (viewParent != null) {
+        viewParent.requestDisallowInterceptTouchEvent(disallow)
+        viewParent = viewParent.parent
+    }
+}
