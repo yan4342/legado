@@ -34,7 +34,7 @@ import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.model.CacheBook
 import io.legado.app.service.ExportBookService
-import io.legado.app.ui.about.AppLogDialog
+import io.legado.app.utils.showLogSheet
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.common.compose.RoundDropdownMenuItem
 import io.legado.app.ui.common.compose.createComposeDropdownIcon
@@ -231,7 +231,7 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
             )
             RoundDropdownMenuItem(
                 text = getString(R.string.log),
-                onClick = { dismiss(); showDialogFragment<AppLogDialog>() },
+                onClick = { dismiss(); showLogSheet() },
             )
         }
         val overflowId = View.generateViewId()
@@ -312,7 +312,7 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
             R.id.menu_export_file_name -> alertExportFileName()
             R.id.menu_export_type -> showExportTypeConfig()
             R.id.menu_export_charset -> showCharsetConfig()
-            R.id.menu_log -> showDialogFragment<AppLogDialog>()
+            R.id.menu_log -> showLogSheet()
             else -> if (item.groupId == R.id.menu_group) {
                 binding.titleBar.subtitle = item.title
                 groupId = appDb.bookGroupDao.getByName(item.title.toString())?.groupId ?: 0

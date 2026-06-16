@@ -66,6 +66,7 @@ import io.legado.app.utils.checkByIndex
 import io.legado.app.utils.getCheckedIndex
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.showLogSheet
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.delay
@@ -402,7 +403,7 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                 }
             },
             onLog = {
-                showDialogFragment<io.legado.app.ui.about.AppLogDialog>()
+                showLogSheet()
             },
             enableRefresh = enableRefresh,
             isRefreshing = isRefreshing,

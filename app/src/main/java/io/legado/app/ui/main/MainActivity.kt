@@ -34,13 +34,13 @@ import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.elevation
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.service.BaseReadAloudService
-import io.legado.app.ui.about.CrashLogsDialog
+import io.legado.app.utils.showCrashLogSheet
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.compose.BookshelfComposeFragment
 import io.legado.app.ui.main.explore.ExploreFragment
 import io.legado.app.ui.main.my.MyFragment
 import io.legado.app.ui.main.rss.RssFragment
-import io.legado.app.ui.widget.dialog.MarkdownBottomSheetDialog
+import io.legado.app.utils.showMarkdownSheet
 import io.legado.app.ui.widget.text.BadgeView
 import io.legado.app.ui.widget.SmoothSlidePageTransformer
 import io.legado.app.utils.isCreated
@@ -226,16 +226,12 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             val help = withContext(IO) {
                 String(assets.open("web/help/md/appHelp.md").readBytes())
             }
-            showDialogFragment(
-                MarkdownBottomSheetDialog.newInstance(getString(R.string.help), help)
-            )
+            showMarkdownSheet(getString(R.string.help), help)
         } else if (!BuildConfig.DEBUG) {
             val log = withContext(IO) {
                 String(assets.open("updateLog.md").readBytes())
             }
-            showDialogFragment(
-                MarkdownBottomSheetDialog.newInstance(getString(R.string.update_log), log)
-            )
+            showMarkdownSheet(getString(R.string.update_log), log)
         }
     }
 
@@ -273,7 +269,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         LocalConfig.appCrash = false
         alert(getString(R.string.draw), "检测到阅读发生了崩溃，是否打开崩溃日志以便报告问题？") {
             yesButton {
-                showDialogFragment<CrashLogsDialog>()
+                showCrashLogSheet()
             }
             noButton()
         }

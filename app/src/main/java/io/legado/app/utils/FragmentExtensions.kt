@@ -22,7 +22,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.book.audio.AudioPlayActivity
 import io.legado.app.ui.book.manga.ReadMangaActivity
 import io.legado.app.ui.book.read.ReadBookActivity
-import io.legado.app.ui.widget.dialog.MarkdownBottomSheetDialog
+import io.legado.app.utils.showMarkdownSheet
 
 inline fun <reified T : DialogFragment> Fragment.showDialogFragment(
     arguments: Bundle.() -> Unit = {}
@@ -107,7 +107,7 @@ fun Fragment.startActivityForBook(
 
 fun Fragment.showHelp(fileName: String) {
     val mdText = String(requireContext().assets.open("web/help/md/${fileName}.md").readBytes())
-    showDialogFragment(MarkdownBottomSheetDialog.newInstance(getString(R.string.help), mdText))
+    showMarkdownSheet(getString(R.string.help), mdText)
 }
 
 val Fragment.isCreated

@@ -23,7 +23,7 @@ import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.utils.ColorUtils
-import io.legado.app.ui.about.AppLogDialog
+import io.legado.app.utils.showLogSheet
 import io.legado.app.utils.GSON
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.applyBackgroundTint
@@ -148,7 +148,7 @@ class SourceLoginDialog : BaseDialogFragment(R.layout.dialog_login, true) {
                 }
 
                 R.id.menu_del_login_header -> source.removeLoginHeader()
-                R.id.menu_log -> showDialogFragment<AppLogDialog>()
+                R.id.menu_log -> showLogSheet()
             }
             return@setOnMenuItemClickListener true
         }

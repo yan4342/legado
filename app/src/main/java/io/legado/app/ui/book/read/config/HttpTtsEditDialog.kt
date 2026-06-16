@@ -15,7 +15,7 @@ import android.graphics.drawable.GradientDrawable
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.utils.ColorUtils
-import io.legado.app.ui.about.AppLogDialog
+import io.legado.app.utils.showLogSheet
 import io.legado.app.ui.login.SourceLoginActivity
 import io.legado.app.ui.widget.code.addJsPattern
 import io.legado.app.ui.widget.code.addJsonPattern
@@ -134,7 +134,7 @@ class HttpTtsEditDialog() : BaseDialogFragment(R.layout.dialog_http_tts_edit, tr
             R.id.menu_paste_source -> viewModel.importFromClip {
                 initView(it)
             }
-            R.id.menu_log -> showDialogFragment<AppLogDialog>()
+            R.id.menu_log -> showLogSheet()
             R.id.menu_help -> showHelp("httpTTSHelp")
         }
         return true

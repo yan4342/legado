@@ -17,7 +17,7 @@ import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.qrcode.QrCodeResult
-import io.legado.app.ui.widget.dialog.TextDialog
+import io.legado.app.utils.showTextSheet
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.launch
 import io.legado.app.utils.setEdgeEffectColor
@@ -196,10 +196,10 @@ class BookSourceDebugActivity : VMBaseActivity<ActivitySourceDebugBinding, BookS
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_scan -> qrCodeResult.launch()
-            R.id.menu_search_src -> showDialogFragment(TextDialog("html", viewModel.searchSrc))
-            R.id.menu_book_src -> showDialogFragment(TextDialog("html", viewModel.bookSrc))
-            R.id.menu_toc_src -> showDialogFragment(TextDialog("html", viewModel.tocSrc))
-            R.id.menu_content_src -> showDialogFragment(TextDialog("html", viewModel.contentSrc))
+            R.id.menu_search_src -> showTextSheet("html", viewModel.searchSrc)
+            R.id.menu_book_src -> showTextSheet("html", viewModel.bookSrc)
+            R.id.menu_toc_src -> showTextSheet("html", viewModel.tocSrc)
+            R.id.menu_content_src -> showTextSheet("html", viewModel.contentSrc)
             R.id.menu_refresh_explore -> lifecycleScope.launch {
                 viewModel.bookSource?.clearExploreKindsCache()
                 adapter.clearItems()

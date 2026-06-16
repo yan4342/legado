@@ -21,7 +21,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 import androidx.fragment.app.DialogFragment
 import io.legado.app.R
-import io.legado.app.ui.widget.dialog.MarkdownBottomSheetDialog
+import io.legado.app.utils.showMarkdownSheet
 
 inline fun <reified T : DialogFragment> AppCompatActivity.showDialogFragment(
     arguments: Bundle.() -> Unit = {}
@@ -250,5 +250,5 @@ val Activity.navigationBarGravity: Int
  */
 fun AppCompatActivity.showHelp(fileName: String) {
     val mdText = String(assets.open("web/help/md/${fileName}.md").readBytes())
-    showDialogFragment(MarkdownBottomSheetDialog.newInstance(getString(R.string.help), mdText))
+    showMarkdownSheet(getString(R.string.help), mdText)
 }

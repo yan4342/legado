@@ -11,7 +11,7 @@ import io.legado.app.base.VMBaseActivity
 import io.legado.app.databinding.ActivitySourceDebugBinding
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
-import io.legado.app.ui.widget.dialog.TextDialog
+import io.legado.app.utils.showTextSheet
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.gone
 import io.legado.app.utils.setEdgeEffectColor
@@ -51,8 +51,8 @@ class RssSourceDebugActivity : VMBaseActivity<ActivitySourceDebugBinding, RssSou
 
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.menu_list_src -> showDialogFragment(TextDialog("Html", viewModel.listSrc))
-            R.id.menu_content_src -> showDialogFragment(TextDialog("Html", viewModel.contentSrc))
+            R.id.menu_list_src -> showTextSheet("Html", viewModel.listSrc)
+            R.id.menu_content_src -> showTextSheet("Html", viewModel.contentSrc)
         }
         return super.onCompatOptionsItemSelected(item)
     }

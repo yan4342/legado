@@ -74,6 +74,7 @@ import io.legado.app.ui.common.compose.LegadoAlertDialog
 import io.legado.app.ui.common.compose.ModalLegadoBottomSheet
 import io.legado.app.ui.common.compose.rememberLegadoColorScheme
 import io.legado.app.ui.login.SourceLoginActivity
+import io.legado.app.ui.widget.dialog.LegadoLogListContent
 import io.legado.app.utils.GSON
 import io.legado.app.utils.StartActivityContract
 import io.legado.app.utils.openFileUri
@@ -432,9 +433,8 @@ fun BookInfoRouteScreen(
 
         // 应用日志
         if (showAppLogSheet) {
-            AppLogBottomSheet(
-                show = showAppLogSheet,
-                onDismissRequest = { showAppLogSheet = false },
+            LegadoLogListContent(
+                onDismiss = { showAppLogSheet = false },
             )
         }
 

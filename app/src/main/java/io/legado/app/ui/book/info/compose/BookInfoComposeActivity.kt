@@ -50,7 +50,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
-import io.legado.app.ui.about.AppLogDialog
+import io.legado.app.utils.showLogSheet
 import io.legado.app.ui.book.audio.AudioPlayActivity
 import io.legado.app.ui.book.changecover.ChangeCoverDialog
 import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
@@ -318,7 +318,7 @@ class BookInfoComposeActivity :
                 viewModel.loadBookInfo(book, false)
             }
             MENU_CLEAR_CACHE -> viewModel.clearCache()
-            MENU_LOG -> showDialogFragment<AppLogDialog>()
+            MENU_LOG -> showLogSheet()
             MENU_UPLOAD -> upLoadBook(book)
             MENU_DELETE -> deleteBook()
             MENU_CHANGE_SOURCE -> {

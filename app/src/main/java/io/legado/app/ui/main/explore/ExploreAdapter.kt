@@ -19,12 +19,12 @@ import io.legado.app.help.source.clearExploreKindsCache
 import io.legado.app.help.source.exploreKinds
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.ui.login.SourceLoginActivity
-import io.legado.app.ui.widget.dialog.TextDialog
+import androidx.fragment.app.FragmentActivity
 import io.legado.app.utils.activity
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.gone
 import io.legado.app.utils.removeLastElement
-import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.showTextSheet
 import io.legado.app.ui.common.compose.RoundDropdownMenuItem
 import io.legado.app.ui.common.compose.showComposeDropdownMenu
 import io.legado.app.utils.startActivity
@@ -99,7 +99,7 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
                 } else {
                     tv.setOnClickListener {
                         if (kind.title.startsWith("ERROR:")) {
-                            it.activity?.showDialogFragment(TextDialog("ERROR", kind.url))
+                            (it.activity as? FragmentActivity)?.showTextSheet("ERROR", kind.url)
                         } else {
                             callBack.openExplore(sourceUrl, kind.title, kind.url)
                         }

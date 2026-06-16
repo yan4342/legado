@@ -15,7 +15,8 @@ import io.legado.app.help.CrashHandler
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.update.AppUpdate
-import io.legado.app.ui.widget.dialog.MarkdownBottomSheetDialog
+import io.legado.app.utils.showCrashLogSheet
+import io.legado.app.utils.showMarkdownSheet
 import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.compress.ZipUtils
@@ -63,7 +64,7 @@ class AboutFragment : PreferenceFragmentCompat() {
             "disclaimer" -> showMdFile(getString(R.string.disclaimer), "disclaimer.md")
             "privacyPolicy" -> showMdFile(getString(R.string.privacy_policy), "privacyPolicy.md")
             "gzGzh" -> requireContext().sendToClip(getString(R.string.legado_gzh))
-            "crashLog" -> showDialogFragment<CrashLogsDialog>()
+            "crashLog" -> showCrashLogSheet()
             "saveLog" -> saveLog()
             "createHeapDump" -> createHeapDump()
         }
@@ -80,7 +81,7 @@ class AboutFragment : PreferenceFragmentCompat() {
      */
     private fun showMdFile(title: String, fileName: String) {
         val mdText = String(requireContext().assets.open(fileName).readBytes())
-        showDialogFragment(MarkdownBottomSheetDialog.newInstance(title, mdText))
+        showMarkdownSheet(title, mdText)
     }
 
     /**
