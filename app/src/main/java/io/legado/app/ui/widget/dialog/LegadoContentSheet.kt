@@ -5,6 +5,7 @@ import android.text.Spanned
 import android.view.textclassifier.TextClassifier
 import android.widget.TextView
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,11 +34,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -292,6 +295,9 @@ fun LegadoLogListContent(
     var showDetail by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val requestDismiss = rememberDelayedDismiss(sheetState, onDismiss)
+    val isDark = isSystemInDarkTheme()
+    val primaryTextColor = if (isDark) Color(0xFFFFFFFF) else Color(0xDE000000)
+    val secondaryTextColor = if (isDark) Color(0xB3FFFFFF) else Color(0x8A000000)
 
     ModalLegadoBottomSheet(
         show = true,
@@ -318,6 +324,7 @@ fun LegadoLogListContent(
                     .fillMaxWidth()
                     .padding(24.dp),
                 style = MaterialTheme.typography.bodyMedium,
+                color = primaryTextColor,
             )
         } else {
             LazyColumn(
@@ -337,13 +344,13 @@ fun LegadoLogListContent(
                                 .format(Date(time)),
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = secondaryTextColor,
                         )
                         Text(
                             text = msg,
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Normal,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = primaryTextColor,
                             modifier = if (throwable != null) {
                                 Modifier.clickable { showDetail = throwable.stackTraceToString() }
                             } else Modifier,
@@ -372,6 +379,22 @@ fun LegadoLogListContent(
     }
 }
 
+@Preview(showBackground = true, backgroundColor = 0xFF1C1B1F)
+@Composable
+private fun LegadoLogListContentPreview() {
+    LaunchedEffect(Unit) {
+        AppLog.clear()
+        AppLog.put("加载书源失败: Connection refused")
+        AppLog.put("解析章节内容异常", RuntimeException("Index 5 out of bounds for length 3"))
+        AppLog.put("RSS 订阅超时: https://example.com/feed")
+        AppLog.put("WebDAV 备份成功: 2026-06-17 14:30:22")
+        AppLog.put("下载任务完成: 凡人修仙传 (1234/1234)")
+    }
+    io.legado.app.ui.common.compose.LegadoTheme {
+        LegadoLogListContent(onDismiss = {})
+    }
+}
+
 // endregion
 
 // region Crash Log Content
@@ -388,6 +411,8 @@ fun LegadoCrashLogContent(
     val logs by crashViewModel.logList.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val requestDismiss = rememberDelayedDismiss(sheetState, onDismiss)
+    val isDark = isSystemInDarkTheme()
+    val primaryTextColor = if (isDark) Color(0xFFFFFFFF) else Color(0xDE000000)
 
     LaunchedEffect(Unit) {
         crashViewModel.initData()
@@ -415,6 +440,7 @@ fun LegadoCrashLogContent(
                     .fillMaxWidth()
                     .padding(24.dp),
                 style = MaterialTheme.typography.bodyMedium,
+                color = primaryTextColor,
             )
         } else {
             LazyColumn(
@@ -426,6 +452,7 @@ fun LegadoCrashLogContent(
                     Text(
                         text = fileDoc.name,
                         style = MaterialTheme.typography.bodyMedium,
+                        color = primaryTextColor,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { crashViewModel.readFileContent(fileDoc) }

@@ -7,9 +7,10 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
@@ -103,12 +105,24 @@ fun BookCoverCompose(
 
     val showDefaultCover = !isOnlineCoverLoaded
 
+    // 共享过渡缩放效果：进入侧从 0.85 平滑过渡到 1.0，源侧始终 1.0。
+    // 与共享元素的位置/大小 morphing 同步进行，无 snap、无回弹。
+    val transitionScale = if (isInSharedTransition) {
+        rememberSharedCoverTransitionScale(animatedVisibilityScope!!)
+    } else {
+        1f
+    }
+
     Box(
         modifier = modifier
             .then(sharedElementModifier)
             .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
             // 始终使用相同底色，避免 isOnlineCoverLoaded 状态切换时
             // 背景色跳变导致闪烁；在线封面图片加载完后完全覆盖此底色。
+            .graphicsLayer {
+                scaleX = transitionScale
+                scaleY = transitionScale
+            }
             .background(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                 shape,
@@ -203,4 +217,39 @@ private fun rememberSharedCoverTransitionRadius(
     }
 
     return animatedRadiusValue.dp
+}
+
+/**
+ * 共享封面过渡中进入侧的缩放动画。
+ * 过渡前 90% 保持 0.85，最后 10% 缩放至 1.0，消除到达终点才开始缩放的停顿感。
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun rememberSharedCoverTransitionScale(
+    animatedVisibilityScope: AnimatedVisibilityScope,
+): Float {
+    val transition = animatedVisibilityScope.transition
+    val animatedScale by transition.animateFloat(
+        transitionSpec = {
+            when {
+                initialState == EnterExitState.PreEnter && targetState == EnterExitState.Visible -> {
+                    keyframes {
+                        durationMillis = 300
+                        0.85f at 0
+                        0.85f at 270
+                        1f at 300
+                    }
+                }
+                else -> tween()
+            }
+        },
+        label = "book-cover-scale"
+    ) { state ->
+        when (state) {
+            EnterExitState.PreEnter -> 0.85f
+            EnterExitState.Visible -> 1f
+            EnterExitState.PostExit -> 1f
+        }
+    }
+    return animatedScale
 }
