@@ -11,6 +11,9 @@ import kotlinx.serialization.Serializable
 sealed interface MainRoute : NavKey
 
 @Serializable
+data object MainRouteBookshelf : MainRoute
+
+@Serializable
 data class MainRouteBookInfo(
     val name: String?,
     val author: String?,

@@ -9,39 +9,37 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.appcompat.widget.SearchView
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.neverEqualPolicy
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.ComposeView
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.scene.SinglePaneSceneStrategy
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
+import androidx.navigation3.ui.NavDisplay
 import androidx.core.view.indices
 import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation3.runtime.entryProvider
 import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
@@ -61,6 +59,9 @@ import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.common.compose.LegadoTheme
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.main.bookCoverSharedElementKey
+import io.legado.app.ui.main.MainRoute
+import io.legado.app.ui.main.MainRouteBookshelf
+import io.legado.app.ui.main.MainRouteBookInfo
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.utils.checkByIndex
 import io.legado.app.utils.getCheckedIndex
@@ -72,7 +73,6 @@ import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.launch
 
 /**
@@ -137,100 +137,78 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
             setContent {
                 LegadoTheme {
                     SharedTransitionLayout {
-                        var activeBookInfoRoute by remember {
-                            mutableStateOf<io.legado.app.ui.main.MainRouteBookInfo?>(null)
-                        }
-                        var showCount by remember { mutableIntStateOf(0) }
+                        val backStack = rememberNavBackStack(MainRouteBookshelf as MainRoute)
 
                         // Hide bottom nav when book info overlay is active
-                        LaunchedEffect(activeBookInfoRoute) {
+                        LaunchedEffect(backStack.size) {
                             val nav = (activity as? io.legado.app.ui.main.MainActivity)
                                 ?.findViewById<android.view.View>(R.id.bottom_navigation_view)
-                            nav?.visibility = if (activeBookInfoRoute != null)
+                            nav?.visibility = if (backStack.size > 1)
                                 android.view.View.GONE else android.view.View.VISIBLE
                         }
 
-                        // 预测性返回手势：浮窗跟手右滑退出
-                        var backProgress by remember { mutableFloatStateOf(0f) }
-                        PredictiveBackHandler(enabled = activeBookInfoRoute != null) { progress ->
-                            try {
-                                progress.collect { event ->
-                                    backProgress = event.progress
-                                }
-                                activeBookInfoRoute = null
-                            } catch (_: CancellationException) {
-                                // 手势取消，恢复原状
-                            } finally {
-                                backProgress = 0f
-                            }
-                        }
-
-                        // Callback for showing book info overlay
-                        val showBookInfo: (String, String, String, String?, String?) -> Unit =
-                            { name, author, bookUrl, origin, coverPath ->
-                                showCount++
-                                activeBookInfoRoute = io.legado.app.ui.main.MainRouteBookInfo(
-                                    name = name, author = author, bookUrl = bookUrl,
-                                    origin = origin, coverPath = coverPath,
-                                    sharedCoverKey = bookCoverSharedElementKey(bookUrl),
-                                )
-                            }
-
-                        // ── WRAP in always-visible AnimatedVisibility for persistent shared scope ──
-                        AnimatedVisibility(
-                            visible = true,
-                            modifier = Modifier.fillMaxSize(),
-                        ) {
-                            val outerAvs = this // persistent outer scope
-
-                            Box(Modifier.fillMaxSize()) {
-                                // ── Bookshelf: source cover bound to OUTER scope (resting) ──
-                                BookshelfFragmentContent(
-                                    sharedTransitionScope = this@SharedTransitionLayout,
-                                    animatedVisibilityScope = outerAvs,
-                                    onShowBookInfo = showBookInfo,
-                                )
-
-                                // ── Book info: overlay with responsive shared element timing ──
-                                // Linear fade avoids "stalled at start" feeling — shared element
-                                // movement starts immediately instead of lingering at origin.
-                                AnimatedVisibility(
-                                    visible = activeBookInfoRoute != null,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .graphicsLayer {
-                                            translationX = size.width * backProgress
-                                        },
-                                    enter = fadeIn(animationSpec = tween(300)),
-                                    exit = fadeOut(animationSpec = tween(250)),
-                                ) {
-                                    activeBookInfoRoute?.let { route ->
-                                        key(route.bookUrl + showCount) {
-                                            BookInfoRouteScreen(
-                                                bookUrl = route.bookUrl,
-                                                name = route.name,
-                                                author = route.author,
-                                                coverPath = route.coverPath,
-                                                onBack = { activeBookInfoRoute = null },
-                                                onReadBook = { url, inShelf, _ ->
-                                                    activeBookInfoRoute = null
-                                                    val intent = android.content.Intent(
-                                                        requireContext(), ReadBookActivity::class.java
-                                                    ).apply {
-                                                        putExtra("bookUrl", url)
-                                                        putExtra("inBookshelf", inShelf)
-                                                    }
-                                                    readBookResult.launch(intent)
-                                                },
-                                                sharedTransitionScope = this@SharedTransitionLayout,
-                                                animatedVisibilityScope = this, // inner overlay's scope
-                                                sharedCoverKey = route.sharedCoverKey,
+                        NavDisplay(
+                            backStack = backStack,
+                            sceneStrategies = listOf(SinglePaneSceneStrategy()),
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith
+                                        fadeOut(animationSpec = tween(300))
+                            },
+                            popTransitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith
+                                        fadeOut(animationSpec = tween(250))
+                            },
+                            predictivePopTransitionSpec = { _ ->
+                                fadeIn(animationSpec = tween(300)) togetherWith
+                                        fadeOut(animationSpec = tween(250))
+                            },
+                            onBack = { backStack.removeLastOrNull() },
+                            entryProvider = entryProvider {
+                                entry<MainRouteBookshelf> {
+                                    BookshelfFragmentContent(
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+                                        onShowBookInfo = { name, author, bookUrl, origin, coverPath ->
+                                            backStack.add(
+                                                MainRouteBookInfo(
+                                                    name = name,
+                                                    author = author,
+                                                    bookUrl = bookUrl,
+                                                    origin = origin,
+                                                    coverPath = coverPath,
+                                                    sharedCoverKey = bookCoverSharedElementKey(bookUrl),
+                                                )
                                             )
-                                        }
-                                    }
+                                        },
+                                    )
+                                }
+
+                                entry<MainRouteBookInfo> { route ->
+                                    BookInfoRouteScreen(
+                                        bookUrl = route.bookUrl,
+                                        name = route.name,
+                                        author = route.author,
+                                        coverPath = route.coverPath,
+                                        onBack = { backStack.removeLastOrNull() },
+                                        onReadBook = { url, inShelf, _ ->
+                                            backStack.removeLastOrNull()
+                                            val intent = android.content.Intent(
+                                                requireContext(),
+                                                ReadBookActivity::class.java
+                                            ).apply {
+                                                putExtra("bookUrl", url)
+                                                putExtra("inBookshelf", inShelf)
+                                            }
+                                            readBookResult.launch(intent)
+                                        },
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+                                        sharedCoverKey = route.sharedCoverKey
+                                            ?: bookCoverSharedElementKey(route.bookUrl),
+                                    )
                                 }
                             }
-                        }
+                        )
                     }
                 }
             }

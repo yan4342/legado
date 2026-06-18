@@ -2,13 +2,14 @@
 
 package io.legado.app.ui.common.compose
 
+import android.graphics.Paint
+import android.graphics.Typeface
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,16 +26,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.widget.image.CoverImageView
+import io.legado.app.lib.theme.accentColor
+import io.legado.app.model.BookCover
 
 private const val SharedCoverRadiusCacheMaxSize = 256
 private val sharedCoverRadiusCache = mutableStateMapOf<String, Dp>()
@@ -42,6 +45,7 @@ private val sharedCoverRadiusCache = mutableStateMapOf<String, Dp>()
 /**
  * Compose 原生书籍封面组件，替代基于 AndroidView 的 BookCoverImage。
  * 支持 SharedTransitionScope 共享元素过渡动画。
+ * 在线封面未加载时，显示默认封面背景图 + 书名/作者文字覆盖层。
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -56,7 +60,6 @@ fun BookCoverCompose(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     sharedCoverKey: String? = null,
-    showLoadingPlaceholder: Boolean = true,
     showShadow: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -67,8 +70,6 @@ fun BookCoverCompose(
 
     // 参与共享元素过渡时，乐观假定在线封面已缓存命中，避免过渡动画中
     // 目标侧短暂显示默认封面再切换为在线封面造成的闪烁。
-    // hasEverLoadedSuccessfully 用于区分：封面确实缓存命中（应保持乐观状态）
-    // 与封面从未加载成功（应回退到默认封面）两种情况。
     var isOnlineCoverLoaded by remember(finalPath) {
         mutableStateOf(sharedCoverKey != null && finalPath != null)
     }
@@ -105,31 +106,17 @@ fun BookCoverCompose(
 
     val showDefaultCover = !isOnlineCoverLoaded
 
-    // 共享过渡缩放效果：进入侧从 0.85 平滑过渡到 1.0，源侧始终 1.0。
-    // 与共享元素的位置/大小 morphing 同步进行，无 snap、无回弹。
-    val transitionScale = if (isInSharedTransition) {
-        rememberSharedCoverTransitionScale(animatedVisibilityScope!!)
-    } else {
-        1f
-    }
-
     Box(
         modifier = modifier
             .then(sharedElementModifier)
             .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
-            // 始终使用相同底色，避免 isOnlineCoverLoaded 状态切换时
-            // 背景色跳变导致闪烁；在线封面图片加载完后完全覆盖此底色。
-            .graphicsLayer {
-                scaleX = transitionScale
-                scaleY = transitionScale
-            }
             .background(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                 shape,
             )
             .clip(shape)
     ) {
-        // Cover image — 无 placeholder，加载前保持透明让底层 CoverImageView 显现
+        // Online cover image — no placeholder, keeps transparent to let default cover show through
         if (finalPath != null) {
             val requestNoPlaceholder = remember(context, finalPath) {
                 ImageRequest.Builder(context)
@@ -149,8 +136,6 @@ fun BookCoverCompose(
                     hasEverLoadedSuccessfully = true
                 },
                 onError = {
-                    // 共享过渡中，如果曾经成功加载过（缓存命中），忽略短暂 onError；
-                    // 如果从未成功过（本地文件已丢失等真实失败），允许回退到默认封面
                     if (sharedCoverKey == null || !hasEverLoadedSuccessfully) {
                         isOnlineCoverLoaded = false
                     }
@@ -158,25 +143,16 @@ fun BookCoverCompose(
             )
         }
 
-        // Default cover: CoverImageView draws book name/author on default cover background.
+        // Default cover: BookCover.defaultDrawable background + text overlay
         if (showDefaultCover) {
-            AndroidView(
-                factory = { ctx ->
-                    io.legado.app.ui.widget.image.CoverImageView(ctx).apply {
-                        layoutParams = android.view.ViewGroup.LayoutParams(
-                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                        )
-                    }
-                },
-                update = { coverView ->
-                    val path = if (useDefaultCover) null else coverUrl
-                    // CoverImageView.load() 内部做了路径/文字去重，
-                    // 路径和文字都没变时跳过重新加载，不会触发 defaultCover=true 闪烁
-                    coverView.load(path, name, author)
-                },
+            AsyncImage(
+                model = BookCover.defaultDrawable,
+                contentDescription = null,
+                contentScale = contentScale,
                 modifier = Modifier.fillMaxSize(),
             )
+
+            CoverTextOverlay(name = name, author = author)
         }
     }
 }
@@ -220,36 +196,96 @@ private fun rememberSharedCoverTransitionRadius(
 }
 
 /**
- * 共享封面过渡中进入侧的缩放动画。
- * 过渡前 90% 保持 0.85，最后 10% 缩放至 1.0，消除到达终点才开始缩放的停顿感。
+ * 在默认封面上绘制书名/作者文字。
+ * 竖排布局：书名左侧，作者右侧，白色描边 + 主题色填充。
+ * 复刻 CoverImageView 的绘制行为。
  */
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun rememberSharedCoverTransitionScale(
-    animatedVisibilityScope: AnimatedVisibilityScope,
-): Float {
-    val transition = animatedVisibilityScope.transition
-    val animatedScale by transition.animateFloat(
-        transitionSpec = {
-            when {
-                initialState == EnterExitState.PreEnter && targetState == EnterExitState.Visible -> {
-                    keyframes {
-                        durationMillis = 300
-                        0.85f at 0
-                        0.85f at 270
-                        1f at 300
-                    }
-                }
-                else -> tween()
+private fun CoverTextOverlay(
+    name: String?,
+    author: String?,
+) {
+    val showName = BookCover.drawBookName
+    val showAuthor = BookCover.drawBookAuthor
+    if (!showName && !showAuthor) return
+
+    val context = LocalContext.current
+    val accentColorInt = try {
+        context.accentColor
+    } catch (_: Exception) {
+        Color(0xFF263238.toInt()).toArgb()
+    }
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val viewWidth = size.width
+        val viewHeight = size.height
+
+        if (showName && !name.isNullOrBlank()) {
+            val namePaint = Paint().apply {
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+                typeface = Typeface.DEFAULT_BOLD
+                textSize = viewWidth / 6f
             }
-        },
-        label = "book-cover-scale"
-    ) { state ->
-        when (state) {
-            EnterExitState.PreEnter -> 0.85f
-            EnterExitState.Visible -> 1f
-            EnterExitState.PostExit -> 1f
+            var startX = viewWidth * 0.16f
+            var startY = viewHeight * 0.16f
+            val fm = namePaint.fontMetrics
+            val charHeight = fm.bottom - fm.top
+
+            name.forEach { char ->
+                // White stroke
+                drawIntoCanvas { canvas ->
+                    val strokePaint = Paint(namePaint).apply {
+                        color = android.graphics.Color.WHITE
+                        style = Paint.Style.STROKE
+                        strokeWidth = namePaint.textSize / 5
+                    }
+                    canvas.nativeCanvas.drawText(char.toString(), startX, startY, strokePaint)
+                }
+                // Accent fill
+                drawIntoCanvas { canvas ->
+                    namePaint.color = accentColorInt
+                    namePaint.style = Paint.Style.FILL
+                    canvas.nativeCanvas.drawText(char.toString(), startX, startY, namePaint)
+                }
+                startY += charHeight
+                if (startY > viewHeight * 0.8f) {
+                    startX += namePaint.textSize * 1.2f
+                    startY = viewHeight * 0.2f
+                }
+            }
+        }
+
+        if (showAuthor && !author.isNullOrBlank()) {
+            val authorPaint = Paint().apply {
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+                textSize = viewWidth / 10f
+            }
+            val startX = viewWidth * 0.84f
+            val fm = authorPaint.fontMetrics
+            val charHeight = fm.bottom - fm.top
+            var startY = viewHeight * 0.16f - (author.length * charHeight)
+            startY = startY.coerceAtLeast(viewHeight * 0.2f)
+
+            author.forEach { char ->
+                // White stroke
+                drawIntoCanvas { canvas ->
+                    val strokePaint = Paint(authorPaint).apply {
+                        color = android.graphics.Color.WHITE
+                        style = Paint.Style.STROKE
+                        strokeWidth = authorPaint.textSize / 5
+                    }
+                    canvas.nativeCanvas.drawText(char.toString(), startX, startY, strokePaint)
+                }
+                // Accent fill
+                drawIntoCanvas { canvas ->
+                    authorPaint.color = accentColorInt
+                    authorPaint.style = Paint.Style.FILL
+                    canvas.nativeCanvas.drawText(char.toString(), startX, startY, authorPaint)
+                }
+                startY += charHeight
+            }
         }
     }
-    return animatedScale
 }

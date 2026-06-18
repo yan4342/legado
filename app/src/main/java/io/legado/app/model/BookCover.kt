@@ -98,6 +98,19 @@ object BookCover {
         false
     }
 
+    fun getRandomDefaultPath(
+        seed: Any? = null,
+        isNight: Boolean = AppConfig.isNightTheme,
+    ): String? {
+        val key = if (isNight) PreferKey.defaultCoverDark else PreferKey.defaultCover
+        val pathStr = appCtx.getPrefString(key)
+        if (pathStr.isNullOrBlank()) return null
+        val paths = pathStr.split(",").filter { it.isNotBlank() }
+        if (paths.isEmpty()) return null
+        val random = if (seed != null) kotlin.random.Random(seed.hashCode()) else kotlin.random.Random
+        return paths[random.nextInt(paths.size)]
+    }
+
     /**
      * 构建封面加载 ImageRequest（Coil 版）
      */

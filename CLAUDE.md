@@ -12,6 +12,9 @@ Legado (开源阅读) is an open-source Android e-book reader supporting custom 
 # Debug build
 ./gradlew assembleAppDebug
 
+# Kotlin compile only (fast check, no packaging)
+./gradlew :app:compileAppDebugKotlin
+
 # Release build (what CI uses)
 ./gradlew assembleAppRelease --build-cache --parallel --daemon --warning-mode all
 
@@ -38,7 +41,7 @@ The web module output is copied into `app/src/main/assets/web/vue/`.
 
 ## Architecture
 
-**MVVM** with AndroidViewModel + ViewBinding (no Jetpack Compose). XML layouts throughout. No DI framework (Dagger/Hilt/Koin) — ViewModels obtained via standard `viewModels()` delegates.
+**MVVM** with AndroidViewModel + ViewBinding, coexisting View (XML) and Jetpack Compose screens. No DI framework — ViewModels obtained via standard `viewModels()` delegates. Compose is the forward path: new screens (Bookshelf, BookInfo, ReadRecord) are Compose; legacy screens remain XML. Navigation uses `startActivity<T>()` extensions; no Navigation Compose.
 
 ### Key base classes (`io.legado.app.base`)
 - `BaseViewModel` — extends `AndroidViewModel`, provides `execute()`/`executeLazy()`/`submit()` coroutine helpers wrapping `Coroutine.async()` (custom coroutine wrapper in `help/coroutine/`)
@@ -88,15 +91,68 @@ The app uses a custom property-delegate-based ViewBinding system:
 
 ### Theme System
 
-Themes are applied at runtime via SharedPreferences (no XML themes.xml):
+Themes are applied at runtime via SharedPreferences. Architecture: user prefs → computation → memory cache → UI.
 
-- **Theme enum** (`constant/Theme.kt`): `Dark, Light, Auto, Transparent, EInk`
-- **ThemeStore** (`lib/theme/ThemeStore.kt`): Persists colors in SharedPreferences under `"app_themes"`. Builder pattern: `ThemeStore.editTheme(context).primaryColor(...).accentColor(...).apply()`
-- **ThemeConfig** (`help/config/ThemeConfig.kt`): High-level theme management. Reads day/night color prefs (`cPrimary`/`cNPrimary`, `cAccent`/`cNAccent`), pushes into ThemeStore. `applyDayNight()` applies theme + night mode + recreates
-- **MaterialValueHelper** (`lib/theme/MaterialValueHelper.kt`): Extension properties on `Context`/`Fragment`: `primaryColor`, `accentColor`, `backgroundColor`, `bottomBackground`, `isDarkTheme`, `elevation`, `filletBackground`
-- **TintHelper** (`lib/theme/TintHelper.kt`): Comprehensive tinting for all standard widgets
-- **Selector** (`lib/theme/Selector.kt`): Builder for `StateListDrawable` and `ColorStateList`
-- **Theme views** (`lib/theme/view/`): Auto-tinting widgets — `ThemeCheckBox`, `ThemeSwitch`, `ThemeEditText`, `ThemeSeekBar`, `ThemeRadioButton`, `ThemeProgressBar`, `ThemeBottomNavigationVIew`. All call `applyTint(context.accentColor)` in init
+**Storage**: User colors stored in default SharedPreferences under `PreferKey` keys (`cPrimary`/`cNPrimary`, `cAccent`/`cNAccent`, etc. — day/night pairs). Computed output persisted in `"app_themes"` SharedPreferences via ThemeStore.
+
+**Computation (`help/config/ThemeConfig.kt`)**: `applyTheme()` reads user prefs → validates light/dark background → calls `M3ColorHelper.computeTokens()` to derive 10 Material 3 tokens → writes all 20+ colors to ThemeStore SP and caches in memory.
+
+**Memory cache (`lib/theme/ThemeColors.kt`)**: Immutable data class holding all 20+ runtime colors. `ThemeStore.readAllColors()` reads SP once; `ThemeStore.getColors()` returns cached instance. `invalidateColors()` called on theme change. All `ThemeStore.xxx()` companion getters delegate to cache instead of reading SP every time.
+
+**Reactive source (`lib/theme/ThemeManager.kt`)**: `StateFlow<ThemeColors>` for Compose. `ThemeManager.refresh()` invalidates cache + pushes new snapshot. Called from `ThemeConfig.applyDayNightInit()` (startup) and `applyDayNight()` (user changes).
+
+**View consumption (`lib/theme/MaterialValueHelper.kt`)**: Extension properties on `Context`/`Fragment` — `primaryColor`, `accentColor`, `backgroundColor`, `bottomBackground`, `cardBackgroundColor`, `popupBackgroundColor`, M3 tokens, plus `isDarkTheme`, `elevation`, `filletBackground`. All delegate to `ThemeStore` getters (now cached).
+
+**Compose consumption (`ui/common/compose/LegadoTheme.kt`)**: `rememberLegadoColorScheme()` reads from `ThemeManager.colors.collectAsState()`. Three special composables bypass ColorScheme for user-customizable overrides: `legadoCardBackgroundColor()`, `legadoPopupBackgroundColor()`, `legadoPopupPrimaryTextColor()`.
+
+**Version migration**: `ThemeConfig.THEME_CONFIG_VERSION` constant. `migrateIfNeeded()` calls `ThemeStore.isConfigured(context, version)` — when version increments, old SP data is transparently recomputed. Current version: 1.
+
+**Widget tinting**: `TintHelper` dispatches per-widget-type tint; `ThemeCheckBox`/`ThemeSwitch`/etc. auto-tint in init. `MenuExtensions.applyTint()`, `DialogExtensions.applyTint()`, `PopupThemeApplier` (reflection-based popup theming).
+
+**Theme flow**: User picks color → `ColorPreference` persists to PreferKey SP → `ThemeConfigFragment` detects change → `ThemeConfig.applyTheme()` → `ThemeManager.refresh()` → invalidates cache → `postEvent(RECREATE)` → all Activities recreate. At startup: `App.onCreate()` → `applyDayNightInit()` → same path without RECREATE.
+
+### Compose Patterns
+
+31 Compose files under `ui/`. Compose is used for new screens and shared components; legacy View system still handles reading, settings, and most dialogs.
+
+**Entry point pattern**: Fragment overrides `onCreateView()` to return a `ComposeView`. Fragment holds `MutableStateFlow` fields for reactive state, passes data as parameters to a stateless `@Composable` function. No ViewModel — data is read from `appDb` directly and sorted/filtered in the Fragment.
+
+```kotlin
+class BookshelfComposeFragment : BaseBookshelfFragment(0) {
+    private val sortVersionFlow = MutableStateFlow(0)
+    private val isRefreshingFlow = MutableStateFlow(false)
+
+    override fun onCreateView(inflater, container, savedInstanceState): View {
+        return ComposeView(requireContext()).apply {
+            setContent {
+                LegadoTheme {
+                    BookshelfScreen(
+                        groups = groups,
+                        books = sortBooks(books),
+                        // ... 20+ callbacks and state values
+                    )
+                }
+            }
+        }
+    }
+}
+```
+
+**Theme wrapping**: Every Compose root must be wrapped in `LegadoTheme { ... }`. For nested overlays (dropdowns, bottom sheets, alert dialogs) that need their own `MaterialExpressiveTheme` window, call `rememberLegadoColorScheme()` directly and create a separate theme scope:
+
+```kotlin
+// In RoundDropdownMenu, ModalLegadoBottomSheet, LegadoAlertDialog, etc.
+val colorScheme = rememberLegadoColorScheme()
+MaterialExpressiveTheme(colorScheme = colorScheme) {
+    // popup content
+}
+```
+
+**Colors**: `MaterialTheme.colorScheme.*` for standard colors. `legadoCardBackgroundColor()`/`legadoPopupBackgroundColor()` for user-customizable overrides (reads from `PreferKey.cCardBg`/`cNCardBg`).
+
+**View→Compose bridge**: `ComposeDropdownAnchor` wraps a `Spinner`/`EditText` and manages a `PopupWindow` containing a `RoundDropdownMenu` — enables mixing Compose dropdowns in View-based layouts. `LegadoSheetDialog`/`LegadoContentSheet` wrap Compose content in `DialogFragment` for bottom sheets.
+
+**E-Ink**: Compose screens check `AppConfig.isEInkMode` inline. `LegadoTheme` disables `LocalAnimationsEnabled` and switches to `MotionScheme.standard()` in E-Ink mode.
 
 ### Activity/Fragment Patterns
 
