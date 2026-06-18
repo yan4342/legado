@@ -17,7 +17,8 @@ import io.legado.app.data.entities.Book
 import io.legado.app.databinding.ActivityChapterListBinding
 import io.legado.app.help.book.isLocalTxt
 import io.legado.app.help.config.AppConfig
-import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.colorOnSurface
+import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.model.ReadBook
 import io.legado.app.utils.showLogSheet
@@ -55,7 +56,8 @@ class TocActivity : VMBaseActivity<ActivityChapterListBinding, TocViewModel>(),
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         tabLayout = binding.titleBar.findViewById(R.id.tab_layout)
         tabLayout.isTabIndicatorFullWidth = false
-        tabLayout.setSelectedTabIndicatorColor(accentColor)
+        tabLayout.setSelectedTabIndicatorColor(primaryColor)
+        tabLayout.setTabTextColors(colorOnSurface, primaryColor)
         binding.viewPager.adapter = TabFragmentPageAdapter()
         tabLayout.setupWithViewPager(binding.viewPager)
         tabLayout.tabGravity = TabLayout.GRAVITY_CENTER

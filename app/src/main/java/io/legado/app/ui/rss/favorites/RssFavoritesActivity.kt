@@ -16,7 +16,8 @@ import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.databinding.ActivityRssFavoritesBinding
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.colorOnSurface
+import io.legado.app.lib.theme.primaryColor
 import io.legado.app.utils.gone
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
@@ -81,7 +82,8 @@ class RssFavoritesActivity : BaseActivity<ActivityRssFavoritesBinding>() {
 
         })
         binding.tabLayout.setupWithViewPager(binding.viewPager)
-        binding.tabLayout.setSelectedTabIndicatorColor(accentColor)
+        binding.tabLayout.setSelectedTabIndicatorColor(primaryColor)
+        binding.tabLayout.setTabTextColors(colorOnSurface, primaryColor)
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {

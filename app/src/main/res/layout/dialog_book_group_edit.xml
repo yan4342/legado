@@ -24,14 +24,12 @@
         android:layout_height="wrap_content"
         android:background="@color/background_menu">
 
-        <io.legado.app.ui.widget.image.CoverImageView
+        <androidx.compose.ui.platform.ComposeView
             android:id="@+id/iv_cover"
             android:layout_width="90dp"
             android:layout_height="126dp"
             android:layout_margin="6dp"
             android:contentDescription="@string/img_cover"
-            android:scaleType="centerCrop"
-            android:src="@drawable/image_cover_default"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintTop_toTopOf="parent"

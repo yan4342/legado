@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.coil.LegadoFetcher
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.model.BookCover
 
@@ -61,6 +62,8 @@ fun BookCoverCompose(
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     sharedCoverKey: String? = null,
     showShadow: Boolean = false,
+    loadOnlyWifi: Boolean = false,
+    sourceOrigin: String? = null,
 ) {
     val context = LocalContext.current
     val useDefaultCover = coverUrl.isNullOrBlank()
@@ -118,11 +121,14 @@ fun BookCoverCompose(
     ) {
         // Online cover image — no placeholder, keeps transparent to let default cover show through
         if (finalPath != null) {
-            val requestNoPlaceholder = remember(context, finalPath) {
+            val requestNoPlaceholder = remember(context, finalPath, loadOnlyWifi, sourceOrigin) {
                 ImageRequest.Builder(context)
                     .data(finalPath)
                     .apply {
-                        extras[io.legado.app.help.coil.LegadoFetcher.loadOnlyWifiKey] = false
+                        extras[LegadoFetcher.loadOnlyWifiKey] = loadOnlyWifi
+                        if (sourceOrigin != null) {
+                            extras[LegadoFetcher.sourceOriginKey] = sourceOrigin
+                        }
                     }
                     .build()
             }

@@ -3,6 +3,9 @@ package io.legado.app.ui.book.group
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.viewModels
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
@@ -10,6 +13,7 @@ import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.DialogBookGroupEditBinding
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.ui.common.compose.BookCoverCompose
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
@@ -36,6 +40,7 @@ class GroupEditDialog() : BaseDialogFragment(R.layout.dialog_book_group_edit) {
     private val binding by viewBinding(DialogBookGroupEditBinding::bind)
     private val viewModel by viewModels<GroupViewModel>()
     private var bookGroup: BookGroup? = null
+    private var selectedCoverPath: String? = null
     private val selectImage = registerForActivityResult(HandleFileContract()) {
         it.uri ?: return@registerForActivityResult
         readUri(it.uri) { fileDoc, inputStream ->
@@ -49,7 +54,8 @@ class GroupEditDialog() : BaseDialogFragment(R.layout.dialog_book_group_edit) {
                 FileOutputStream(file).use { outputStream ->
                     inputStream.copyTo(outputStream)
                 }
-                binding.ivCover.load(file.absolutePath)
+                selectedCoverPath = file.absolutePath
+                updateCover()
             } catch (e: Exception) {
                 appCtx.toastOnUi(e.localizedMessage)
             }
@@ -68,7 +74,8 @@ class GroupEditDialog() : BaseDialogFragment(R.layout.dialog_book_group_edit) {
         bookGroup?.let {
             binding.btnDelete.visible(it.groupId > 0 || it.groupId == Long.MIN_VALUE)
             binding.tieGroupName.setText(it.groupName)
-            binding.ivCover.load(it.cover)
+            selectedCoverPath = it.cover
+            updateCover()
             if (it.bookSort + 1 !in 0..<binding.spSort.count) {
                 it.bookSort = -1
             }
@@ -77,10 +84,11 @@ class GroupEditDialog() : BaseDialogFragment(R.layout.dialog_book_group_edit) {
         } ?: let {
             binding.toolBar.title = getString(R.string.add_group)
             binding.btnDelete.gone()
-            binding.ivCover.load()
+            selectedCoverPath = null
+            updateCover()
         }
         binding.run {
-            ivCover.onClick {
+            ivCover.setOnClickListener {
                 selectImage.launch {
                     mode = HandleFileContract.IMAGE
                 }
@@ -94,7 +102,7 @@ class GroupEditDialog() : BaseDialogFragment(R.layout.dialog_book_group_edit) {
                     toastOnUi("分组名称不能为空")
                 } else {
                     val bookSort = binding.spSort.selectedItemPosition - 1
-                    val coverPath = binding.ivCover.bitmapPath
+                    val coverPath = selectedCoverPath
                     val enableRefresh = binding.cbEnableRefresh.isChecked
                     bookGroup?.let {
                         it.groupName = groupName
@@ -135,6 +143,17 @@ class GroupEditDialog() : BaseDialogFragment(R.layout.dialog_book_group_edit) {
                 ok.invoke()
             }
             noButton()
+        }
+    }
+
+    private fun updateCover() {
+        binding.ivCover.setContent {
+            BookCoverCompose(
+                coverUrl = selectedCoverPath,
+                name = "",
+                author = "",
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 

@@ -15,8 +15,8 @@ import io.legado.app.databinding.ActivityRssSourceEditBinding
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.colorOnSurface
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.login.SourceLoginActivity
@@ -174,7 +174,8 @@ class RssSourceEditActivity :
         binding.recyclerView.setEdgeEffectColor(primaryColor)
         binding.recyclerView.adapter = adapter
         binding.tabLayout.setBackgroundColor(backgroundColor)
-        binding.tabLayout.setSelectedTabIndicatorColor(accentColor)
+        binding.tabLayout.setSelectedTabIndicatorColor(primaryColor)
+        binding.tabLayout.setTabTextColors(colorOnSurface, primaryColor)
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabReselected(tab: TabLayout.Tab?) {
 

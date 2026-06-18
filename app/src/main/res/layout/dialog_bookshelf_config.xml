@@ -89,31 +89,31 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/layout_list"
                 tools:ignore="TouchTargetSizeCheck" />
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/layout_grid3"
                 tools:ignore="TouchTargetSizeCheck" />
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/layout_grid4"
                 tools:ignore="TouchTargetSizeCheck" />
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/layout_grid5"
                 tools:ignore="TouchTargetSizeCheck" />
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/layout_grid6"
@@ -144,37 +144,37 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/bookshelf_px_0"
                 tools:ignore="TouchTargetSizeCheck" />
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/bookshelf_px_1"
                 tools:ignore="TouchTargetSizeCheck" />
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/bookshelf_px_2"
                 tools:ignore="TouchTargetSizeCheck" />
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/bookshelf_px_3"
                 tools:ignore="TouchTargetSizeCheck" />
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/bookshelf_px_4"
                 tools:ignore="TouchTargetSizeCheck" />
 
-            <RadioButton
+            <io.legado.app.lib.theme.view.ThemeRadioButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/bookshelf_px_5"

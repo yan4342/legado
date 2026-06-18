@@ -5,6 +5,9 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.WindowInsetsCompat
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
@@ -21,6 +24,7 @@ import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.removeType
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.changecover.ChangeCoverDialog
+import io.legado.app.ui.common.compose.BookCoverCompose
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
@@ -116,8 +120,16 @@ class BookInfoEditActivity :
     }
 
     private fun upCover() {
-        viewModel.book?.let {
-            binding.ivCover.load(it.getDisplayCover(), it.name, it.author, false, it.origin)
+        viewModel.book?.let { book ->
+            binding.ivCover.setContent {
+                BookCoverCompose(
+                    coverUrl = book.getDisplayCover(),
+                    name = book.name,
+                    author = book.author,
+                    sourceOrigin = book.origin,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
 

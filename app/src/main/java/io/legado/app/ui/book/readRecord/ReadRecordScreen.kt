@@ -69,7 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.common.compose.BookCoverImage
+import io.legado.app.ui.common.compose.BookCoverCompose
 import io.legado.app.ui.common.compose.LocalAnimationsEnabled
 import io.legado.app.ui.common.compose.RoundDropdownMenu
 import io.legado.app.ui.common.compose.RoundDropdownMenuItem
@@ -362,8 +362,8 @@ private fun BookStackView(covers: List<BookReadRecordItem>) {
                 shape = RoundedCornerShape(4.dp),
                 color = Color.Transparent,
             ) {
-                BookCoverImage(item.coverPath, item.bookName, item.author,
-                    Modifier.width(44.dp), compact = true)
+                BookCoverCompose(coverUrl = item.coverPath, name = item.bookName, author = item.author,
+                    modifier = Modifier.width(44.dp), compact = true)
             }
         }
     }
@@ -391,7 +391,8 @@ private fun BookItem(
         shape = RoundedCornerShape(12.dp), color = cardBg, shadowElevation = 0.dp,
     ) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            BookCoverImage(item.coverPath, item.bookName, item.author, Modifier.size(48.dp, 64.dp), compact = true)
+            BookCoverCompose(coverUrl = item.coverPath, name = item.bookName, author = item.author,
+                modifier = Modifier.size(48.dp, 64.dp), compact = true)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(item.bookName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)

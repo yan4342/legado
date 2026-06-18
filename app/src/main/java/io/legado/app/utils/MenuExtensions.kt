@@ -14,6 +14,7 @@ import androidx.appcompat.view.menu.SubMenuBuilder
 import androidx.core.view.forEach
 import io.legado.app.R
 import io.legado.app.constant.Theme
+import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
 import java.lang.reflect.Method
 
@@ -25,11 +26,16 @@ fun Menu.applyTint(context: Context, theme: Theme = Theme.Auto): Menu = this.let
     }
     val defaultTextColor = context.getCompatColor(R.color.primaryText)
     val tintColor = MenuExtensions.getMenuColor(context, theme)
+    val checkColor = context.primaryColor
     menu.forEach { item ->
         (item as MenuItemImpl).let { impl ->
-            //overflow：展开的item
+            //overflow：展开的item，勾选标记用 primaryColor，普通图标用 defaultTextColor
             impl.icon?.setTintMutate(
-                if (impl.requiresOverflow()) defaultTextColor else tintColor
+                if (impl.requiresOverflow()) {
+                    if (impl.isCheckable) checkColor else defaultTextColor
+                } else {
+                    tintColor
+                }
             )
         }
     }
@@ -41,6 +47,7 @@ fun Menu.applyOpenTint(context: Context) {
     //展开菜单显示图标
     if (this.javaClass.simpleName.equals("MenuBuilder", ignoreCase = true)) {
         val defaultTextColor = context.getCompatColor(R.color.primaryText)
+        val checkColor = context.primaryColor
         kotlin.runCatching {
             var method: Method =
                 this.javaClass.getDeclaredMethod("setOptionalIconsVisible", java.lang.Boolean.TYPE)
@@ -51,15 +58,18 @@ fun Menu.applyOpenTint(context: Context) {
             if (menuItems is ArrayList<*>) {
                 for (menuItem in menuItems) {
                     if (menuItem is MenuItem) {
-                        menuItem.icon?.setTintMutate(defaultTextColor)
+                        val color = if (menuItem.isCheckable) checkColor else defaultTextColor
+                        menuItem.icon?.setTintMutate(color)
                     }
                 }
             }
         }
     } else if (this.javaClass.simpleName.equals("SubMenuBuilder", ignoreCase = true)) {
         val defaultTextColor = context.getCompatColor(R.color.primaryText)
+        val checkColor = context.primaryColor
         (this as? SubMenuBuilder)?.forEach { item: MenuItem ->
-            item.icon?.setTintMutate(defaultTextColor)
+            val color = if (item.isCheckable) checkColor else defaultTextColor
+            item.icon?.setTintMutate(color)
         }
     }
 }
