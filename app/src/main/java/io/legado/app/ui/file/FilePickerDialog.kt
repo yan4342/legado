@@ -19,12 +19,11 @@ import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.databinding.DialogFileChooserBinding
 import io.legado.app.databinding.ItemFilePickerBinding
 import io.legado.app.databinding.ItemPathPickerBinding
 import io.legado.app.help.config.AppConfig
-import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.getPrimaryDisabledTextColor
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.primaryColor
@@ -133,21 +132,17 @@ class FilePickerDialog : BaseDialogFragment(R.layout.dialog_file_chooser),
 
     override fun onMenuItemClick(item: MenuItem?): Boolean {
         when (item?.itemId) {
-            R.id.menu_create -> alert(R.string.create_folder) {
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = "文件夹名"
-                }
-                customView { alertBinding.root }
-                okButton {
-                    val text = alertBinding.editView.text?.toString()
-                    if (text.isNullOrBlank()) {
+            R.id.menu_create -> showM3EditDialog(
+                title = getString(R.string.create_folder),
+                hint = "文件夹名",
+                onConfirm = { text ->
+                    if (text.isBlank()) {
                         toastOnUi("文件夹名不能为空")
                     } else {
                         viewModel.createFolder(text.trim())
                     }
-                }
-                cancelButton()
-            }
+                },
+            )
         }
         return true
     }

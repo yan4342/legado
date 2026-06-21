@@ -23,7 +23,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.ActivityCacheBookBinding
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.databinding.DialogSelectSectionExportBinding
 import io.legado.app.help.book.getExportFileName
 import io.legado.app.help.book.isAudio
@@ -611,19 +611,14 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
 
     @SuppressLint("SetTextI18n")
     private fun alertExportFileName() {
-        alert(R.string.export_file_name) {
-            val message = "Variable: name, author."
-            setMessage(message)
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "file name js"
-                editView.setText(AppConfig.bookExportFileName)
-            }
-            customView { alertBinding.root }
-            okButton {
-                AppConfig.bookExportFileName = alertBinding.editView.text?.toString()
-            }
-            cancelButton()
-        }
+        showM3EditDialog(
+            title = getString(R.string.export_file_name),
+            initialValue = AppConfig.bookExportFileName ?: "",
+            hint = "file name js",
+            onConfirm = { value ->
+                AppConfig.bookExportFileName = value
+            },
+        )
     }
 
     private fun getTypeName(): String {
@@ -639,18 +634,15 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
     }
 
     private fun showCharsetConfig() {
-        alert(R.string.set_charset) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "charset name"
-                editView.setFilterValues(charsets)
-                editView.setText(AppConfig.exportCharset)
-            }
-            customView { alertBinding.root }
-            okButton {
-                AppConfig.exportCharset = alertBinding.editView.text?.toString() ?: "UTF-8"
-            }
-            cancelButton()
-        }
+        showM3EditDialog(
+            title = getString(R.string.set_charset),
+            initialValue = AppConfig.exportCharset,
+            hint = "charset name",
+            suggestions = charsets,
+            onConfirm = { value ->
+                AppConfig.exportCharset = value.ifEmpty { "UTF-8" }
+            },
+        )
     }
 
     private fun sureCacheBook(action: () -> Unit) {

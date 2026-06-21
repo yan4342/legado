@@ -17,13 +17,12 @@ import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.HttpTTS
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.databinding.DialogRecyclerViewBinding
 import io.legado.app.databinding.ItemHttpTtsBinding
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.SelectItem
-import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
@@ -71,19 +70,14 @@ class SpeakEngineDialog() : BaseDialogFragment(R.layout.dialog_recycler_view),
     }
     private val exportDirResult = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
-            alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = getString(R.string.path)
-                    editView.setText(uri.toString())
-                }
-                customView { alertBinding.root }
-                okButton {
+            showM3EditDialog(
+                titleRes = R.string.export_success,
+                initialValue = uri.toString(),
+                hintRes = R.string.path,
+                onConfirm = {
                     requireContext().sendToClip(uri.toString())
-                }
-            }
+                },
+            )
         }
     }
 
@@ -204,26 +198,18 @@ class SpeakEngineDialog() : BaseDialogFragment(R.layout.dialog_recycler_view),
             .getAsString(ttsUrlKey)
             ?.splitNotBlank(",")
             ?.toMutableList() ?: mutableListOf()
-        alert(R.string.import_on_line) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "url"
-                editView.setFilterValues(cacheUrls)
-                editView.delCallBack = {
-                    cacheUrls.remove(it)
+        showM3EditDialog(
+            title = getString(R.string.import_on_line),
+            hint = "url",
+            suggestions = cacheUrls,
+            onConfirm = { url ->
+                if (url.isAbsUrl() && !cacheUrls.contains(url)) {
+                    cacheUrls.add(0, url)
                     aCache.put(ttsUrlKey, cacheUrls.joinToString(","))
                 }
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let { url ->
-                    if (url.isAbsUrl() && !cacheUrls.contains(url)) {
-                        cacheUrls.add(0, url)
-                        aCache.put(ttsUrlKey, cacheUrls.joinToString(","))
-                    }
-                    showDialogFragment(ImportHttpTtsDialog(url))
-                }
-            }
-        }
+                showDialogFragment(ImportHttpTtsDialog(url))
+            },
+        )
     }
 
     private fun upTts(tts: String) {

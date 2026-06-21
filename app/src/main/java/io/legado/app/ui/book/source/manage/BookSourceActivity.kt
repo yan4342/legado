@@ -25,7 +25,7 @@ import io.legado.app.data.AppDatabase
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.databinding.ActivityBookSourceBinding
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.lib.dialogs.alert
@@ -114,19 +114,14 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
     }
     private val exportDir = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
-            alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = getString(R.string.path)
-                    editView.setText(uri.toString())
-                }
-                customView { alertBinding.root }
-                okButton {
+            showM3EditDialog(
+                titleRes = R.string.export_success,
+                initialValue = uri.toString(),
+                hintRes = R.string.path,
+                onConfirm = {
                     sendToClip(uri.toString())
-                }
-            }
+                },
+            )
         }
     }
     private val groupMenuLifecycleOwner = object : LifecycleOwner {
@@ -496,18 +491,14 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
 
     @SuppressLint("InflateParams")
     private fun checkSource() {
-        val dialog = alert(titleResource = R.string.search_book_key) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "search word"
-                editView.setText(CheckSource.keyword)
-            }
-            customView { alertBinding.root }
-            okButton {
+        showM3EditDialog(
+            title = getString(R.string.search_book_key),
+            initialValue = CheckSource.keyword,
+            hint = "search word",
+            onConfirm = { value ->
                 keepScreenOn(true)
-                alertBinding.editView.text?.toString()?.let {
-                    if (it.isNotEmpty()) {
-                        CheckSource.keyword = it
-                    }
+                if (value.isNotEmpty()) {
+                    CheckSource.keyword = value
                 }
                 val selectItems = adapter.selection
                 CheckSource.start(this@BookSourceActivity, selectItems)
@@ -516,14 +507,12 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
                 val lastItem = adapterItems.indexOf(selectItems.lastOrNull())
                 Debug.isChecking = firstItem >= 0 && lastItem >= 0
                 startCheckMessageRefreshJob(firstItem, lastItem)
-            }
-            neutralButton(R.string.check_source_config)
-            cancelButton()
-        }
-        //手动设置监听 避免点击打开校验设置后对话框关闭
-        dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
-            showDialogFragment<CheckSourceConfig>()
-        }
+            },
+            neutralButtonText = getString(R.string.check_source_config),
+            onNeutralClick = {
+                showDialogFragment<CheckSourceConfig>()
+            },
+        )
     }
 
     private fun resumeCheckSource() {
@@ -537,42 +526,30 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
 
     @SuppressLint("InflateParams")
     private fun selectionAddToGroups() {
-        alert(titleResource = R.string.add_group) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.setHint(R.string.group_name)
-                editView.setFilterValues(groups.toList())
-                editView.dropDownHeight = 180.dpToPx()
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let {
-                    if (it.isNotEmpty()) {
-                        viewModel.selectionAddToGroups(adapter.selection, it)
-                    }
+        showM3EditDialog(
+            titleRes = R.string.add_group,
+            hintRes = R.string.group_name,
+            suggestions = groups.toList(),
+            onConfirm = { value ->
+                if (value.isNotEmpty()) {
+                    viewModel.selectionAddToGroups(adapter.selection, value)
                 }
-            }
-            cancelButton()
-        }
+            },
+        )
     }
 
     @SuppressLint("InflateParams")
     private fun selectionRemoveFromGroups() {
-        alert(titleResource = R.string.remove_group) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.setHint(R.string.group_name)
-                editView.setFilterValues(groups.toList())
-                editView.dropDownHeight = 180.dpToPx()
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let {
-                    if (it.isNotEmpty()) {
-                        viewModel.selectionRemoveFromGroups(adapter.selection, it)
-                    }
+        showM3EditDialog(
+            titleRes = R.string.remove_group,
+            hintRes = R.string.group_name,
+            suggestions = groups.toList(),
+            onConfirm = { value ->
+                if (value.isNotEmpty()) {
+                    viewModel.selectionRemoveFromGroups(adapter.selection, value)
                 }
-            }
-            cancelButton()
-        }
+            },
+        )
     }
 
     private fun upGroupMenu() = groupMenu?.transaction { menu ->
@@ -589,28 +566,18 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
             .getAsString(importRecordKey)
             ?.splitNotBlank(",")
             ?.toMutableList() ?: mutableListOf()
-        alert(titleResource = R.string.import_on_line) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "url"
-                editView.setFilterValues(cacheUrls)
-                editView.delCallBack = {
-                    cacheUrls.remove(it)
+        showM3EditDialog(
+            title = getString(R.string.import_on_line),
+            hint = "url",
+            suggestions = cacheUrls,
+            onConfirm = { text ->
+                if (text.isAbsUrl() && !cacheUrls.contains(text)) {
+                    cacheUrls.add(0, text)
                     aCache.put(importRecordKey, cacheUrls.joinToString(","))
                 }
-            }
-            customView { alertBinding.root }
-            okButton {
-                val text = alertBinding.editView.text?.toString()
-                text?.let {
-                    if (it.isAbsUrl() && !cacheUrls.contains(it)) {
-                        cacheUrls.add(0, it)
-                        aCache.put(importRecordKey, cacheUrls.joinToString(","))
-                    }
-                    showDialogFragment(ImportBookSourceDialog(it))
-                }
-            }
-            cancelButton()
-        }
+                showDialogFragment(ImportBookSourceDialog(text))
+            },
+        )
     }
 
     override fun observeLiveBus() {

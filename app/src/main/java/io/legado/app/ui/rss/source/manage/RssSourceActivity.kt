@@ -17,7 +17,7 @@ import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.RssSource
 import io.legado.app.databinding.ActivityRssSourceBinding
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
@@ -83,19 +83,14 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
     }
     private val exportResult = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
-            alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = getString(R.string.path)
-                    editView.setText(uri.toString())
-                }
-                customView { alertBinding.root }
-                okButton {
+            showM3EditDialog(
+                titleRes = R.string.export_success,
+                initialValue = uri.toString(),
+                hintRes = R.string.path,
+                onConfirm = {
                     sendToClip(uri.toString())
-                }
-            }
+                },
+            )
         }
     }
 
@@ -304,42 +299,30 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
 
     @SuppressLint("InflateParams")
     private fun selectionAddToGroups() {
-        alert(titleResource = R.string.add_group) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.setHint(R.string.group_name)
-                editView.setFilterValues(groups.toList())
-                editView.dropDownHeight = 180.dpToPx()
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let {
-                    if (it.isNotEmpty()) {
-                        viewModel.selectionAddToGroups(adapter.selection, it)
-                    }
+        showM3EditDialog(
+            titleRes = R.string.add_group,
+            hintRes = R.string.group_name,
+            suggestions = groups.toList(),
+            onConfirm = { value ->
+                if (value.isNotEmpty()) {
+                    viewModel.selectionAddToGroups(adapter.selection, value)
                 }
-            }
-            cancelButton()
-        }
+            },
+        )
     }
 
     @SuppressLint("InflateParams")
     private fun selectionRemoveFromGroups() {
-        alert(titleResource = R.string.remove_group) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.setHint(R.string.group_name)
-                editView.setFilterValues(groups.toList())
-                editView.dropDownHeight = 180.dpToPx()
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let {
-                    if (it.isNotEmpty()) {
-                        viewModel.selectionRemoveFromGroups(adapter.selection, it)
-                    }
+        showM3EditDialog(
+            titleRes = R.string.remove_group,
+            hintRes = R.string.group_name,
+            suggestions = groups.toList(),
+            onConfirm = { value ->
+                if (value.isNotEmpty()) {
+                    viewModel.selectionRemoveFromGroups(adapter.selection, value)
                 }
-            }
-            cancelButton()
-        }
+            },
+        )
     }
 
     override fun selectAll(selectAll: Boolean) {
@@ -427,30 +410,18 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
             .getAsString(importRecordKey)
             ?.splitNotBlank(",")
             ?.toMutableList() ?: mutableListOf()
-        alert(titleResource = R.string.import_on_line) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "url"
-                editView.setFilterValues(cacheUrls)
-                editView.delCallBack = {
-                    cacheUrls.remove(it)
+        showM3EditDialog(
+            title = getString(R.string.import_on_line),
+            hint = "url",
+            suggestions = cacheUrls,
+            onConfirm = { text ->
+                if (text.isAbsUrl() && !cacheUrls.contains(text)) {
+                    cacheUrls.add(0, text)
                     aCache.put(importRecordKey, cacheUrls.joinToString(","))
                 }
-            }
-            customView { alertBinding.root }
-            okButton {
-                val text = alertBinding.editView.text?.toString()
-                text?.let {
-                    if (it.isAbsUrl() && !cacheUrls.contains(it)) {
-                        cacheUrls.add(0, it)
-                        aCache.put(importRecordKey, cacheUrls.joinToString(","))
-                    }
-                    showDialogFragment(
-                        ImportRssSourceDialog(it)
-                    )
-                }
-            }
-            cancelButton()
-        }
+                showDialogFragment(ImportRssSourceDialog(text))
+            },
+        )
     }
 
     override fun del(source: RssSource) {

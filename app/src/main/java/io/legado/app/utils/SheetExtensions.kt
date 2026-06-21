@@ -3,6 +3,7 @@ package io.legado.app.utils
 import androidx.compose.runtime.Composable
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import io.legado.app.ui.common.compose.M3EditInputDialog
 import io.legado.app.ui.widget.dialog.LegadoCrashLogContent
 import io.legado.app.ui.widget.dialog.LegadoLogListContent
 import io.legado.app.ui.widget.dialog.LegadoMarkdownContent
@@ -116,6 +117,117 @@ fun Fragment.showCrashLogSheet() {
     showLegadoSheet { requestDismiss ->
         LegadoCrashLogContent(onDismiss = requestDismiss)
     }
+}
+
+// endregion
+
+// region M3 Edit Input Dialog
+
+/**
+ * 显示 MD3 风格输入弹窗。替代旧的 [io.legado.app.databinding.DialogEditTextBinding] 模式。
+ */
+fun FragmentActivity.showM3EditDialog(
+    title: String,
+    initialValue: String = "",
+    hint: String = "",
+    isPassword: Boolean = false,
+    singleLine: Boolean = true,
+    onConfirm: (String) -> Unit,
+    onDismiss: (() -> Unit)? = null,
+    neutralButtonText: String = "",
+    onNeutralClick: (() -> Unit)? = null,
+    suggestions: List<String> = emptyList(),
+) {
+    M3EditInputDialog.create(
+        title = title,
+        initialValue = initialValue,
+        hint = hint,
+        isPassword = isPassword,
+        singleLine = singleLine,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+        neutralButtonText = neutralButtonText,
+        onNeutralClick = onNeutralClick,
+        suggestions = suggestions,
+    ).show(supportFragmentManager, "M3EditInputDialog")
+}
+
+fun FragmentActivity.showM3EditDialog(
+    titleRes: Int,
+    initialValue: String = "",
+    hintRes: Int = 0,
+    isPassword: Boolean = false,
+    singleLine: Boolean = true,
+    onConfirm: (String) -> Unit,
+    onDismiss: (() -> Unit)? = null,
+    neutralButtonText: String = "",
+    onNeutralClick: (() -> Unit)? = null,
+    suggestions: List<String> = emptyList(),
+) {
+    M3EditInputDialog.create(
+        titleRes = titleRes,
+        initialValue = initialValue,
+        hintRes = hintRes,
+        isPassword = isPassword,
+        singleLine = singleLine,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+        neutralButtonText = neutralButtonText,
+        onNeutralClick = onNeutralClick,
+        suggestions = suggestions,
+    ).show(supportFragmentManager, "M3EditInputDialog")
+}
+
+fun Fragment.showM3EditDialog(
+    title: String,
+    initialValue: String = "",
+    hint: String = "",
+    isPassword: Boolean = false,
+    singleLine: Boolean = true,
+    onConfirm: (String) -> Unit,
+    onDismiss: (() -> Unit)? = null,
+    neutralButtonText: String = "",
+    onNeutralClick: (() -> Unit)? = null,
+    suggestions: List<String> = emptyList(),
+) {
+    M3EditInputDialog.create(
+        title = title,
+        initialValue = initialValue,
+        hint = hint,
+        isPassword = isPassword,
+        singleLine = singleLine,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+        neutralButtonText = neutralButtonText,
+        onNeutralClick = onNeutralClick,
+        suggestions = suggestions,
+    ).show(childFragmentManager, "M3EditInputDialog")
+}
+
+fun Fragment.showM3EditDialog(
+    titleRes: Int,
+    initialValue: String = "",
+    hintRes: Int = 0,
+    isPassword: Boolean = false,
+    singleLine: Boolean = true,
+    onConfirm: (String) -> Unit,
+    onDismiss: (() -> Unit)? = null,
+    neutralButtonText: String = "",
+    onNeutralClick: (() -> Unit)? = null,
+    suggestions: List<String> = emptyList(),
+) {
+    M3EditInputDialog.create(
+        titleRes = titleRes,
+        initialValue = initialValue,
+        hintRes = hintRes,
+        isPassword = isPassword,
+        singleLine = singleLine,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+        neutralButtonText = neutralButtonText,
+        onNeutralClick = onNeutralClick,
+        suggestions = suggestions,
+    ).show(childFragmentManager, "M3EditInputDialog")
 }
 
 // endregion

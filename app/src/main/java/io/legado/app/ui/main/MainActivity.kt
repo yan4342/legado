@@ -23,7 +23,7 @@ import io.legado.app.constant.AppConst.appInfo
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.ActivityMainBinding
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.config.AppConfig
@@ -238,28 +238,25 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     /**
      * 设置本地密码
      */
-    private suspend fun setLocalPassword() = suspendCancellableCoroutine sc@{ block ->
+    private suspend fun setLocalPassword() = suspendCancellableCoroutine { block ->
         if (LocalConfig.password != null) {
             block.resume(null)
-            return@sc
+            return@suspendCancellableCoroutine
         }
-        alert(R.string.set_local_password, R.string.set_local_password_summary) {
-            val editTextBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "password"
-            }
-            customView {
-                editTextBinding.root
-            }
-            onDismiss {
+        showM3EditDialog(
+            title = getString(R.string.set_local_password),
+            hint = "password",
+            isPassword = true,
+            onConfirm = { value ->
+                LocalConfig.password = value
+            },
+            onDismiss = {
+                if (LocalConfig.password == null) {
+                    LocalConfig.password = ""
+                }
                 block.resume(null)
-            }
-            okButton {
-                LocalConfig.password = editTextBinding.editView.text.toString()
-            }
-            cancelButton {
-                LocalConfig.password = ""
-            }
-        }
+            },
+        )
     }
 
     private fun notifyAppCrash() {

@@ -14,12 +14,11 @@ import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.databinding.DialogContentEditBinding
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.coroutine.Coroutine
-import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.ReadBook
 import io.legado.app.model.webBook.WebBook
@@ -97,13 +96,11 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
     }
 
     private fun editTitle(chapter: BookChapter) {
-        alert {
-            setTitle(R.string.edit)
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater)
-            alertBinding.editView.setText(chapter.title)
-            setCustomView(alertBinding.root)
-            okButton {
-                chapter.title = alertBinding.editView.text.toString()
+        showM3EditDialog(
+            titleRes = R.string.edit,
+            initialValue = chapter.title,
+            onConfirm = { value ->
+                chapter.title = value
                 lifecycleScope.launch {
                     withContext(IO) {
                         appDb.bookChapterDao.update(chapter)
@@ -111,8 +108,8 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                     binding.toolBar.title = chapter.getDisplayTitle()
                     ReadBook.loadContent(ReadBook.durChapterIndex, resetPageOffset = false)
                 }
-            }
-        }
+            },
+        )
     }
 
     override fun onCancel(dialog: DialogInterface) {

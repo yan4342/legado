@@ -16,9 +16,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.help.config.AppConfig
-import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.permission.Permissions
 import io.legado.app.lib.permission.PermissionsCompat
 import io.legado.app.lib.theme.backgroundColor
@@ -305,18 +304,14 @@ class ImportBookActivity : BaseImportBookActivity<ImportBookViewModel>(),
     }
 
     private fun alertImportFileName() {
-        alert(R.string.import_file_name) {
-            setMessage("""使用js处理文件名变量src，将书名作者分别赋值到变量name author""")
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "js"
-                editView.setText(AppConfig.bookImportFileName)
-            }
-            customView { alertBinding.root }
-            okButton {
-                AppConfig.bookImportFileName = alertBinding.editView.text?.toString()
-            }
-            cancelButton()
-        }
+        showM3EditDialog(
+            title = getString(R.string.import_file_name),
+            initialValue = AppConfig.bookImportFileName ?: "",
+            hint = "js",
+            onConfirm = { value ->
+                AppConfig.bookImportFileName = value
+            },
+        )
     }
 
     @Synchronized

@@ -19,7 +19,7 @@ import io.legado.app.constant.AppConst.charsets
 import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.ActivityBookReadBinding
 import io.legado.app.databinding.DialogDownloadChoiceBinding
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.databinding.DialogSimulatedReadingBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
@@ -344,20 +344,14 @@ abstract class BaseReadBookActivity :
     }
 
     fun showCharsetConfig() {
-        alert(R.string.set_charset) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "charset"
-                editView.setFilterValues(charsets)
-                editView.setText(ReadBook.book?.charset)
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let {
-                    ReadBook.setCharset(it)
-                }
-            }
-            cancelButton()
-        }
+        showM3EditDialog(
+            title = getString(R.string.set_charset),
+            initialValue = ReadBook.book?.charset ?: "",
+            hint = "charset",
+            onConfirm = { value ->
+                ReadBook.setCharset(value)
+            },
+        )
     }
 
     fun showPageAnimConfig(success: () -> Unit) {

@@ -367,15 +367,21 @@ fun LegadoLogListContent(
         onDismissRequest = { showDetail = null },
         title = "Log",
     ) {
-        Text(
-            text = showDetail ?: "",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            style = MaterialTheme.typography.bodySmall,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        SelectionContainer {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = showDetail ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
     }
 }
 
@@ -470,15 +476,21 @@ fun LegadoCrashLogContent(
         onDismissRequest = { crashViewModel.clearFileContent() },
         title = crashViewModel.currentFileName,
     ) {
-        Text(
-            text = fileContent ?: "",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            style = MaterialTheme.typography.bodySmall,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        SelectionContainer {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = fileContent ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
     }
 }
 

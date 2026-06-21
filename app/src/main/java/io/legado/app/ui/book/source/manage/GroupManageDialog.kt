@@ -15,10 +15,9 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.data.appDb
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.databinding.DialogRecyclerViewBinding
 import io.legado.app.databinding.ItemGroupManageBinding
-import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.widget.recycler.VerticalDivider
@@ -71,35 +70,27 @@ class GroupManageDialog : BaseDialogFragment(R.layout.dialog_recycler_view),
 
     @SuppressLint("InflateParams")
     private fun addGroup() {
-        alert(title = getString(R.string.add_group)) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.setHint(R.string.group_name)
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let {
-                    if (it.isNotBlank()) {
-                        viewModel.addGroup(it)
-                    }
+        showM3EditDialog(
+            titleRes = R.string.add_group,
+            hintRes = R.string.group_name,
+            onConfirm = { value ->
+                if (value.isNotBlank()) {
+                    viewModel.addGroup(value)
                 }
-            }
-            cancelButton()
-        }.requestInputMethod()
+            },
+        )
     }
 
     @SuppressLint("InflateParams")
     private fun editGroup(group: String) {
-        alert(title = getString(R.string.group_edit)) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.setHint(R.string.group_name)
-                editView.setText(group)
-            }
-            customView { alertBinding.root }
-            okButton {
-                viewModel.upGroup(group, alertBinding.editView.text?.toString())
-            }
-            cancelButton()
-        }.requestInputMethod()
+        showM3EditDialog(
+            titleRes = R.string.group_edit,
+            initialValue = group,
+            hintRes = R.string.group_name,
+            onConfirm = { value ->
+                viewModel.upGroup(group, value)
+            },
+        )
     }
 
     private inner class GroupAdapter(context: Context) :

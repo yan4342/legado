@@ -13,7 +13,7 @@ import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.AppLog
 import io.legado.app.databinding.ActivityTranslucenceBinding
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.help.IntentData
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
@@ -181,34 +181,29 @@ class HandleFileActivity :
     }
 
     private fun showInputDirectoryDialog() {
-        val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-            editView.hint = getString(R.string.enter_directory_path)
-        }
-
-        alert(getString(R.string.manual_input)) {
-            customView { alertBinding.root }
-            okButton {
-                val inputPath = alertBinding.editView.text.toString()
+        showM3EditDialog(
+            titleRes = R.string.manual_input,
+            hintRes = R.string.enter_directory_path,
+            onConfirm = { inputPath ->
                 if (inputPath.isBlank()) {
                     toastOnUi(getString(R.string.empty_directory_input))
-                    return@okButton
-                }
-                val file = File(inputPath)
-                if (file.exists() &&
-                    file.isDirectory &&
-                    isExternalStorage(file) &&
-                    file.checkWrite()
-                ) {
-                    onResult(Intent().setData(Uri.fromFile(file)))
                 } else {
-                    toastOnUi(getString(R.string.invalid_directory))
+                    val file = File(inputPath)
+                    if (file.exists() &&
+                        file.isDirectory &&
+                        isExternalStorage(file) &&
+                        file.checkWrite()
+                    ) {
+                        onResult(Intent().setData(Uri.fromFile(file)))
+                    } else {
+                        toastOnUi(getString(R.string.invalid_directory))
+                    }
                 }
-            }
-            onDismiss {
+            },
+            onDismiss = {
                 finish()
-            }
-            cancelButton()
-        }
+            },
+        )
     }
 
     private fun isExternalStorage(path: File): Boolean {

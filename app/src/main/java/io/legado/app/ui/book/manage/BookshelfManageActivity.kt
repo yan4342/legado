@@ -20,7 +20,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookSource
 import io.legado.app.databinding.ActivityArrangeBookBinding
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.book.contains
 import io.legado.app.help.book.isLocal
@@ -84,19 +84,14 @@ class BookshelfManageActivity :
     private val waitDialog by lazy { WaitDialog(this) }
     private val exportDir = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
-            alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = getString(R.string.path)
-                    editView.setText(uri.toString())
-                }
-                customView { alertBinding.root }
-                okButton {
+            showM3EditDialog(
+                titleRes = R.string.export_success,
+                initialValue = uri.toString(),
+                hintRes = R.string.path,
+                onConfirm = {
                     sendToClip(uri.toString())
-                }
-            }
+                },
+            )
         }
     }
 

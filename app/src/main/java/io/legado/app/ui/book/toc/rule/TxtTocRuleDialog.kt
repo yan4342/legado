@@ -19,7 +19,7 @@ import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.TxtTocRule
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.databinding.DialogTocRegexBinding
 import io.legado.app.databinding.ItemTocRegexBinding
 import io.legado.app.lib.dialogs.alert
@@ -168,28 +168,18 @@ class TxtTocRuleDialog() : BaseDialogFragment(R.layout.dialog_toc_regex),
         if (!cacheUrls.contains(defaultUrl)) {
             cacheUrls.add(0, defaultUrl)
         }
-        requireContext().alert(titleResource = R.string.import_on_line) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "url"
-                editView.setFilterValues(cacheUrls)
-                editView.delCallBack = {
-                    cacheUrls.remove(it)
+        showM3EditDialog(
+            title = getString(R.string.import_on_line),
+            hint = "url",
+            suggestions = cacheUrls,
+            onConfirm = { text ->
+                if (text.isAbsUrl() && !cacheUrls.contains(text)) {
+                    cacheUrls.add(0, text)
                     aCache.put(importTocRuleKey, cacheUrls.joinToString(","))
                 }
-            }
-            customView { alertBinding.root }
-            okButton {
-                val text = alertBinding.editView.text?.toString()
-                text?.let {
-                    if (it.isAbsUrl() && !cacheUrls.contains(it)) {
-                        cacheUrls.add(0, it)
-                        aCache.put(importTocRuleKey, cacheUrls.joinToString(","))
-                    }
-                    showDialogFragment(ImportTxtTocRuleDialog(it))
-                }
-            }
-            cancelButton()
-        }
+                showDialogFragment(ImportTxtTocRuleDialog(text))
+            },
+        )
     }
 
     inner class TocRegexAdapter(context: Context) :

@@ -18,7 +18,7 @@ import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.databinding.DialogReadBgTextBinding
 import io.legado.app.databinding.ItemBgImageBinding
 import io.legado.app.help.DefaultData
@@ -27,7 +27,6 @@ import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.http.newCallResponseBody
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.lib.dialogs.SelectItem
-import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.bottomSheetBackground
@@ -174,20 +173,15 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
     @SuppressLint("InflateParams")
     private fun initEvent() = with(ReadBookConfig.durConfig) {
         binding.ivEdit.setOnClickListener {
-            alert(R.string.style_name) {
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = "name"
-                    editView.setText(ReadBookConfig.durConfig.name)
-                }
-                customView { alertBinding.root }
-                okButton {
-                    alertBinding.editView.text?.toString()?.let {
-                        binding.tvName.text = it
-                        ReadBookConfig.durConfig.name = it
-                    }
-                }
-                cancelButton()
-            }
+            showM3EditDialog(
+                title = getString(R.string.style_name),
+                initialValue = ReadBookConfig.durConfig.name,
+                hint = "name",
+                onConfirm = { value ->
+                    binding.tvName.text = value
+                    ReadBookConfig.durConfig.name = value
+                },
+            )
         }
         binding.tvRestore.setOnClickListener {
             val defaultConfigs = DefaultData.readConfigs
@@ -332,16 +326,12 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
 
     @SuppressLint("InflateParams")
     private fun importNetConfigAlert() {
-        alert("输入地址") {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater)
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let { url ->
-                    importNetConfig(url)
-                }
-            }
-            cancelButton()
-        }
+        showM3EditDialog(
+            title = "输入地址",
+            onConfirm = { url ->
+                importNetConfig(url)
+            },
+        )
     }
 
     private fun importNetConfig(url: String) {

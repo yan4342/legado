@@ -14,7 +14,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.DialogBookshelfConfigBinding
-import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.utils.showM3EditDialog
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
@@ -58,19 +58,14 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
     }
     protected val exportResult = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
-            alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = getString(R.string.path)
-                    editView.setText(uri.toString())
-                }
-                customView { alertBinding.root }
-                okButton {
+            showM3EditDialog(
+                titleRes = R.string.export_success,
+                initialValue = uri.toString(),
+                hintRes = R.string.path,
+                onConfirm = {
                     requireContext().sendToClip(uri.toString())
-                }
-            }
+                },
+            )
         }
     }
     abstract val groupId: Long
@@ -146,20 +141,15 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
 
     @SuppressLint("InflateParams")
     fun showAddBookByUrlAlert() {
-        alert(titleResource = R.string.add_book_url) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "url"
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let {
-                    waitDialog.setText("添加中...")
-                    waitDialog.show()
-                    viewModel.addBookByUrl(it)
-                }
-            }
-            cancelButton()
-        }
+        showM3EditDialog(
+            title = getString(R.string.add_book_url),
+            hint = "url",
+            onConfirm = { value ->
+                waitDialog.setText("添加中...")
+                waitDialog.show()
+                viewModel.addBookByUrl(value)
+            },
+        )
     }
 
     @SuppressLint("InflateParams")
@@ -240,24 +230,20 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
 
 
     protected fun importBookshelfAlert(groupId: Long) {
-        alert(titleResource = R.string.import_bookshelf) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "url/json"
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let {
-                    viewModel.importBookshelf(it, groupId)
-                }
-            }
-            cancelButton()
-            neutralButton(R.string.select_file) {
+        showM3EditDialog(
+            title = getString(R.string.import_bookshelf),
+            hint = "url/json",
+            onConfirm = { value ->
+                viewModel.importBookshelf(value, groupId)
+            },
+            neutralButtonText = getString(R.string.select_file),
+            onNeutralClick = {
                 importBookshelf.launch {
                     mode = HandleFileContract.FILE
                     allowExtensions = arrayOf("txt", "json")
                 }
-            }
-        }
+            },
+        )
     }
 
 }
