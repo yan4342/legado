@@ -702,6 +702,7 @@
     <string name="view_toc">View Chapters</string>
     <string name="bar_elevation">Navigation bar shadow</string>
     <string name="bar_elevation_s">Current shadow size(elevation): %s</string>
+    <string name="restart_required">Takes effect after restart</string>
     <string name="btn_default_s">Default</string>
     <string name="main_menu">Main menu</string>
     <string name="request_permission">Tap to grant permission</string>

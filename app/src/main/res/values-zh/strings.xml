@@ -700,6 +700,7 @@
     <string name="view_toc">查看目录</string>
     <string name="bar_elevation">导航栏阴影</string>
     <string name="bar_elevation_s">当前阴影大小（elevation）：%s</string>
+    <string name="restart_required">重启后生效</string>
     <string name="btn_default_s">默认</string>
     <string name="main_menu">主菜单</string>
     <string name="request_permission">点击授予权限</string>

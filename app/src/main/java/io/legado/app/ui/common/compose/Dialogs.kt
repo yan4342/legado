@@ -1,5 +1,6 @@
 package io.legado.app.ui.common.compose
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -23,16 +27,26 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNot
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,26 +59,22 @@ fun NumberPickerDialog(
     onConfirm: (Int) -> Unit,
     defaultButton: @Composable (() -> Unit)? = null,
 ) {
-    var text by remember { mutableStateOf(value.toString()) }
+    var selectedValue by remember { mutableStateOf(value) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { t ->
-                    if (t.all { it.isDigit() || it == '-' }) text = t
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
+            WheelNumberPicker(
+                value = selectedValue,
+                onValueChange = { selectedValue = it },
+                minValue = minValue,
+                maxValue = maxValue,
                 modifier = Modifier.fillMaxWidth(),
             )
         },
         confirmButton = {
-            TextButton(onClick = {
-                val newValue = text.toIntOrNull()?.coerceIn(minValue, maxValue) ?: value
-                onConfirm(newValue)
-            }) {
+            TextButton(onClick = { onConfirm(selectedValue) }) {
                 Text(stringResource(android.R.string.ok))
             }
         },
@@ -77,8 +87,131 @@ fun NumberPickerDialog(
                     Text(stringResource(android.R.string.cancel))
                 }
             }
-        }
+        },
     )
+}
+
+@Composable
+private fun WheelNumberPicker(
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    minValue: Int,
+    maxValue: Int,
+    modifier: Modifier = Modifier,
+) {
+    val itemHeightDp = 44.dp
+    val visibleCount = 3
+    val halfVisible = visibleCount / 2
+    val density = LocalDensity.current
+    val itemHeightPx = with(density) { itemHeightDp.toPx() }
+
+    val items = remember(minValue, maxValue) {
+        (minValue..maxValue).toList()
+    }
+
+    val initialRealIndex = (value - minValue).coerceIn(0, items.lastIndex)
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = initialRealIndex
+    )
+
+    fun centerItemIndex(): Int {
+        if (listState.layoutInfo.viewportSize.height == 0) return halfVisible + initialRealIndex
+        val vpCenter = listState.layoutInfo.viewportSize.height / 2f
+        val offsetFromFirst = vpCenter + listState.firstVisibleItemScrollOffset
+        val raw = listState.firstVisibleItemIndex + (offsetFromFirst / itemHeightPx).toInt()
+        return raw.coerceIn(halfVisible, halfVisible + items.lastIndex)
+    }
+
+    val centerIndex by remember {
+        derivedStateOf { centerItemIndex() }
+    }
+
+    // Snap when user scrolling stops
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }
+            .filterNot { it }
+            .collectLatest {
+                val snapped = centerItemIndex()
+                val targetFirst = (snapped - halfVisible).coerceAtLeast(0)
+                val currentCenter = centerItemIndex()
+                if (snapped - halfVisible != currentCenter - halfVisible) {
+                    listState.animateScrollToItem(targetFirst, 0)
+                }
+                val realIndex = snapped - halfVisible
+                if (realIndex in items.indices && items[realIndex] != value) {
+                    onValueChange(items[realIndex])
+                }
+            }
+    }
+
+    // React to external value changes (e.g. default button)
+    LaunchedEffect(value) {
+        if (!listState.isScrollInProgress) {
+            val targetReal = (value - minValue).coerceIn(0, items.lastIndex)
+            val currentReal = centerItemIndex() - halfVisible
+            if (targetReal != currentReal) {
+                listState.animateScrollToItem(targetReal, 0)
+            }
+        }
+    }
+
+    val dividerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val selectedTextColor = MaterialTheme.colorScheme.onSurface
+    val unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+
+    Box(
+        modifier = modifier
+            .height(itemHeightDp * visibleCount)
+            .drawWithContent {
+                drawContent()
+                val dividerYTop = size.height / visibleCount * halfVisible
+                val dividerYBottom = size.height / visibleCount * (halfVisible + 1)
+                val insetPx = 56.dp.toPx()
+                drawLine(
+                    color = dividerColor,
+                    start = Offset(insetPx, dividerYTop),
+                    end = Offset(size.width - insetPx, dividerYTop),
+                    strokeWidth = 1.dp.toPx(),
+                )
+                drawLine(
+                    color = dividerColor,
+                    start = Offset(insetPx, dividerYBottom),
+                    end = Offset(size.width - insetPx, dividerYBottom),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            },
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            item { Spacer(Modifier.height(itemHeightDp * halfVisible)) }
+            itemsIndexed(items) { index, item ->
+                val isSelected = index + halfVisible == centerIndex
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(itemHeightDp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = item.toString(),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            textAlign = TextAlign.Center,
+                        ),
+                        color = if (isSelected) selectedTextColor else unselectedTextColor,
+                        fontSize = if (isSelected) {
+                            MaterialTheme.typography.titleLarge.fontSize
+                        } else {
+                            MaterialTheme.typography.bodyLarge.fontSize
+                        },
+                    )
+                }
+            }
+            item { Spacer(Modifier.height(itemHeightDp * halfVisible)) }
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -178,20 +311,11 @@ fun SimpleColorPickerDialog(
                     rows.forEach { rowColors ->
                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                             rowColors.forEach { color ->
-                                val borderModifier = if (color == Color.White) {
-                                    Modifier.size(28.dp).clip(CircleShape)
-                                } else {
-                                    Modifier
-                                }
                                 Surface(
                                     modifier = Modifier
                                         .size(28.dp)
                                         .clip(CircleShape)
-                                        .clickable { onConfirm(color) }
-                                        .then(
-                                            if (color == Color.White) Modifier.size(28.dp).clip(CircleShape)
-                                            else Modifier
-                                        ),
+                                        .clickable { onConfirm(color) },
                                     color = color,
                                     shape = CircleShape,
                                     tonalElevation = if (color == Color.White) 2.dp else 0.dp,

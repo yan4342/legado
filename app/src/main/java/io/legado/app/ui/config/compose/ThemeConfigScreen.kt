@@ -65,14 +65,12 @@ import io.legado.app.ui.common.compose.settingItem.ClickableSettingItem
 import io.legado.app.ui.common.compose.settingItem.ListSettingItem
 import io.legado.app.ui.common.compose.settingItem.SettingItem
 import io.legado.app.ui.common.compose.settingItem.SwitchSettingItem
-import io.legado.app.ui.config.ConfigActivity
-import io.legado.app.ui.config.ConfigTag
-import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.getCompatDrawable
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.putPrefString
@@ -260,6 +258,8 @@ fun ThemeConfigScreen(
     onThemeListClick: () -> Unit,
     onBgImageClick: (Boolean) -> Unit,
     onThemeModeToggle: () -> Unit = {},
+    onWelcomeStyleClick: () -> Unit = {},
+    onCoverConfigClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -278,6 +278,7 @@ fun ThemeConfigScreen(
     var fontScale by remember {
         mutableStateOf(context.getPrefInt(PreferKey.fontScale, 0))
     }
+    var numPicker by remember { mutableStateOf<NumPickerInfo?>(null) }
     var launcherIcon by remember {
         mutableStateOf(context.getPrefString(PreferKey.launcherIcon, "ic_launcher") ?: "ic_launcher")
     }
@@ -392,11 +393,7 @@ fun ThemeConfigScreen(
                         ClickableSettingItem(
                             title = stringResource(R.string.welcome_style),
                             description = stringResource(R.string.welcome_style_summary),
-                            onClick = {
-                                val intent = Intent(context, ConfigActivity::class.java)
-                                intent.putExtra("configTag", ConfigTag.WELCOME_CONFIG)
-                                context.startActivity(intent)
-                            },
+                            onClick = onWelcomeStyleClick,
                         )
                     
             // 3-4. switches
@@ -428,6 +425,7 @@ fun ThemeConfigScreen(
                             onCheckedChange = { v ->
                                 predictiveBack = v
                                 context.putPrefBoolean(PreferKey.predictiveBack, v)
+                                context.toastOnUi(context.getString(R.string.restart_required))
                             },
                         )
                     
@@ -437,22 +435,27 @@ fun ThemeConfigScreen(
                             title = stringResource(R.string.bar_elevation),
                             description = stringResource(R.string.bar_elevation_s, barElevation.toString()),
                             onClick = {
-                            NumberPickerDialog(context)
-                                .setTitle(context.getString(R.string.bar_elevation))
-                                .setMaxValue(32)
-                                .setMinValue(0)
-                                .setValue(barElevation)
-                                .setCustomButton(R.string.btn_default_s) {
-                                    AppConfig.elevation = AppConst.sysElevation
-                                    barElevation = AppConst.sysElevation
-                                    postEvent(EventBus.RECREATE, "")
-                                }
-                                .show { v ->
-                                    barElevation = v
-                                    AppConfig.elevation = v
-                                    postEvent(EventBus.RECREATE, "")
-                                }
-                        },
+                                numPicker = NumPickerInfo(
+                                    title = context.getString(R.string.bar_elevation),
+                                    value = barElevation,
+                                    min = 0,
+                                    max = 32,
+                                    onConfirm = { v ->
+                                        barElevation = v
+                                        AppConfig.elevation = v
+                                        context.toastOnUi(context.getString(R.string.restart_required))
+                                    },
+                                    defaultButton = {
+                                        TextButton(onClick = {
+                                            AppConfig.elevation = AppConst.sysElevation
+                                            barElevation = AppConst.sysElevation
+                                            numPicker = null
+                                        }) {
+                                            Text(stringResource(R.string.btn_default_s))
+                                        }
+                                    },
+                                )
+                            },
                         )
                     
             // 6. font scale
@@ -461,25 +464,30 @@ fun ThemeConfigScreen(
                             title = stringResource(R.string.font_scale),
                             description = stringResource(
                                 R.string.font_scale_summary,
-                                io.legado.app.base.AppContextWrapper.getFontScale(context),
+                                (if (fontScale == 0) 10 else fontScale) / 10f,
                             ),
                             onClick = {
-                            NumberPickerDialog(context)
-                                .setTitle(context.getString(R.string.font_scale))
-                                .setMaxValue(16)
-                                .setMinValue(8)
-                                .setValue(if (fontScale == 0) 10 else fontScale)
-                                .setCustomButton(R.string.btn_default_s) {
-                                    context.putPrefInt(PreferKey.fontScale, 0)
-                                    fontScale = 0
-                                    postEvent(EventBus.RECREATE, "")
-                                }
-                                .show { v ->
-                                    fontScale = v
-                                    context.putPrefInt(PreferKey.fontScale, v)
-                                    postEvent(EventBus.RECREATE, "")
-                                }
-                        },
+                                numPicker = NumPickerInfo(
+                                    title = context.getString(R.string.font_scale),
+                                    value = if (fontScale == 0) 10 else fontScale,
+                                    min = 8,
+                                    max = 16,
+                                    onConfirm = { v ->
+                                        fontScale = v
+                                        context.putPrefInt(PreferKey.fontScale, v)
+                                        context.toastOnUi(context.getString(R.string.restart_required))
+                                    },
+                                    defaultButton = {
+                                        TextButton(onClick = {
+                                            context.putPrefInt(PreferKey.fontScale, 0)
+                                            fontScale = 0
+                                            numPicker = null
+                                        }) {
+                                            Text(stringResource(R.string.btn_default_s))
+                                        }
+                                    },
+                                )
+                            },
                         )
                     
 
@@ -488,11 +496,7 @@ fun ThemeConfigScreen(
                         ClickableSettingItem(
                             title = stringResource(R.string.cover_config),
                             description = stringResource(R.string.cover_config_summary),
-                            onClick = {
-                                val intent = Intent(context, ConfigActivity::class.java)
-                                intent.putExtra("configTag", ConfigTag.COVER_CONFIG)
-                                context.startActivity(intent)
-                            },
+                            onClick = onCoverConfigClick,
                         )
                     
             // 8. theme list
@@ -513,7 +517,6 @@ fun ThemeConfigScreen(
                     context = context,
                     onChange = {
                         ThemeConfig.applyDayNight(context)
-                        postEvent(EventBus.RECREATE, "")
                     },
                     onRequestColorPicker = onRequestColorPicker,
                     onBgImageClick = onBgImageClick,
@@ -528,7 +531,6 @@ fun ThemeConfigScreen(
                     context = context,
                     onChange = {
                         ThemeConfig.applyDayNight(context)
-                        postEvent(EventBus.RECREATE, "")
                     },
                     onRequestColorPicker = onRequestColorPicker,
                     onBgImageClick = onBgImageClick,
@@ -536,6 +538,18 @@ fun ThemeConfigScreen(
             }
 
             item { Modifier.padding(bottom = 16.dp) }
+        }
+
+        numPicker?.let { info ->
+            NumberPickerDialog(
+                title = info.title,
+                value = info.value,
+                minValue = info.min,
+                maxValue = info.max,
+                onDismiss = { numPicker = null },
+                onConfirm = { v -> info.onConfirm(v); numPicker = null },
+                defaultButton = info.defaultButton,
+            )
         }
     }
 }

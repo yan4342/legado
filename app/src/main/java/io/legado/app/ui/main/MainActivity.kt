@@ -42,6 +42,7 @@ import io.legado.app.ui.main.my.MyFragment
 import io.legado.app.ui.main.rss.RssFragment
 import io.legado.app.utils.showMarkdownSheet
 import io.legado.app.ui.widget.text.BadgeView
+import io.legado.app.ui.widget.LockableViewPager
 import io.legado.app.ui.widget.SmoothSlidePageTransformer
 import io.legado.app.utils.isCreated
 import io.legado.app.utils.navigationBarHeight
@@ -346,6 +347,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
         observeEvent<String>(PreferKey.threadCount) {
             viewModel.upPool()
+        }
+        observeEvent<Boolean>(EventBus.DISABLE_VIEW_PAGER) {
+            (binding.viewPagerMain as? LockableViewPager)?.isSwipeEnabled = !it
         }
     }
 

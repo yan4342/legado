@@ -55,15 +55,18 @@ import io.legado.app.ui.dict.rule.ai.AiDictRuleViewModel
 import io.legado.app.ui.main.MainRouteAbout
 import io.legado.app.ui.main.MainRouteAiDictRule
 import io.legado.app.ui.main.MainRouteBackupConfig
+import io.legado.app.ui.main.MainRouteCoverConfig
 import io.legado.app.ui.main.MainRouteMy
 import io.legado.app.ui.main.MainRouteOtherConfig
 import io.legado.app.ui.main.MainRouteReadRecord
 import io.legado.app.ui.main.MainRouteReadRecordOverview
 import io.legado.app.ui.main.MainRouteThemeConfig
+import io.legado.app.ui.main.MainRouteWelcomeConfig
 import io.legado.app.ui.widget.ReadBarChartView
 import io.legado.app.ui.widget.ReadVerticalBarChartView
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
+import io.legado.app.utils.postEvent
 import io.legado.app.utils.putPrefString
 import io.legado.app.utils.startActivity
 import kotlinx.coroutines.Dispatchers.IO
@@ -109,6 +112,8 @@ fun MyNavOverlay(
     otherConfigActions: OtherConfigActions,
     backupConfigActions: BackupConfigActions,
     themeConfigActions: ThemeConfigActions,
+    welcomeConfigActions: WelcomeConfigActions,
+    coverConfigActions: CoverConfigActions,
 ) {
     val context = LocalContext.current
     var themeMode by remember { mutableStateOf(context.getPrefString(PreferKey.themeMode, "0") ?: "0") }
@@ -116,9 +121,17 @@ fun MyNavOverlay(
     val isRunning by webServiceRunning.collectAsStateWithLifecycle()
     val hostAddress by webServiceAddress.collectAsStateWithLifecycle()
 
-    // 底栏不隐藏：子页缩放透出「我的」页时，底栏作为「我的」页的一部分应保持可见。
-    // 覆盖层 ComposeView 在 ViewPager 页面区域内，底栏是其兄弟节点（始终在下方显示）。
-    //
+    // 子页缩放透出「我的」页时，底栏作为「我的」页的一部分应保持可见。
+    // 孙页（backStack.size > 1）时才隐藏底栏。
+    // 子/孙页面禁用 ViewPager 滑动，防止左滑切到其它根页面。
+    LaunchedEffect(backStack.size) {
+        val nav = (fragment.activity as? io.legado.app.ui.main.MainActivity)
+            ?.findViewById<android.view.View>(R.id.bottom_navigation_view)
+        nav?.visibility = if (backStack.size > 1)
+            android.view.View.GONE else android.view.View.VISIBLE
+        io.legado.app.utils.postEvent(io.legado.app.constant.EventBus.DISABLE_VIEW_PAGER, backStack.size > 1)
+    }
+
     // 消费系统导航栏 bottom inset：MainActivity 的底栏已占着屏幕底部并消费了该 inset，
     // 但老式 ViewPager 不向下传播 inset 消费，导致子页 Scaffold 又读到导航栏 inset、
     // 在底栏上方留出一道空白带。此处把底部导航栏 inset 消费掉，子页不再重复留白。
@@ -243,6 +256,22 @@ fun MyNavOverlay(
                 MyThemeConfigRoute(
                     onBack = { backStack.removeLastOrNull() },
                     actions = themeConfigActions,
+                    onWelcomeStyle = { backStack.add(MainRouteWelcomeConfig) },
+                    onCoverConfig = { backStack.add(MainRouteCoverConfig) },
+                )
+            }
+            entry<MainRouteWelcomeConfig> {
+                MyWelcomeConfigRoute(
+                    fragment = fragment,
+                    onBack = { backStack.removeLastOrNull() },
+                    actions = welcomeConfigActions,
+                )
+            }
+            entry<MainRouteCoverConfig> {
+                MyCoverConfigRoute(
+                    fragment = fragment,
+                    onBack = { backStack.removeLastOrNull() },
+                    actions = coverConfigActions,
                 )
             }
         },

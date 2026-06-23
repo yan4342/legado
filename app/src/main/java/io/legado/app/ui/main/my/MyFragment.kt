@@ -31,6 +31,7 @@ import io.legado.app.help.update.AppUpdate
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.prefs.ColorPreference
+import io.legado.app.model.BookCover
 import io.legado.app.service.WebService
 import io.legado.app.ui.about.UpdateDialog
 import io.legado.app.ui.book.bookmark.AllBookmarkActivity
@@ -41,6 +42,7 @@ import io.legado.app.ui.common.compose.LegadoTheme
 import io.legado.app.ui.config.ConfigActivity
 import io.legado.app.ui.config.ConfigTag
 import io.legado.app.ui.config.CheckSourceConfig
+import io.legado.app.ui.config.CoverRuleConfigDialog
 import io.legado.app.ui.config.DirectLinkUploadConfig
 import io.legado.app.ui.config.ThemeListDialog
 import io.legado.app.ui.dict.rule.DictRuleActivity
@@ -164,6 +166,24 @@ class MyFragment() : BaseFragment(0), MainFragmentInterface, ColorPickerDialogLi
         }
     }
 
+    // ---- 启动界面样式/封面配置字段（迁自 WelcomeConfigComposeFragment / CoverConfigComposeFragment） ----
+    private var pendingWelcomeIsNight: Boolean = false
+    private var pendingCoverIsNight: Boolean = false
+
+    private val selectWelcomeImage = registerForActivityResult(HandleFileContract()) { result ->
+        result.uri?.let { uri ->
+            val key = if (pendingWelcomeIsNight) PreferKey.welcomeImageDark else PreferKey.welcomeImage
+            setWelcomeImageFromUri(key, uri)
+        }
+    }
+
+    private val selectCoverImage = registerForActivityResult(HandleFileContract()) { result ->
+        result.uri?.let { uri ->
+            val key = if (pendingCoverIsNight) PreferKey.defaultCoverDark else PreferKey.defaultCover
+            setCoverImageFromUri(key, uri)
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -211,6 +231,8 @@ class MyFragment() : BaseFragment(0), MainFragmentInterface, ColorPickerDialogLi
                         otherConfigActions = otherConfigActions(),
                         backupConfigActions = backupConfigActions(),
                         themeConfigActions = themeConfigActions(),
+                        welcomeConfigActions = welcomeConfigActions(),
+                        coverConfigActions = coverConfigActions(),
                     )
                 }
             }
@@ -560,8 +582,7 @@ class MyFragment() : BaseFragment(0), MainFragmentInterface, ColorPickerDialogLi
 
     private fun upTheme(isNightTheme: Boolean) {
         if (AppConfig.isNightTheme == isNightTheme) {
-            ThemeConfig.applyTheme(requireContext())
-            view?.post { postEvent(EventBus.RECREATE, "") }
+            ThemeConfig.applyDayNight(requireContext())
         }
     }
 
@@ -621,5 +642,122 @@ class MyFragment() : BaseFragment(0), MainFragmentInterface, ColorPickerDialogLi
     override fun onDestroyView() {
         super.onDestroyView()
         backupWaitDialog.dismiss()
+    }
+
+    // ---- 启动界面样式回调（迁自 WelcomeConfigComposeFragment） ----
+
+    private fun welcomeConfigActions() = WelcomeConfigActions(
+        onWelcomeImage = { isNight ->
+            pendingWelcomeIsNight = isNight
+            val key = if (isNight) PreferKey.welcomeImageDark else PreferKey.welcomeImage
+            if (getPrefString(key).isNullOrEmpty()) {
+                launchWelcomeImagePicker(isNight)
+            } else {
+                context?.selector(
+                    items = arrayListOf(
+                        getString(R.string.delete),
+                        getString(R.string.select_image),
+                    )
+                ) { _, i ->
+                    if (i == 0) {
+                        removePref(key)
+                        if (isNight) {
+                            AppConfig.welcomeShowTextDark = true
+                            AppConfig.welcomeShowIconDark = true
+                        } else {
+                            AppConfig.welcomeShowText = true
+                            AppConfig.welcomeShowIcon = true
+                        }
+                        BookCover.upDefaultCover()
+                    } else {
+                        launchWelcomeImagePicker(isNight)
+                    }
+                }
+            }
+        },
+    )
+
+    private fun launchWelcomeImagePicker(isNight: Boolean) {
+        pendingWelcomeIsNight = isNight
+        selectWelcomeImage.launch {
+            requestCode = if (isNight) 222 else 221
+            mode = HandleFileContract.IMAGE
+        }
+    }
+
+    private fun setWelcomeImageFromUri(preferenceKey: String, uri: Uri) {
+        readUri(uri) { fileDoc, inputStream ->
+            kotlin.runCatching {
+                var file = requireContext().externalFiles
+                val suffix = fileDoc.name.substringAfterLast(".")
+                val fileName = uri.inputStream(requireContext()).getOrThrow().use {
+                    MD5Utils.md5Encode(it) + ".$suffix"
+                }
+                file = FileUtils.createFileIfNotExist(file, "covers", fileName)
+                FileOutputStream(file).use {
+                    inputStream.copyTo(it)
+                }
+                putPrefString(preferenceKey, file.absolutePath)
+            }.onFailure {
+                appCtx.toastOnUi(it.localizedMessage)
+            }
+        }
+    }
+
+    // ---- 封面配置回调（迁自 CoverConfigComposeFragment） ----
+
+    private fun coverConfigActions() = CoverConfigActions(
+        onCoverRule = {
+            showDialogFragment<io.legado.app.ui.config.CoverRuleConfigDialog>()
+        },
+        onDefaultCover = { isNight ->
+            pendingCoverIsNight = isNight
+            val key = if (isNight) PreferKey.defaultCoverDark else PreferKey.defaultCover
+            if (getPrefString(key).isNullOrEmpty()) {
+                launchCoverImagePicker(isNight)
+            } else {
+                context?.selector(
+                    items = arrayListOf(
+                        getString(R.string.delete),
+                        getString(R.string.select_image),
+                    )
+                ) { _, i ->
+                    if (i == 0) {
+                        removePref(key)
+                        BookCover.upDefaultCover()
+                    } else {
+                        launchCoverImagePicker(isNight)
+                    }
+                }
+            }
+        },
+    )
+
+    private fun launchCoverImagePicker(isNight: Boolean) {
+        pendingCoverIsNight = isNight
+        selectCoverImage.launch {
+            requestCode = if (isNight) 112 else 111
+            mode = HandleFileContract.IMAGE
+        }
+    }
+
+    private fun setCoverImageFromUri(preferenceKey: String, uri: Uri) {
+        readUri(uri) { fileDoc, inputStream ->
+            kotlin.runCatching {
+                var file = requireContext().externalFiles
+                val suffix = fileDoc.name.substringAfterLast(".")
+                val fileName = uri.inputStream(requireContext()).getOrThrow().use {
+                    MD5Utils.md5Encode(it) + ".$suffix"
+                }
+                file = FileUtils.createFileIfNotExist(file, "covers", fileName)
+                FileOutputStream(file).use {
+                    inputStream.copyTo(it)
+                }
+                putPrefString(preferenceKey, file.absolutePath)
+                BookCover.upDefaultCover()
+            }.onFailure {
+                appCtx.toastOnUi(it.localizedMessage)
+            }
+        }
     }
 }

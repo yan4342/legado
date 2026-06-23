@@ -6,8 +6,10 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.ui.config.ConfigViewModel
 import io.legado.app.ui.config.compose.BackupConfigScreen
+import io.legado.app.ui.config.compose.CoverConfigScreen
 import io.legado.app.ui.config.compose.OtherConfigScreen
 import io.legado.app.ui.config.compose.ThemeConfigScreen
+import io.legado.app.ui.config.compose.WelcomeConfigScreen
 
 /** 其他设置页回调集合。宿主为 MyFragment。 */
 data class OtherConfigActions(
@@ -32,6 +34,17 @@ data class ThemeConfigActions(
     val onThemeList: () -> Unit,
     val onBgImage: (Boolean) -> Unit,
     val onThemeModeToggle: () -> Unit,
+)
+
+/** 启动界面样式回调集合。宿主为 MyFragment（含欢迎图 launcher）。 */
+data class WelcomeConfigActions(
+    val onWelcomeImage: (Boolean) -> Unit,
+)
+
+/** 封面配置回调集合。宿主为 MyFragment（含封面图 launcher、封面规则对话框）。 */
+data class CoverConfigActions(
+    val onCoverRule: () -> Unit,
+    val onDefaultCover: (Boolean) -> Unit,
 )
 
 /** 其他设置路由内容。ConfigViewModel 借 Fragment 的 ViewModelStore。 */
@@ -71,11 +84,13 @@ fun MyBackupConfigRoute(
     )
 }
 
-/** 主题设置路由内容。无 ViewModel。 */
+/** 主题设置路由内容。导航回调（启动界面样式/封面配置）在 MyNavOverlay 中接入 backStack。 */
 @Composable
 fun MyThemeConfigRoute(
     onBack: () -> Unit,
     actions: ThemeConfigActions,
+    onWelcomeStyle: () -> Unit,
+    onCoverConfig: () -> Unit,
 ) {
     ThemeConfigScreen(
         onBackClick = onBack,
@@ -83,5 +98,34 @@ fun MyThemeConfigRoute(
         onThemeListClick = actions.onThemeList,
         onBgImageClick = actions.onBgImage,
         onThemeModeToggle = actions.onThemeModeToggle,
+        onWelcomeStyleClick = onWelcomeStyle,
+        onCoverConfigClick = onCoverConfig,
+    )
+}
+
+/** 启动界面样式路由内容。Host 为 MyFragment（含欢迎图 launcher）。 */
+@Composable
+fun MyWelcomeConfigRoute(
+    fragment: Fragment,
+    onBack: () -> Unit,
+    actions: WelcomeConfigActions,
+) {
+    WelcomeConfigScreen(
+        onBackClick = onBack,
+        onWelcomeImageClick = actions.onWelcomeImage,
+    )
+}
+
+/** 封面配置路由内容。Host 为 MyFragment（含封面图 launcher、封面规则对话框）。 */
+@Composable
+fun MyCoverConfigRoute(
+    fragment: Fragment,
+    onBack: () -> Unit,
+    actions: CoverConfigActions,
+) {
+    CoverConfigScreen(
+        onBackClick = onBack,
+        onCoverRuleClick = actions.onCoverRule,
+        onDefaultCoverClick = actions.onDefaultCover,
     )
 }

@@ -131,6 +131,14 @@ fun OtherConfigScreen(
         mutableStateOf(context.getPrefBoolean("recordHeapDump", false))
     }
 
+    // Number picker display values — backed by Compose State so description text recomposes on change
+    var threadCount by remember { mutableStateOf(AppConfig.threadCount) }
+    var webPort by remember { mutableStateOf(AppConfig.webPort) }
+    var preDownloadNum by remember { mutableStateOf(AppConfig.preDownloadNum) }
+    var bitmapCacheSize by remember { mutableStateOf(AppConfig.bitmapCacheSize) }
+    var imageRetainNum by remember { mutableStateOf(AppConfig.imageRetainNum) }
+    var sourceEditMaxLine by remember { mutableStateOf(AppConfig.sourceEditMaxLine) }
+
     // Dialog states
     var numPicker by remember { mutableStateOf<NumPickerInfo?>(null) }
     var showClearCache by remember { mutableStateOf(false) }
@@ -357,28 +365,28 @@ fun OtherConfigScreen(
                     )
                     ClickableSettingItem(
                         title = stringResource(R.string.threads_num_title),
-                        description = AppConfig.threadCount.toString(),
-                        onClick = { numPicker = NumPickerInfo(threadsLabel, AppConfig.threadCount, 1, 999) { AppConfig.threadCount = it; postEvent(PreferKey.threadCount, "") } }
+                        description = threadCount.toString(),
+                        onClick = { numPicker = NumPickerInfo(threadsLabel, threadCount, 1, 999) { threadCount = it; AppConfig.threadCount = it; postEvent(PreferKey.threadCount, "") } }
                     )
                     ClickableSettingItem(
                         title = stringResource(R.string.web_port_title),
-                        description = AppConfig.webPort.toString(),
-                        onClick = { numPicker = NumPickerInfo(webPortLabel, AppConfig.webPort, 1024, 60000) { AppConfig.webPort = it; if (WebService.isRun) { WebService.stop(context); WebService.start(context) } } }
+                        description = webPort.toString(),
+                        onClick = { numPicker = NumPickerInfo(webPortLabel, webPort, 1024, 60000) { webPort = it; AppConfig.webPort = it; if (WebService.isRun) { WebService.stop(context); WebService.start(context) } } }
                     )
                     ClickableSettingItem(
                         title = stringResource(R.string.pre_download),
-                        description = AppConfig.preDownloadNum.toString(),
-                        onClick = { numPicker = NumPickerInfo(preDownloadLabel, AppConfig.preDownloadNum, 0, 9999) { AppConfig.preDownloadNum = it } }
+                        description = preDownloadNum.toString(),
+                        onClick = { numPicker = NumPickerInfo(preDownloadLabel, preDownloadNum, 0, 9999) { preDownloadNum = it; AppConfig.preDownloadNum = it } }
                     )
                     ClickableSettingItem(
                         title = stringResource(R.string.bitmap_cache_size),
-                        description = AppConfig.bitmapCacheSize.toString(),
-                        onClick = { numPicker = NumPickerInfo(bitmapCacheLabel, AppConfig.bitmapCacheSize, 1, 1024) { AppConfig.bitmapCacheSize = it; ImageProvider.bitmapLruCache.resize(ImageProvider.cacheSize) } }
+                        description = bitmapCacheSize.toString(),
+                        onClick = { numPicker = NumPickerInfo(bitmapCacheLabel, bitmapCacheSize, 1, 1024) { bitmapCacheSize = it; AppConfig.bitmapCacheSize = it; ImageProvider.bitmapLruCache.resize(ImageProvider.cacheSize) } }
                     )
                     ClickableSettingItem(
                         title = stringResource(R.string.image_retain_number),
-                        description = AppConfig.imageRetainNum.toString(),
-                        onClick = { numPicker = NumPickerInfo(imageRetainLabel, AppConfig.imageRetainNum, 0, 999) { AppConfig.imageRetainNum = it } }
+                        description = imageRetainNum.toString(),
+                        onClick = { numPicker = NumPickerInfo(imageRetainLabel, imageRetainNum, 0, 999) { imageRetainNum = it; AppConfig.imageRetainNum = it } }
                     )
                 }
             }
@@ -399,8 +407,8 @@ fun OtherConfigScreen(
                     )
                     ClickableSettingItem(
                         title = stringResource(R.string.source_edit_text_max_line),
-                        description = AppConfig.sourceEditMaxLine.toString(),
-                        onClick = { numPicker = NumPickerInfo(sourceEditMaxLineLabel, AppConfig.sourceEditMaxLine, 10, Int.MAX_VALUE) { AppConfig.sourceEditMaxLine = it } }
+                        description = sourceEditMaxLine.toString(),
+                        onClick = { numPicker = NumPickerInfo(sourceEditMaxLineLabel, sourceEditMaxLine, 10, Int.MAX_VALUE) { sourceEditMaxLine = it; AppConfig.sourceEditMaxLine = it } }
                     )
                     ClickableSettingItem(
                         title = stringResource(R.string.set_local_password),
@@ -491,7 +499,8 @@ fun OtherConfigScreen(
                 minValue = info.min,
                 maxValue = info.max,
                 onDismiss = { numPicker = null },
-                onConfirm = { v -> info.onConfirm(v); numPicker = null }
+                onConfirm = { v -> info.onConfirm(v); numPicker = null },
+                defaultButton = info.defaultButton,
             )
         }
         if (showClearCache) {
@@ -559,5 +568,6 @@ data class NumPickerInfo(
     val value: Int,
     val min: Int,
     val max: Int,
+    val defaultButton: @Composable (() -> Unit)? = null,
     val onConfirm: (Int) -> Unit,
 )

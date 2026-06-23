@@ -47,4 +47,10 @@ data object MainRouteOtherConfig : MainRoute
 data object MainRouteThemeConfig : MainRoute
 
 @Serializable
+data object MainRouteWelcomeConfig : MainRoute
+
+@Serializable
+data object MainRouteCoverConfig : MainRoute
+
+@Serializable
 data object MainRouteBackupConfig : MainRoute
