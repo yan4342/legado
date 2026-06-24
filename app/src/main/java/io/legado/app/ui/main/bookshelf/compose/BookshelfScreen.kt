@@ -50,6 +50,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -651,7 +653,7 @@ private fun BookListContent(
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().semantics { contentDescription = "bookshelf_list" },
             contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
         ) {
             items(
@@ -821,7 +823,7 @@ private fun BookGridContent(
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().semantics { contentDescription = "bookshelf_list" },
             contentPadding = PaddingValues(horizontal = spacing, vertical = spacing),
             verticalArrangement = Arrangement.spacedBy(rowSpacing),
         ) {

@@ -4,16 +4,12 @@ plugins {
 }
 
 android {
-    namespace = "com.example.baselineprofile"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    namespace = "io.legado.app.baselineprofile"
+    compileSdk = libs.versions.compile.sdk.get().toInt()
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     defaultConfig {
@@ -21,6 +17,7 @@ android {
         targetSdk = 36
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "DEBUGGABLE"
     }
 
     targetProjectPath = ":app"
@@ -29,28 +26,21 @@ android {
     productFlavors {
         create("app") { dimension = "mode" }
     }
-
 }
 
-// This is the configuration block for the Baseline Profile plugin.
-// You can specify to run the generators on a managed devices or connected devices.
 baselineProfile {
     useConnectedDevices = true
 }
 
 dependencies {
-    implementation(libs.androidx.junit)
-    implementation(libs.androidx.espresso.core)
-    implementation(libs.androidx.uiautomator)
     implementation(libs.androidx.benchmark.macro.junit4)
+    implementation(libs.androidx.espresso.core)
+    implementation(libs.androidx.junit)
+    implementation(libs.androidx.uiautomator)
 }
 
 androidComponents {
     onVariants { v ->
-        val artifactsLoader = v.artifacts.getBuiltArtifactsLoader()
-        v.instrumentationRunnerArguments.put(
-            "targetAppId",
-            v.testedApks.map { artifactsLoader.load(it)?.applicationId }
-        )
+        v.instrumentationRunnerArguments.put("targetAppId", "io.legado.app.release")
     }
 }
