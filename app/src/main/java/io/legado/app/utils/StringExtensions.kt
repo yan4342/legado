@@ -6,9 +6,7 @@ import android.annotation.SuppressLint
 import android.icu.text.Collator
 import android.icu.util.ULocale
 import android.net.Uri
-import android.os.Build
 import android.text.Editable
-import android.text.Html
 import cn.hutool.core.net.URLEncodeUtil
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.AppPattern.dataUriRegex
@@ -147,14 +145,42 @@ fun String.normalizeFileName(): String {
     return replace(AppPattern.fileNameRegex2, "_")
 }
 
-@Suppress("DEPRECATION")
-fun String.htmlDecode(): String = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-    Html.fromHtml(this, Html.FROM_HTML_MODE_LEGACY).toString()
-} else {
-    Html.fromHtml(this).toString()
+/**
+ * 纯HTML实体解码，不解释HTML标签结构。
+ * 等价于 commons-text StringEscapeUtils.unescapeHtml4()。
+ */
+fun String.htmlDecode(): String = htmlEntityPattern.replace(this) { match ->
+    val entity = match.groupValues[1]
+    htmlEntities[entity]
+        ?: if (entity.startsWith("#x", true)) {
+            try {
+                entity.substring(2).toInt(16).toChar().toString()
+            } catch (_: Exception) {
+                match.value
+            }
+        } else if (entity.startsWith("#")) {
+            try {
+                entity.substring(1).toInt().toChar().toString()
+            } catch (_: Exception) {
+                match.value
+            }
+        } else {
+            match.value
+        }
 }
 
-fun String.jsonDecode(): String {
-    val json = org.json.JSONObject("{\"k\":$this}")
-    return json.getString("k")
+private val htmlEntityPattern = Regex("&(#\\d+|#[xX][0-9a-fA-F]+|[a-zA-Z]+);")
+
+private val htmlEntities = mapOf(
+    "amp" to "&", "lt" to "<", "gt" to ">",
+    "quot" to "\"", "apos" to "'", "nbsp" to " ",
+)
+
+/**
+ * 解码JSON转义字符串。等价于 commons-text StringEscapeUtils.unescapeJson()。
+ */
+fun String.jsonDecode(): String = try {
+    org.json.JSONObject("{\"k\":$this}").getString("k")
+} catch (_: Exception) {
+    this
 }

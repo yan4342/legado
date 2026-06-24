@@ -21,6 +21,7 @@ import io.legado.app.data.dao.DictRuleDao
 import io.legado.app.data.dao.HttpTTSDao
 import io.legado.app.data.dao.KeyboardAssistsDao
 import io.legado.app.data.dao.DailyReadRecordDao
+import io.legado.app.data.dao.HourlyReadRecordDao
 import io.legado.app.data.dao.ReadRecordDao
 import io.legado.app.data.dao.ReplaceRuleDao
 import io.legado.app.data.dao.RssArticleDao
@@ -45,6 +46,7 @@ import io.legado.app.data.entities.DictRule
 import io.legado.app.data.entities.HttpTTS
 import io.legado.app.data.entities.KeyboardAssist
 import io.legado.app.data.entities.DailyReadRecord
+import io.legado.app.data.entities.HourlyReadRecord
 import io.legado.app.data.entities.ReadRecord
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.data.entities.RssArticle
@@ -73,14 +75,14 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 80,
+    version = 81,
     exportSchema = true,
     entities = [Book::class, BookGroup::class, BookSource::class, BookChapter::class,
         ReplaceRule::class, SearchBook::class, SearchKeyword::class, Cookie::class,
         RssSource::class, Bookmark::class, RssArticle::class, RssReadRecord::class,
         RssStar::class, TxtTocRule::class, ReadRecord::class, HttpTTS::class, Cache::class,
         RuleSub::class, DictRule::class, AiDictRule::class, KeyboardAssist::class, Server::class,
-        DailyReadRecord::class],
+        DailyReadRecord::class, HourlyReadRecord::class],
     views = [BookSourcePart::class],
     autoMigrations = [
         AutoMigration(from = 43, to = 44),
@@ -116,6 +118,7 @@ val appDb by lazy {
         AutoMigration(from = 73, to = 74),
         AutoMigration(from = 74, to = 75),
         AutoMigration(from = 75, to = 76),
+        AutoMigration(from = 80, to = 81),
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -136,6 +139,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract val txtTocRuleDao: TxtTocRuleDao
     abstract val readRecordDao: ReadRecordDao
     abstract val dailyReadRecordDao: DailyReadRecordDao
+    abstract val hourlyReadRecordDao: HourlyReadRecordDao
     abstract val httpTTSDao: HttpTTSDao
     abstract val cacheDao: CacheDao
     abstract val ruleSubDao: RuleSubDao

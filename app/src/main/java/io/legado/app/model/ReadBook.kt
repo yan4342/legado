@@ -9,6 +9,7 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookProgress
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.DailyReadRecord
+import io.legado.app.data.entities.HourlyReadRecord
 import io.legado.app.data.entities.ReadRecord
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.book.BookHelp
@@ -294,11 +295,19 @@ object ReadBook : CoroutineScope by MainScope() {
             readRecord.lastRead = System.currentTimeMillis()
             appDb.readRecordDao.insert(readRecord)
             // dual-write daily read record
-            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-                .format(java.util.Date())
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            val now = java.util.Date()
+            val today = sdf.format(now)
             val existing = appDb.dailyReadRecordDao.getReadTime(today, readRecord.bookName) ?: 0
             appDb.dailyReadRecordDao.insert(
                 DailyReadRecord(today, readRecord.bookName, existing + elapsed)
+            )
+            // dual-write hourly read record
+            val sdfHour = java.text.SimpleDateFormat("yyyy-MM-dd HH", java.util.Locale.getDefault())
+            val dateHour = sdfHour.format(now)
+            val existingHourly = appDb.hourlyReadRecordDao.getReadTime(dateHour, readRecord.bookName) ?: 0
+            appDb.hourlyReadRecordDao.insert(
+                HourlyReadRecord(dateHour, readRecord.bookName, existingHourly + elapsed)
             )
         }
     }

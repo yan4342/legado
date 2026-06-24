@@ -32,6 +32,7 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
     private val barWidth = 20.dpToPx().toFloat()
     private val barMinWidth = 8.dpToPx().toFloat()
     private val barGap = 6.dpToPx().toFloat()
+    private val barGapDense = 2.dpToPx().toFloat()
     private val barCornerRadius = 4.dpToPx().toFloat()
     private val bottomLabelHeight = 32.dpToPx().toFloat()
     private val topPadding = 16.dpToPx().toFloat()
@@ -117,13 +118,16 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
         labelPaint.textAlign = Paint.Align.CENTER
 
         // Draw bars
-        val totalGapWidth = barGap * (items.size + 1)
+        val dynamicGap = if (items.size > 20) barGapDense else barGap
+        val maxBarWidth = when { items.size <= 7 -> 42.dpToPx().toFloat(); items.size <= 12 -> 24.dpToPx().toFloat(); else -> barWidth }
+        val totalGapWidth = dynamicGap * (items.size + 1)
         val availableWidth = chartWidth - totalGapWidth
         val calculatedBarWidth = if (items.isNotEmpty()) availableWidth / items.size else barWidth
-        val actualBarWidth = calculatedBarWidth.coerceIn(barMinWidth, barWidth)
+        val actualBarWidth = calculatedBarWidth.coerceIn(barMinWidth, maxBarWidth)
+        val labelInterval = when { items.size > 20 -> 4; items.size > 12 -> 3; items.size > 7 -> 2; else -> 1 }
 
         for ((index, item) in items.withIndex()) {
-            val barLeft = chartLeft + barGap + index * (actualBarWidth + barGap)
+            val barLeft = chartLeft + dynamicGap + index * (actualBarWidth + dynamicGap)
             val barHeight = if (maxTime > 0) (item.readTime.toFloat() / maxTime) * chartHeight else 0f
             val barTop = chartBottom - barHeight
 
@@ -133,14 +137,16 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
                 canvas.drawRoundRect(rectF, barCornerRadius, barCornerRadius, barPaint)
             }
 
-            // Draw bottom label (truncate if needed)
-            val displayLabel = truncateText(item.label, actualBarWidth + barGap, labelPaint)
-            canvas.drawText(
-                displayLabel,
-                barLeft + actualBarWidth / 2f,
-                chartBottom + 14.dpToPx(),
-                labelPaint
-            )
+            // Draw bottom label at interval to avoid overlap
+            if (index % labelInterval == 0) {
+                val displayLabel = truncateText(item.label, (actualBarWidth + dynamicGap) * labelInterval, labelPaint)
+                canvas.drawText(
+                    displayLabel,
+                    barLeft + actualBarWidth / 2f,
+                    chartBottom + 14.dpToPx(),
+                    labelPaint
+                )
+            }
         }
     }
 

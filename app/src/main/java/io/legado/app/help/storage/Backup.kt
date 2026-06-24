@@ -70,6 +70,7 @@ object Backup {
             "replaceRule.json",
             "readRecord.json",
             "dailyReadRecord.json",
+            "hourlyReadRecord.json",
             "searchHistory.json",
             "sourceSub.json",
             "txtTocRule.json",
@@ -165,6 +166,7 @@ object Backup {
         writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", backupPath)
         writeListToJson(appDb.readRecordDao.all, "readRecord.json", backupPath)
         writeListToJson(appDb.dailyReadRecordDao.all, "dailyReadRecord.json", backupPath)
+        writeListToJson(appDb.hourlyReadRecordDao.all, "hourlyReadRecord.json", backupPath)
         writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", backupPath)
         writeListToJson(appDb.ruleSubDao.all, "sourceSub.json", backupPath)
         writeListToJson(appDb.txtTocRuleDao.all, "txtTocRule.json", backupPath)

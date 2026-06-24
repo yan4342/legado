@@ -4,7 +4,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,7 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,7 +54,7 @@ import io.legado.app.ui.widget.ReadVerticalBarChartView
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-enum class ReadPeriod(val label: String) { DAY("日"), WEEK("周"), MONTH("月"), YEAR("年"), ALL("总") }
+enum class ReadPeriod(val label: String) { DAY("日"), WEEK("周"), MONTH("月"), YEAR("年") }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,21 +103,28 @@ fun ReadRecordOverviewScreen(
             }
 
             // DateNavigator — MD3 style prev/next with animated date text
-            if (state.period != ReadPeriod.ALL) {
-                item(key = "date_nav") {
-                    DateNavigator(period = state.period, referenceDate = state.referenceDate, onPrev = onPrevDate, onNext = onNextDate)
-                }
+            item(key = "date_nav") {
+                DateNavigator(period = state.period, referenceDate = state.referenceDate, onPrev = onPrevDate, onNext = onNextDate)
             }
 
-            // Daily vertical bar chart — 竖柱状图
+            // Daily vertical bar chart — 竖柱状图，密柱时可左右滑动
             if (state.dailyBarItems.isNotEmpty()) {
                 item(key = "bar_chart") {
                     ChartCard("阅读时长分布") {
-                        AndroidView(
-                            factory = { ctx -> ReadVerticalBarChartView(ctx).apply { setData(state.dailyBarItems) } },
-                            update = { it.setData(state.dailyBarItems) },
-                            modifier = Modifier.fillMaxWidth().height(200.dp),
-                        )
+                        val items = state.dailyBarItems
+                        val barCount = items.size
+                        val gapDp = if (barCount > 20) 2 else 6
+                        val chartMinDp = (8 + gapDp) * barCount + gapDp + 32
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                            val viewportWidth = maxWidth
+                            Row(Modifier.horizontalScroll(rememberScrollState())) {
+                                AndroidView(
+                                    factory = { ctx -> ReadVerticalBarChartView(ctx).apply { setData(items) } },
+                                    update = { it.setData(items) },
+                                    modifier = Modifier.width(maxOf(chartMinDp.dp, viewportWidth)).height(200.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -175,7 +186,6 @@ private fun DateNavigator(period: ReadPeriod, referenceDate: LocalDate, onPrev: 
                 }
                 ReadPeriod.MONTH -> date.format(DateTimeFormatter.ofPattern("yyyy年M月"))
                 ReadPeriod.YEAR -> date.format(DateTimeFormatter.ofPattern("yyyy年"))
-                else -> ""
             }
             Text(text, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp))
         }
