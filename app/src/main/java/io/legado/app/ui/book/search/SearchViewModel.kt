@@ -240,15 +240,17 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             searchScope.update(temporaryScope, postValue = false)
             syncScopeState()
         }
-        val hasActiveSearch = _uiState.value.committedQuery.isNotEmpty()
-        if (hasActiveSearch) return
 
         val initKey = key?.trim().orEmpty()
         if (initKey.isNotEmpty()) {
+            stopSearch()
             updateQuery(initKey, showSuggestions = false)
             submitSearch(initKey)
         } else if (key != null) {
-            updateQuery(initKey, showSuggestions = true)
+            val hasActiveSearch = _uiState.value.committedQuery.isNotEmpty()
+            if (!hasActiveSearch) {
+                updateQuery(initKey, showSuggestions = true)
+            }
         }
     }
 

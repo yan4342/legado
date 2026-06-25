@@ -5,9 +5,13 @@ package io.legado.app.ui.main
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.view.MenuItem
+import android.view.View
 import android.view.ViewGroup
 import androidx.activity.addCallback
 import androidx.activity.viewModels
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.get
 import androidx.core.view.postDelayed
 import androidx.fragment.app.Fragment
@@ -35,6 +39,7 @@ import io.legado.app.lib.theme.elevation
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.utils.showCrashLogSheet
+import io.legado.app.ui.common.compose.LegadoTheme
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.compose.BookshelfComposeFragment
 import io.legado.app.ui.main.explore.ExploreFragment
@@ -53,6 +58,8 @@ import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -86,10 +93,12 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         TabFragmentPageAdapter(supportFragmentManager)
     }
     private var onUpBooksBadgeView: BadgeView? = null
+    private val navOverlayRoute = MutableStateFlow<MainRoute?>(null)
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         upBottomMenu()
         initView()
+        setupNavOverlay()
         upHomePage()
         onBackPressedDispatcher.addCallback(this) {
             if (pagePosition != 0) {
@@ -189,6 +198,26 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             view.bottomPadding = height
             windowInsets.inset(0, 0, 0, height)
         }
+    }
+
+    @OptIn(ExperimentalSharedTransitionApi::class)
+    private fun setupNavOverlay() {
+        binding.navOverlay.addView(ComposeView(this).apply {
+            setContent {
+                LegadoTheme {
+                    SharedTransitionLayout {
+                        MainNavOverlay(
+                            sharedTransitionScope = this@SharedTransitionLayout,
+                            navOverlayRoute = navOverlayRoute,
+                        )
+                    }
+                }
+            }
+        })
+    }
+
+    fun navigateToSearch(key: String? = null, scopeRaw: String? = null) {
+        navOverlayRoute.value = MainRouteSearch(key, scopeRaw)
     }
 
     /**

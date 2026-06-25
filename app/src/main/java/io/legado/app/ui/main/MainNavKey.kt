@@ -11,6 +11,9 @@ import kotlinx.serialization.Serializable
 sealed interface MainRoute : NavKey
 
 @Serializable
+data object MainRouteEmpty : MainRoute
+
+@Serializable
 data object MainRouteBookshelf : MainRoute
 
 @Serializable
@@ -21,6 +24,12 @@ data class MainRouteBookInfo(
     val origin: String? = null,
     val coverPath: String? = null,
     val sharedCoverKey: String? = null,
+) : MainRoute
+
+@Serializable
+data class MainRouteSearch(
+    val key: String?,
+    val scopeRaw: String? = null,
 ) : MainRoute
 
 // “我的”页 NavDisplay 覆盖层路由（返回时由 predictivePopTransitionSpec 驱动 Compose pop 动画）

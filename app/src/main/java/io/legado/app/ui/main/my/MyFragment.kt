@@ -35,7 +35,7 @@ import io.legado.app.model.BookCover
 import io.legado.app.service.WebService
 import io.legado.app.ui.about.UpdateDialog
 import io.legado.app.ui.book.bookmark.AllBookmarkActivity
-import io.legado.app.ui.book.search.SearchActivity
+import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.ui.book.toc.rule.TxtTocRuleActivity
 import io.legado.app.ui.common.compose.LegadoTheme
@@ -250,7 +250,7 @@ class MyFragment() : BaseFragment(0), MainFragmentInterface, ColorPickerDialogLi
             if (book != null) {
                 startActivityForBook(book)
             } else {
-                SearchActivity.start(requireContext(), bookName)
+                (activity as? MainActivity)?.navigateToSearch(key = bookName)
             }
         }
     }

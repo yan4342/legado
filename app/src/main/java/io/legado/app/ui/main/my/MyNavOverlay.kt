@@ -48,7 +48,7 @@ import io.legado.app.ui.book.readRecord.ReadRecordOverviewScreen
 import io.legado.app.ui.book.readRecord.ReadRecordOverviewState
 import io.legado.app.ui.book.readRecord.ReadRecordScreen
 import io.legado.app.ui.book.readRecord.ReadRecordViewModel
-import io.legado.app.ui.book.search.SearchActivity
+import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.dict.rule.ai.AiDictRuleEditActivity
 import io.legado.app.ui.dict.rule.ai.AiDictRuleListScreen
 import io.legado.app.ui.dict.rule.ai.AiDictRuleViewModel
@@ -369,7 +369,7 @@ private fun ReadRecordRoute(
         onBack = onBack,
         onNavigateToBook = onNavigateToBook,
         onNavigateToSearch = { bookName ->
-            SearchActivity.start(context, bookName)
+            (context as? MainActivity)?.navigateToSearch(key = bookName)
         },
         onOverviewClick = onOverview,
     )

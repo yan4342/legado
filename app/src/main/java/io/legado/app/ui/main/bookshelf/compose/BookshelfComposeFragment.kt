@@ -55,7 +55,7 @@ import io.legado.app.ui.book.import.local.ImportBookActivity
 import io.legado.app.ui.book.import.remote.RemoteBookActivity
 import io.legado.app.ui.book.manage.BookshelfManageActivity
 import io.legado.app.ui.book.read.ReadBookActivity
-import io.legado.app.ui.book.search.SearchActivity
+import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.common.compose.LegadoTheme
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.main.bookCoverSharedElementKey
@@ -318,7 +318,7 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
                 appDb.bookDao.delete(book)
             },
             onSearchClick = {
-                startActivity<SearchActivity>()
+                (activity as? MainActivity)?.navigateToSearch()
             },
             onSort = {
                 val newSort = (AppConfig.bookshelfSort + 1) % 4
@@ -497,7 +497,7 @@ class BookshelfComposeFragment() : BaseBookshelfFragment(0),
     }
 
     override fun onQueryTextSubmit(query: String?): Boolean {
-        SearchActivity.start(requireContext(), query)
+        (activity as? MainActivity)?.navigateToSearch(key = query)
         return false
     }
 
