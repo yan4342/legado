@@ -94,32 +94,42 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (items.isEmpty()) return
 
-        val chartLeft = paddingLeft.toFloat() + 4.dpToPx()
+        // Measure y-axis label width for layout
+        val maxLabelText = formatReadTime(maxTime)
+        val labelTextWidth = labelPaint.measureText(maxLabelText)
+
+        val chartLeft = paddingLeft.toFloat() + labelTextWidth + 12.dpToPx()
         val chartRight = (width - paddingRight).toFloat() - 4.dpToPx()
         val chartTop = paddingTop.toFloat() + topPadding + maxLabelHeight
         val chartBottom = (height - paddingBottom).toFloat() - bottomLabelHeight
         val chartWidth = chartRight - chartLeft
         val chartHeight = chartBottom - chartTop
 
-        // Draw grid lines
+        // Draw grid lines with y-axis labels
         val gridStep = chartHeight / 4f
         for (i in 0..4) {
             val y = chartTop + gridStep * i
             canvas.drawLine(chartLeft, y, chartRight, y, gridPaint)
-            // Draw time label
             val timeAtLine = maxTime * (4 - i) / 4
-            canvas.drawText(
-                formatReadTime(timeAtLine),
-                chartLeft - 4.dpToPx(),
-                y + 4.dpToPx(),
-                labelPaint.apply { textAlign = Paint.Align.RIGHT }
-            )
+            if (timeAtLine > 0) {
+                canvas.drawText(
+                    formatReadTime(timeAtLine),
+                    chartLeft - 6.dpToPx(),
+                    y + 4.dpToPx(),
+                    labelPaint.apply { textAlign = Paint.Align.RIGHT }
+                )
+            }
         }
         labelPaint.textAlign = Paint.Align.CENTER
 
+        // Draw axis lines (y-axis left, x-axis bottom)
+        val axisPaint = gridPaint
+        canvas.drawLine(chartLeft, chartTop, chartLeft, chartBottom, axisPaint)
+        canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint)
+
         // Draw bars
         val dynamicGap = if (items.size > 20) barGapDense else barGap
-        val maxBarWidth = when { items.size <= 7 -> 42.dpToPx().toFloat(); items.size <= 12 -> 24.dpToPx().toFloat(); else -> barWidth }
+        val maxBarWidth = when { items.size <= 7 -> 40.dpToPx().toFloat(); items.size <= 12 -> 24.dpToPx().toFloat(); else -> barWidth }
         val totalGapWidth = dynamicGap * (items.size + 1)
         val availableWidth = chartWidth - totalGapWidth
         val calculatedBarWidth = if (items.isNotEmpty()) availableWidth / items.size else barWidth
@@ -160,13 +170,13 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
     }
 
     private fun formatReadTime(ms: Long): String {
-        val minutes = ms / (1000 * 60)
-        val hours = minutes / 60
-        val mins = minutes % 60
+        val totalMinutes = ms / (1000 * 60)
+        val hours = totalMinutes / 60
+        val mins = totalMinutes % 60
         return when {
+            hours > 0 && mins > 0 -> "${hours}h${mins}m"
             hours > 0 -> "${hours}h"
-            mins > 0 -> "${mins}m"
-            else -> "0"
+            else -> "${totalMinutes}m"
         }
     }
 

@@ -386,6 +386,8 @@
     <string name="predictive_back">Predictive back gesture</string>
     <string name="predictive_back_summary">Scale and slide animation when returning from sub-pages of My page</string>
     <string name="add_to_bookshelf">Add to Bookshelf</string>
+    <string name="already_in_bookshelf">Already in Bookshelf</string>
+    <string name="add_book_success">已加入书架</string>
     <string name="continue_read">Continue reading</string>
     <string name="cover_path">Cover path</string>
     <string name="page_anim_cover">Cover</string>
@@ -1105,6 +1107,15 @@
     <string name="search_scope">Search scope</string>
     <string name="toggle_search_scope">Handover</string>
     <string name="sure_clear_search_history">Are you sure to clear all search history</string>
+    <string name="search_result_count">共 %d 条结果</string>
+    <string name="search_source_progress">已搜索 %1$d/%2$d 个书源</string>
+    <string name="search_empty">暂无搜索结果</string>
+    <string name="search_has_more">加载更多</string>
+    <string name="search_type">书源类型</string>
+    <string name="layout_mode">布局模式</string>
+    <string name="noval">小说</string>
+    <string name="manga">漫画</string>
+    <string name="search_book_source_count">%d源</string>
     <string name="no_anim_scroll_page">Disable scroll click animation</string>
     <string name="webdav_device_name">Device name</string>
     <string name="web_service_wake_lock">WebService Wake up Lock</string>

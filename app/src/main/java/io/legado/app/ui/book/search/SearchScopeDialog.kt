@@ -111,7 +111,19 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
             groups = withContext(IO) {
                 appDb.bookSourceDao.allEnabledGroups()
             }
+            applyInitialScope()
             upData()
+        }
+    }
+
+    private fun applyInitialScope() {
+        val scope = arguments?.getString("scope") ?: return
+        if (scope.isEmpty()) return
+        if (scope.contains("::")) {
+            binding.rbSource.isChecked = true
+            adapter.pendingSourceUrl = scope.substringAfter("::")
+        } else {
+            adapter.selectGroups.addAll(scope.split(",").filter { it.isNotBlank() })
         }
     }
 
@@ -144,6 +156,12 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
             }.flowOn(IO).conflate().collect { data ->
                 screenSources.clear()
                 screenSources.addAll(data)
+                adapter.pendingSourceUrl?.let { pendingUrl ->
+                    screenSources.find { it.bookSourceUrl == pendingUrl }?.let { found ->
+                        adapter.selectSource = found
+                    }
+                    adapter.pendingSourceUrl = null
+                }
                 adapter.notifyDataSetChanged()
                 delay(500)
             }
@@ -154,6 +172,7 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
 
         val selectGroups = arrayListOf<String>()
         var selectSource: BookSourcePart? = null
+        var pendingSourceUrl: String? = null
 
         override fun getItemViewType(position: Int): Int {
             return if (binding.rbSource.isChecked) {
