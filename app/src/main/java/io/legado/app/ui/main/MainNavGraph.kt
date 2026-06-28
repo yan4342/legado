@@ -30,7 +30,12 @@ import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import android.app.Activity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import androidx.fragment.app.FragmentActivity
+import io.legado.app.R
 import io.legado.app.ui.book.info.compose.BookInfoRouteScreen
 import io.legado.app.ui.book.search.SearchIntent
 import io.legado.app.ui.book.search.SearchScreen
@@ -39,6 +44,8 @@ import io.legado.app.ui.book.explore.ExploreShowIntent
 import io.legado.app.ui.book.explore.ExploreShowScreen
 import io.legado.app.ui.book.explore.ExploreShowViewModel
 import io.legado.app.ui.book.source.manage.BookSourceActivity
+import io.legado.app.ui.config.CheckSourceConfig
+import io.legado.app.ui.config.DirectLinkUploadConfig
 import io.legado.app.ui.main.my.AboutActions
 import io.legado.app.ui.main.my.AiDictRuleRoute
 import io.legado.app.ui.main.my.BackupConfigActions
@@ -54,8 +61,17 @@ import io.legado.app.ui.main.my.ReadRecordRoute
 import io.legado.app.ui.main.my.ReadRecordOverviewRoute
 import io.legado.app.ui.main.my.ThemeConfigActions
 import io.legado.app.ui.main.my.WelcomeConfigActions
+import io.legado.app.utils.openUrl
+import io.legado.app.utils.share
+import io.legado.app.utils.showCrashLogSheet
+import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.showLogSheet
+import io.legado.app.utils.showMarkdownSheet
 import io.legado.app.utils.startActivity
+import io.legado.app.utils.toastOnUi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -67,9 +83,19 @@ fun MainNavHost(
     val context = LocalContext.current
     val activity = remember(context) { context as? Activity }
     val backStack = rememberNavBackStack(MainRouteHome)
-    val searchViewModel = koinViewModel<SearchViewModel>()
+    val scope = rememberCoroutineScope()
 
     var onNavigateToRoute: (MainRoute) -> Unit by remember { mutableStateOf({}) }
+
+    // Helper: read markdown from assets and show sheet
+    fun showMdFile(title: String, fileName: String) {
+        scope.launch {
+            val md = withContext(Dispatchers.IO) {
+                runCatching { context.assets.open(fileName).bufferedReader().readText() }.getOrNull() ?: ""
+            }
+            (context as? FragmentActivity)?.showMarkdownSheet(title, md)
+        }
+    }
 
     // 统一回退回调，NavDisplay.onBack 和各条目 onBack 共用。
     // 当栈只有首页时，委托给 MainActivity 的双击退出逻辑；
@@ -158,6 +184,7 @@ fun MainNavHost(
             }
 
             entry<MainRouteSearch> { route ->
+                val searchViewModel = koinViewModel<SearchViewModel>()
 
                 LaunchedEffect(route.key, route.scopeRaw) {
                     searchViewModel.onIntent(SearchIntent.Initialize(key = route.key, scopeRaw = route.scopeRaw))
@@ -261,17 +288,17 @@ fun MainNavHost(
                 MyAboutRoute(
                     onBack = onNavigateBack,
                     actions = AboutActions(
-                        onShare = {},
-                        onScoring = {},
-                        onContributors = {},
-                        onUpdateLog = {},
-                        onCheckUpdate = {},
-                        onCrashLog = {},
-                        onSaveLog = {},
-                        onCreateHeapDump = {},
-                        onPrivacyPolicy = {},
-                        onLicense = {},
-                        onDisclaimer = {},
+                        onShare = { context.share(context.getString(R.string.app_share_description), context.getString(R.string.app_name)) },
+                        onScoring = { context.openUrl("market://details?id=${context.packageName}") },
+                        onContributors = { context.openUrl(context.getString(R.string.contributors_url)) },
+                        onUpdateLog = { showMdFile(context.getString(R.string.update_log), "updateLog.md") },
+                        onCheckUpdate = { context.toastOnUi("检查更新功能暂未迁移") },
+                        onCrashLog = { (context as? FragmentActivity)?.showCrashLogSheet() },
+                        onSaveLog = { context.toastOnUi("保存日志功能暂未迁移") },
+                        onCreateHeapDump = { context.toastOnUi("创建堆转储功能暂未迁移") },
+                        onPrivacyPolicy = { showMdFile(context.getString(R.string.privacy_policy), "privacyPolicy.md") },
+                        onLicense = { showMdFile(context.getString(R.string.license), "LICENSE.md") },
+                        onDisclaimer = { showMdFile(context.getString(R.string.disclaimer), "disclaimer.md") },
                     ),
                 )
             }
@@ -281,8 +308,8 @@ fun MainNavHost(
                     fragment = null,
                     onBack = onNavigateBack,
                     actions = OtherConfigActions(
-                        onCheckSource = {},
-                        onUploadRule = {},
+                        onCheckSource = { (context as? AppCompatActivity)?.showDialogFragment<CheckSourceConfig>() },
+                        onUploadRule = { (context as? AppCompatActivity)?.showDialogFragment<DirectLinkUploadConfig>() },
                     ),
                 )
             }

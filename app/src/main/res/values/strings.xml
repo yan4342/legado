@@ -728,6 +728,10 @@
     <string name="middle">Middle</string>
     <string name="information">Information</string>
     <string name="switchLayout">Switch Layout</string>
+    <string name="more">More</string>
+    <string name="search_list_mode">List</string>
+    <string name="search_group_by_source">Group by source</string>
+    <string name="search_loaded_all">All loaded</string>
     <string name="text_font_weight_converter">Text font weight switching</string>
     <string name="full_screen_gestures_support">Full screen gestures support</string>
     <string name="disable_return_key">Disable return key</string>

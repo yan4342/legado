@@ -48,10 +48,18 @@ import io.legado.app.ui.main.my.MyScreen
 import io.legado.app.ui.main.rss.RssScreen
 import io.legado.app.service.WebService
 import io.legado.app.constant.PreferKey
+import io.legado.app.constant.EventBus
+import io.legado.app.utils.flowWithLifecycleAndDatabaseChange
+import io.legado.app.utils.observeEventSticky
 import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.showHelp
 import io.legado.app.utils.startActivity
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 private val MainDestination.iconRes: Int
@@ -89,7 +97,22 @@ fun BottomNavScreen(
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
     var myThemeMode by remember { mutableStateOf("followSystem") }
-    var webServiceRunning by remember { mutableStateOf(false) }
+    val webServiceRunning = remember { MutableStateFlow(WebService.isRun) }
+    val webServiceAddress = remember { MutableStateFlow(WebService.hostAddress) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.Observer<String> {
+            webServiceRunning.value = WebService.isRun
+            webServiceAddress.value = WebService.hostAddress
+        }
+        io.legado.app.utils.eventObservable<String>(EventBus.WEB_SERVICE)
+            .observe(lifecycleOwner, observer)
+        onDispose {
+            io.legado.app.utils.eventObservable<String>(EventBus.WEB_SERVICE)
+                .removeObserver(observer)
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
     Scaffold(
@@ -163,11 +186,13 @@ fun BottomNavScreen(
                             },
                             contentWindowInsets = WindowInsets(0.dp),
                         ) { contentPadding ->
+                            val isRunning by webServiceRunning.collectAsState()
+                            val hostAddress by webServiceAddress.collectAsState()
                             MyScreen(
                                 modifier = Modifier.padding(contentPadding),
                                 themeMode = myThemeMode,
-                                webServiceRunning = webServiceRunning,
-                                webServiceAddress = "",
+                                webServiceRunning = isRunning,
+                                webServiceAddress = hostAddress,
                                 onBookSourceManage = { context.startActivity<BookSourceActivity>() },
                                 onTxtTocRuleManage = { context.startActivity<TxtTocRuleActivity>() },
                                 onReplaceManage = { context.startActivity<ReplaceRuleActivity>() },
@@ -180,7 +205,7 @@ fun BottomNavScreen(
                                 onThemeModeChange = { myThemeMode = it },
                                 onOtherSetting = { onNavigateToRoute(MainRouteOtherConfig) },
                                 onWebServiceChange = { checked ->
-                                    webServiceRunning = checked
+                                    webServiceRunning.value = checked
                                     if (checked) WebService.start(context) else WebService.stop(context)
                                     context.putPrefBoolean(PreferKey.webService, checked)
                                 },

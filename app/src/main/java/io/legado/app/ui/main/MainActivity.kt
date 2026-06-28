@@ -4,26 +4,21 @@ package io.legado.app.ui.main
 
 import android.os.Bundle
 import android.view.KeyEvent
-import android.view.MenuItem
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import io.legado.app.BuildConfig
 import io.legado.app.R
 import io.legado.app.base.BaseComposeActivity
 import io.legado.app.constant.AppConst.appInfo
-import io.legado.app.constant.EventBus
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.config.LocalConfig
-import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.utils.showCrashLogSheet
-import io.legado.app.utils.observeEvent
 import io.legado.app.utils.showMarkdownSheet
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers.IO
@@ -35,8 +30,7 @@ import kotlin.coroutines.resume
 /**
  * 主界面 — Compose NavDisplay 架构
  */
-class MainActivity : BaseComposeActivity(), BottomNavigationView.OnNavigationItemSelectedListener,
-    BottomNavigationView.OnNavigationItemReselectedListener {
+class MainActivity : BaseComposeActivity() {
 
     private var exitTime: Long = 0
     private val EXIT_INTERVAL = 2000L
@@ -48,10 +42,6 @@ class MainActivity : BaseComposeActivity(), BottomNavigationView.OnNavigationIte
         lifecycleScope.launch {
             upVersion()
             notifyAppCrash()
-        }
-
-        observeEvent<Boolean>(EventBus.DISABLE_VIEW_PAGER) {
-            // Handled by overlay — no ViewPager to disable in Compose mode
         }
     }
 
@@ -77,12 +67,6 @@ class MainActivity : BaseComposeActivity(), BottomNavigationView.OnNavigationIte
     fun navigateToSearch(key: String? = null, scopeRaw: String? = null) {
         onNavigateToRoute?.invoke(MainRouteSearch(key, scopeRaw))
     }
-
-    // --------------- 保留的遗留方法 ---------------
-
-    override fun onNavigationItemSelected(item: MenuItem): Boolean = false
-
-    override fun onNavigationItemReselected(item: MenuItem) {}
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         return super.dispatchKeyEvent(event)

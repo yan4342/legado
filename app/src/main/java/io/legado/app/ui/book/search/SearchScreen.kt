@@ -237,7 +237,7 @@ fun SearchScreen(
                         IconButton(onClick = viewModel::toggleSearchLayout) {
                             Icon(
                                 if (isSourceGroupedMode == 1) Icons.AutoMirrored.Filled.List else Icons.AutoMirrored.Filled.List,
-                                contentDescription = "切换布局"
+                                contentDescription = stringResource(R.string.switchLayout)
                             )
                         }
                         IconButton(onClick = { viewModel.onIntent(SearchIntent.SetSettingsSheetVisible(true)) }) {
@@ -246,7 +246,7 @@ fun SearchScreen(
                     }
                     Box {
                         IconButton(onClick = { overflowMenuExpanded = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "更多")
+                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more))
                         }
                         DropdownMenu(
                             expanded = overflowMenuExpanded,
@@ -671,7 +671,7 @@ private fun SettingsSheet(
             ) {
                 RadioButton(selected = !isSourceGroupedMode, onClick = null) // onClick 交给外层
                 Spacer(Modifier.width(8.dp))
-                Text("列表", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.search_list_mode), style = MaterialTheme.typography.bodyLarge)
             }
 
             Spacer(modifier = Modifier.width(48.dp))
@@ -685,7 +685,7 @@ private fun SettingsSheet(
             ) {
                 RadioButton(selected = isSourceGroupedMode, onClick = null)
                 Spacer(Modifier.width(8.dp))
-                Text("按书源分组", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.search_group_by_source), style = MaterialTheme.typography.bodyLarge)
             }
         }
 
@@ -780,7 +780,7 @@ private fun ExpandedSourceSheet(
                         when {
                             isLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                             errorMsg != null -> Text(errorMsg, color = MaterialTheme.colorScheme.error)
-                            isEnd -> Text("已加载全部", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            isEnd -> Text(stringResource(R.string.search_loaded_all), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

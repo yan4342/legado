@@ -26,7 +26,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import org.koin.androidx.compose.koinViewModel
 import io.legado.app.R
 import io.legado.app.constant.EventBus
-import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.utils.eventObservable
@@ -281,9 +280,7 @@ fun BookshelfTab(
                 sharedCoverKey = bookCoverSharedElementKey(book.bookUrl),
             ))
         },
-        onBookDelete = { book ->
-            appDb.bookDao.delete(book)
-        },
+        onBookDelete = { book -> bookshelfViewModel.deleteBook(book) },
         onSearchClick = { onNavigateToRoute(MainRouteSearch(key = null)) },
         onSort = {
             val newSort = (AppConfig.bookshelfSort + 1) % 4

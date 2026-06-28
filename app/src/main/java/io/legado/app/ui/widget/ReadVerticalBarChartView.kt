@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import io.legado.app.lib.theme.ThemeUtils
 import io.legado.app.lib.theme.accentColor
@@ -28,6 +29,11 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
 
     private var items: List<BarItem> = emptyList()
     private var maxTime: Long = 1L
+    private var selectedIndex: Int = -1
+
+    // Cached bar horizontal positions for hit-testing (populated in onDraw)
+    private data class BarRect(val left: Float, val right: Float)
+    private val barRects = mutableListOf<BarRect>()
 
     private val barWidth = 20.dpToPx().toFloat()
     private val barMinWidth = 8.dpToPx().toFloat()
@@ -48,6 +54,11 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
         strokeWidth = 1.dpToPx().toFloat()
         style = Paint.Style.STROKE
     }
+    private val valueLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 11.dpToPx().toFloat()
+        textAlign = Paint.Align.CENTER
+    }
+    private val valueBgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rectF = RectF()
 
     init {
@@ -67,11 +78,15 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
                 if (isDark) 0xFF8B949E.toInt() else 0xFF656D76.toInt()
             )
             gridPaint.color = if (isDark) 0x1AFFFFFF else 0x1A000000
+            valueLabelPaint.color = accent
+            valueBgPaint.color = if (isDark) 0xFF30363D.toInt() else 0xFFE8E8E8.toInt()
         } catch (e: Exception) {
             barPaint.color = 0xFF1976D2.toInt()
             bgBarPaint.color = 0xFFF6F8FA.toInt()
             labelPaint.color = 0xFF656D76.toInt()
             gridPaint.color = 0x1A000000
+            valueLabelPaint.color = 0xFF1976D2.toInt()
+            valueBgPaint.color = 0xFFE8E8E8.toInt()
         }
     }
 
@@ -88,6 +103,17 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
             resolveSize(suggestedMinimumWidth, widthMeasureSpec),
             height
         )
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_DOWN) {
+            val x = event.x
+            val hitIndex = barRects.indexOfFirst { x in it.left..it.right }
+            selectedIndex = if (hitIndex == selectedIndex) -1 else hitIndex
+            invalidate()
+            return true
+        }
+        return super.onTouchEvent(event)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -136,14 +162,22 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
         val actualBarWidth = calculatedBarWidth.coerceIn(barMinWidth, maxBarWidth)
         val labelInterval = when { items.size > 20 -> 4; items.size > 12 -> 3; items.size > 7 -> 2; else -> 1 }
 
+        barRects.clear()
+
         for ((index, item) in items.withIndex()) {
             val barLeft = chartLeft + dynamicGap + index * (actualBarWidth + dynamicGap)
             val barHeight = if (maxTime > 0) (item.readTime.toFloat() / maxTime) * chartHeight else 0f
             val barTop = chartBottom - barHeight
 
-            // Draw bar
+            barRects.add(BarRect(barLeft, barLeft + actualBarWidth))
+
+            // Draw bar — highlight selected bar
             if (barHeight > 0) {
                 rectF.set(barLeft, barTop, barLeft + actualBarWidth, chartBottom)
+                canvas.drawRoundRect(rectF, barCornerRadius, barCornerRadius, barPaint)
+            } else if (index == selectedIndex) {
+                // Draw a tiny bar for zero-value selected bar so the label has an anchor
+                rectF.set(barLeft, chartBottom - 2.dpToPx(), barLeft + actualBarWidth, chartBottom)
                 canvas.drawRoundRect(rectF, barCornerRadius, barCornerRadius, barPaint)
             }
 
@@ -156,6 +190,35 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
                     chartBottom + 14.dpToPx(),
                     labelPaint
                 )
+            }
+        }
+
+        // Draw value label above selected bar
+        if (selectedIndex in items.indices) {
+            val item = items[selectedIndex]
+            val barLeft = chartLeft + dynamicGap + selectedIndex * (actualBarWidth + dynamicGap)
+            val barCenterX = barLeft + actualBarWidth / 2f
+            val barHeight = if (maxTime > 0) (item.readTime.toFloat() / maxTime) * chartHeight else 0f
+            val barTop = chartBottom - barHeight
+
+            val text = formatReadTime(item.readTime)
+            val textWidth = valueLabelPaint.measureText(text)
+            val textHeight = valueLabelPaint.textSize
+            val bgPaddingH = 6.dpToPx()
+            val bgPaddingV = 3.dpToPx()
+            val bgTop = barTop - textHeight - bgPaddingV * 2 - 4.dpToPx()
+            val bgLeft = barCenterX - textWidth / 2f - bgPaddingH
+            val bgRight = barCenterX + textWidth / 2f + bgPaddingH
+            val bgBottom = barTop - 4.dpToPx()
+
+            // Clamp label left/right within chart area
+            val clampedBgLeft = bgLeft.coerceAtLeast(chartLeft)
+            val clampedBgRight = bgRight.coerceAtMost(chartRight)
+
+            if (clampedBgRight > clampedBgLeft) {
+                rectF.set(clampedBgLeft, bgTop, clampedBgRight, bgBottom)
+                canvas.drawRoundRect(rectF, 4.dpToPx().toFloat(), 4.dpToPx().toFloat(), valueBgPaint)
+                canvas.drawText(text, barCenterX, bgTop + textHeight + bgPaddingV, valueLabelPaint)
             }
         }
     }

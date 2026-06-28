@@ -41,6 +41,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -101,8 +102,8 @@ fun ExploreScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
 
-    val sources = remember { mutableStateListOf<BookSourcePart>() }
-    val groups = remember { mutableStateListOf<String>() }
+    val sources by viewModel.sourcesFlow.collectAsState()
+    val groups by viewModel.groupsFlow.collectAsState()
     var searchKey by remember { mutableStateOf("") }
     var showGroupMenu by remember { mutableStateOf(false) }
     var expandedIndex by remember { mutableIntStateOf(-1) }
@@ -113,46 +114,21 @@ fun ExploreScreen(
     val onSurfaceColor = if (AppConfig.isEInkMode) MaterialTheme.colorScheme.onSurface
     else MaterialTheme.colorScheme.onPrimary
 
-    // 更新发现数据流
-    LaunchedEffect(searchKey) {
-        when {
-            searchKey.isBlank() -> appDb.bookSourceDao.flowExplore()
-            searchKey.startsWith("group:") -> {
-                val key = searchKey.substringAfter("group:")
-                appDb.bookSourceDao.flowGroupExplore(key)
-            }
-            else -> appDb.bookSourceDao.flowExplore(searchKey)
-        }.flowWithLifecycleAndDatabaseChange(
-            lifecycleOwner.lifecycle,
-            androidx.lifecycle.Lifecycle.State.RESUMED,
-            AppDatabase.BOOK_SOURCE_TABLE_NAME,
-        ).catch {
-            AppLog.put("发现界面更新数据出错", it)
-        }.conflate().flowOn(IO).collect {
-            sources.clear()
-            sources.addAll(it)
+    // 按搜索关键字过滤数据源（UI 派生状态）
+    val filteredSources = remember(sources, searchKey) {
+        if (searchKey.isBlank()) sources
+        else if (searchKey.startsWith("group:")) {
+            val groupName = searchKey.substringAfter("group:")
+            sources.filter { it.bookSourceGroup == groupName }
+        } else {
+            sources.filter { it.bookSourceName.contains(searchKey, ignoreCase = true) || it.bookSourceUrl.contains(searchKey, ignoreCase = true) }
         }
-    }
-
-    // 监听分组数据
-    LaunchedEffect(Unit) {
-        appDb.bookSourceDao.flowExploreGroups()
-            .flowWithLifecycleAndDatabaseChange(
-                lifecycleOwner.lifecycle,
-                androidx.lifecycle.Lifecycle.State.RESUMED,
-                AppDatabase.BOOK_SOURCE_TABLE_NAME,
-            ).catch {
-                AppLog.put("发现界面获取分组数据失败\n${it.localizedMessage}", it)
-            }.conflate().collect {
-                groups.clear()
-                groups.addAll(it)
-            }
     }
 
     // 加载展开的分类
     LaunchedEffect(expandedIndex) {
-        if (expandedIndex < 0 || expandedIndex >= sources.size) return@LaunchedEffect
-        val source = sources[expandedIndex]
+        if (expandedIndex < 0 || expandedIndex >= filteredSources.size) return@LaunchedEffect
+        val source = filteredSources[expandedIndex]
         if (categoriesMap.containsKey(source.bookSourceUrl)) return@LaunchedEffect
         loadingCategoriesForUrl = source.bookSourceUrl
         try {
@@ -238,7 +214,7 @@ fun ExploreScreen(
             )
         },
     ) { padding ->
-        if (sources.isEmpty()) {
+        if (filteredSources.isEmpty()) {
             EmptyStateView(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 message = stringResource(R.string.explore_empty),
@@ -250,7 +226,7 @@ fun ExploreScreen(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
             ) {
                 itemsIndexed(
-                    items = sources,
+                    items = filteredSources,
                     key = { _, item -> item.bookSourceUrl },
                 ) { index, source ->
                     val isExpanded = expandedIndex == index

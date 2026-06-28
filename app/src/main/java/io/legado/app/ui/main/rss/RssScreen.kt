@@ -34,6 +34,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -90,8 +91,8 @@ fun RssScreen(
     val viewModel: RssViewModel = koinViewModel()
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val sources = remember { mutableStateListOf<RssSource>() }
-    val groups = remember { mutableStateListOf<String>() }
+    val sources by viewModel.sourcesFlow.collectAsState()
+    val groups by viewModel.groupsFlow.collectAsState()
     var searchKey by remember { mutableStateOf("") }
     var showGroupMenu by remember { mutableStateOf(false) }
     var contextMenuSource by remember { mutableStateOf<RssSource?>(null) }
@@ -99,40 +100,15 @@ fun RssScreen(
     val onSurfaceColor = if (AppConfig.isEInkMode) MaterialTheme.colorScheme.onSurface
     else MaterialTheme.colorScheme.onPrimary
 
-    // 更新RSS数据流
-    LaunchedEffect(searchKey) {
-        when {
-            searchKey.isBlank() -> appDb.rssSourceDao.flowEnabled()
-            searchKey.startsWith("group:") -> {
-                val key = searchKey.substringAfter("group:")
-                appDb.rssSourceDao.flowEnabledByGroup(key)
-            }
-            else -> appDb.rssSourceDao.flowEnabled(searchKey)
-        }.flowWithLifecycleAndDatabaseChange(
-            lifecycleOwner.lifecycle,
-            androidx.lifecycle.Lifecycle.State.RESUMED,
-            AppDatabase.RSS_SOURCE_TABLE_NAME,
-        ).catch {
-            AppLog.put("订阅界面更新数据出错", it)
-        }.flowOn(IO).conflate().collect {
-            sources.clear()
-            sources.addAll(it)
+    // 按搜索关键字过滤数据源（UI 派生状态）
+    val filteredSources: List<RssSource> = remember(sources, searchKey) {
+        if (searchKey.isBlank()) sources
+        else if (searchKey.startsWith("group:")) {
+            val groupName = searchKey.substringAfter("group:")
+            sources.filter { it.sourceGroup == groupName }
+        } else {
+            sources.filter { it.sourceName.contains(searchKey, ignoreCase = true) || it.sourceUrl.contains(searchKey, ignoreCase = true) }
         }
-    }
-
-    // 监听分组数据
-    LaunchedEffect(Unit) {
-        appDb.rssSourceDao.flowEnabledGroups()
-            .flowWithLifecycleAndDatabaseChange(
-                lifecycleOwner.lifecycle,
-                androidx.lifecycle.Lifecycle.State.RESUMED,
-                AppDatabase.RSS_SOURCE_TABLE_NAME,
-            ).catch {
-                AppLog.put("订阅界面获取分组数据失败\n${it.localizedMessage}", it)
-            }.conflate().collect {
-                groups.clear()
-                groups.addAll(it)
-            }
     }
 
     Scaffold(
@@ -221,7 +197,7 @@ fun RssScreen(
             )
         },
     ) { padding ->
-        if (sources.isEmpty()) {
+        if (filteredSources.isEmpty()) {
             EmptyStateView(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 message = stringResource(R.string.rss_source_empty),
@@ -258,7 +234,7 @@ fun RssScreen(
                     }
                 }
 
-                items(sources, key = { it.sourceUrl }) { source ->
+                items(filteredSources, key = { it.sourceUrl }) { source ->
                     Box {
                         Card(
                             modifier = Modifier.combinedClickable(

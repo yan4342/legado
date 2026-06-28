@@ -72,6 +72,12 @@ class BookshelfViewModel(application: Application) : BaseViewModel(application) 
         }
     }
 
+    fun deleteBook(book: Book) {
+        viewModelScope.launch {
+            appDb.bookDao.delete(book)
+        }
+    }
+
     fun addBookByUrl(bookUrls: String) {
         var successCount = 0
         addBookJob = execute {
