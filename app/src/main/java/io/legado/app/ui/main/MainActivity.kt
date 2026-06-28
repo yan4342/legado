@@ -3,261 +3,118 @@
 package io.legado.app.ui.main
 
 import android.os.Bundle
-import android.text.format.DateUtils
+import android.view.KeyEvent
 import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
-import androidx.activity.addCallback
-import androidx.activity.viewModels
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.ui.platform.ComposeView
-import androidx.core.view.get
-import androidx.core.view.postDelayed
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
-import androidx.fragment.app.FragmentStatePagerAdapter
+
 import androidx.lifecycle.lifecycleScope
-import androidx.viewpager.widget.ViewPager
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import io.legado.app.BuildConfig
 import io.legado.app.R
-import io.legado.app.base.VMBaseActivity
+import io.legado.app.base.BaseComposeActivity
 import io.legado.app.constant.AppConst.appInfo
 import io.legado.app.constant.EventBus
-import io.legado.app.constant.PreferKey
-import io.legado.app.databinding.ActivityMainBinding
-import io.legado.app.utils.showM3EditDialog
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.book.BookHelp
-import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.elevation
-import io.legado.app.lib.theme.primaryColor
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.utils.showCrashLogSheet
-import io.legado.app.ui.common.compose.LegadoTheme
-import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
-import io.legado.app.ui.main.bookshelf.compose.BookshelfComposeFragment
-import io.legado.app.ui.main.explore.ExploreFragment
-import io.legado.app.ui.main.my.MyFragment
-import io.legado.app.ui.main.rss.RssFragment
-import io.legado.app.utils.showMarkdownSheet
-import io.legado.app.ui.widget.text.BadgeView
-import io.legado.app.ui.widget.LockableViewPager
-import io.legado.app.ui.widget.SmoothSlidePageTransformer
-import io.legado.app.utils.isCreated
-import io.legado.app.utils.navigationBarHeight
 import io.legado.app.utils.observeEvent
-import io.legado.app.utils.setEdgeEffectColor
-import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
-import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.showMarkdownSheet
 import io.legado.app.utils.toastOnUi
-import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import splitties.views.bottomPadding
 import kotlin.coroutines.resume
 
 /**
- * 主界面
+ * 主界面 — Compose NavDisplay 架构
  */
-@Suppress("PrivatePropertyName")
-class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
-    BottomNavigationView.OnNavigationItemSelectedListener,
+class MainActivity : BaseComposeActivity(), BottomNavigationView.OnNavigationItemSelectedListener,
     BottomNavigationView.OnNavigationItemReselectedListener {
 
-    override val binding by viewBinding(ActivityMainBinding::inflate)
-    override val viewModel by viewModels<MainViewModel>()
-    private val idBookshelf = 0
-    private val idBookshelf1 = 11
-    private val idExplore = 1
-    private val idRss = 2
-    private val idMy = 3
     private var exitTime: Long = 0
-    private var bookshelfReselected: Long = 0
-    private var exploreReselected: Long = 0
-    private var pagePosition = 0
-    private val fragmentMap = hashMapOf<Int, Fragment>()
-    private var bottomMenuCount = 4
     private val EXIT_INTERVAL = 2000L
-    private val realPositions = arrayOf(idBookshelf, idExplore, idRss, idMy)
-    private val adapter by lazy {
-        TabFragmentPageAdapter(supportFragmentManager)
-    }
-    private var onUpBooksBadgeView: BadgeView? = null
-    private val navOverlayRoute = MutableStateFlow<MainRoute?>(null)
+    private var onNavigateToRoute: ((MainRoute) -> Unit)? = null
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        upBottomMenu()
-        initView()
-        setupNavOverlay()
-        upHomePage()
-        onBackPressedDispatcher.addCallback(this) {
-            if (pagePosition != 0) {
-                binding.viewPagerMain.currentItem = 0
-                return@addCallback
-            }
-            if (System.currentTimeMillis() - exitTime > EXIT_INTERVAL) {
-                toastOnUi(R.string.double_click_exit)
-                exitTime = System.currentTimeMillis()
-            } else {
-                if (BaseReadAloudService.pause) {
-                    finish()
-                } else {
-                    moveTaskToBack(true)
-                }
-            }
-        }
-    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-    override fun onPostCreate(savedInstanceState: Bundle?) {
-        super.onPostCreate(savedInstanceState)
         lifecycleScope.launch {
-            //隐私协议
-            if (!privacyPolicy()) return@launch
-            //版本更新
             upVersion()
-            //设置本地密码
-            setLocalPassword()
             notifyAppCrash()
-            //备份同步
-            backupSync()
-            //自动更新书籍
-            val isAutoRefreshedBook = savedInstanceState?.getBoolean("isAutoRefreshedBook") ?: false
-            if (AppConfig.autoRefreshBook && !isAutoRefreshedBook) {
-                binding.viewPagerMain.postDelayed(1000) {
-                    viewModel.upAllBookToc()
-                }
-            }
-            binding.viewPagerMain.postDelayed(3000) {
-                viewModel.postLoad()
-            }
         }
-    }
 
-    override fun onNavigationItemSelected(item: MenuItem): Boolean = binding.run {
-        val smoothScroll = !AppConfig.isEInkMode
-        when (item.itemId) {
-            R.id.menu_bookshelf ->
-                viewPagerMain.setCurrentItem(0, smoothScroll)
-
-            R.id.menu_discovery ->
-                viewPagerMain.setCurrentItem(realPositions.indexOf(idExplore), smoothScroll)
-
-            R.id.menu_rss ->
-                viewPagerMain.setCurrentItem(realPositions.indexOf(idRss), smoothScroll)
-
-            R.id.menu_my_config ->
-                viewPagerMain.setCurrentItem(realPositions.indexOf(idMy), smoothScroll)
-        }
-        return false
-    }
-
-    override fun onNavigationItemReselected(item: MenuItem) {
-        when (item.itemId) {
-            R.id.menu_bookshelf -> {
-                if (System.currentTimeMillis() - bookshelfReselected > 300) {
-                    bookshelfReselected = System.currentTimeMillis()
-                } else {
-                    (fragmentMap[getFragmentId(0)] as? BaseBookshelfFragment)?.gotoTop()
-                }
-            }
-
-            R.id.menu_discovery -> {
-                if (System.currentTimeMillis() - exploreReselected > 300) {
-                    exploreReselected = System.currentTimeMillis()
-                } else {
-                    (fragmentMap[1] as? ExploreFragment)?.compressExplore()
-                }
-            }
-        }
-    }
-
-    private fun initView() = binding.run {
-        viewPagerMain.setEdgeEffectColor(primaryColor)
-        viewPagerMain.offscreenPageLimit = 3
-        viewPagerMain.adapter = adapter
-        viewPagerMain.setPageTransformer(false, SmoothSlidePageTransformer())
-        viewPagerMain.addOnPageChangeListener(PageChangeCallback())
-        bottomNavigationView.elevation = elevation
-        bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)
-        bottomNavigationView.setOnNavigationItemReselectedListener(this@MainActivity)
-        if (AppConfig.isEInkMode) {
-            bottomNavigationView.setBackgroundResource(R.drawable.bg_eink_border_top)
-        }
-        bottomNavigationView.setOnApplyWindowInsetsListenerCompat { view, windowInsets ->
-            val height = windowInsets.navigationBarHeight
-            view.bottomPadding = height
-            windowInsets.inset(0, 0, 0, height)
+        observeEvent<Boolean>(EventBus.DISABLE_VIEW_PAGER) {
+            // Handled by overlay — no ViewPager to disable in Compose mode
         }
     }
 
     @OptIn(ExperimentalSharedTransitionApi::class)
-    private fun setupNavOverlay() {
-        binding.navOverlay.addView(ComposeView(this).apply {
-            setContent {
-                LegadoTheme {
-                    SharedTransitionLayout {
-                        MainNavOverlay(
-                            sharedTransitionScope = this@SharedTransitionLayout,
-                            navOverlayRoute = navOverlayRoute,
-                        )
+    @androidx.compose.runtime.Composable
+    override fun Content() {
+        SharedTransitionLayout {
+            MainNavHost(
+                onNavigateToRouteSetter = { onNavigateToRoute = it },
+                onBackAtHome = {
+                    if (System.currentTimeMillis() - exitTime > EXIT_INTERVAL) {
+                        toastOnUi(R.string.double_click_exit)
+                        exitTime = System.currentTimeMillis()
+                    } else {
+                        finish()
                     }
-                }
-            }
-        })
+                },
+                sharedTransitionScope = this@SharedTransitionLayout,
+            )
+        }
     }
 
     fun navigateToSearch(key: String? = null, scopeRaw: String? = null) {
-        navOverlayRoute.value = MainRouteSearch(key, scopeRaw)
+        onNavigateToRoute?.invoke(MainRouteSearch(key, scopeRaw))
     }
 
-    /**
-     * 用户隐私与协议
-     */
+    // --------------- 保留的遗留方法 ---------------
+
+    override fun onNavigationItemSelected(item: MenuItem): Boolean = false
+
+    override fun onNavigationItemReselected(item: MenuItem) {}
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        return super.dispatchKeyEvent(event)
+    }
+
     private suspend fun privacyPolicy(): Boolean {
-        if (LocalConfig.privacyPolicyOk) {
-            return true
-        }
+        if (LocalConfig.privacyPolicyOk) return true
         val privacyPolicy = withContext(IO) {
             String(assets.open("privacyPolicy.md").readBytes())
         }
         return suspendCancellableCoroutine { block ->
             alert(getString(R.string.privacy_policy), privacyPolicy) {
-                positiveButton(R.string.agree) {
-                    LocalConfig.privacyPolicyOk = true
-                    block.resume(true)
-                }
-                negativeButton(R.string.refuse) {
+                okButton { block.resume(true) }
+                noButton {
+                    LocalConfig.privacyPolicyOk = false
                     finish()
-                    block.resume(false)
                 }
-            }
+            }.show()
         }
     }
 
-    /**
-     * 版本更新日志
-     */
     private suspend fun upVersion() {
-        if (LocalConfig.versionCode == appInfo.versionCode) {
-            return
-        }
+        if (BuildConfig.DEBUG) return
+        privacyPolicy()
+        if (LocalConfig.versionCode == appInfo.versionCode) return
         LocalConfig.versionCode = appInfo.versionCode
         if (LocalConfig.isFirstOpenApp) {
             val help = withContext(IO) {
                 String(assets.open("web/help/md/appHelp.md").readBytes())
             }
             showMarkdownSheet(getString(R.string.help), help)
-        } else if (!BuildConfig.DEBUG) {
+        } else {
             val log = withContext(IO) {
                 String(assets.open("updateLog.md").readBytes())
             }
@@ -265,223 +122,22 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
     }
 
-    /**
-     * 设置本地密码
-     */
-    private suspend fun setLocalPassword() = suspendCancellableCoroutine { block ->
-        if (LocalConfig.password != null) {
-            block.resume(null)
-            return@suspendCancellableCoroutine
-        }
-        showM3EditDialog(
-            title = getString(R.string.set_local_password),
-            hint = "password",
-            isPassword = true,
-            onConfirm = { value ->
-                LocalConfig.password = value
-            },
-            onDismiss = {
-                if (LocalConfig.password == null) {
-                    LocalConfig.password = ""
-                }
-                block.resume(null)
-            },
-        )
-    }
-
     private fun notifyAppCrash() {
-        if (!LocalConfig.appCrash || BuildConfig.DEBUG) {
-            return
-        }
+        if (!LocalConfig.appCrash || BuildConfig.DEBUG) return
         LocalConfig.appCrash = false
         alert(getString(R.string.draw), "检测到阅读发生了崩溃，是否打开崩溃日志以便报告问题？") {
-            yesButton {
-                showCrashLogSheet()
-            }
+            yesButton { showCrashLogSheet() }
             noButton()
-        }
-    }
-
-    /**
-     * 备份同步
-     */
-    private fun backupSync() {
-        if (!AppConfig.autoCheckNewBackup) {
-            return
-        }
-        lifecycleScope.launch {
-            val lastBackupFile =
-                withContext(IO) { AppWebDav.lastBackUp().getOrNull() } ?: return@launch
-            if (lastBackupFile.lastModify - LocalConfig.lastBackup > DateUtils.MINUTE_IN_MILLIS) {
-                LocalConfig.lastBackup = lastBackupFile.lastModify
-                alert(R.string.restore, R.string.webdav_after_local_restore_confirm) {
-                    cancelButton()
-                    okButton {
-                        viewModel.restoreWebDav(lastBackupFile.displayName)
-                    }
-                }
-            }
-        }
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        if (AppConfig.autoRefreshBook) {
-            outState.putBoolean("isAutoRefreshedBook", true)
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        Coroutine.async {
+        lifecycleScope.launch(IO) {
             BookHelp.clearInvalidCache()
         }
         if (!BuildConfig.DEBUG) {
             Backup.autoBack(this)
         }
     }
-
-    /**
-     * 如果重启太快fragment不会重建,这里更新一下书架的排序
-     */
-    override fun recreate() {
-        (fragmentMap[getFragmentId(0)] as? BaseBookshelfFragment)?.run {
-            upSort()
-        }
-        super.recreate()
-    }
-
-    override fun observeLiveBus() {
-        viewModel.onUpBooksLiveData.observe(this) {
-            if (onUpBooksBadgeView == null) {
-                onUpBooksBadgeView = binding.bottomNavigationView.addBadgeView(0)
-            }
-            onUpBooksBadgeView!!.setBadgeCount(it)
-        }
-        observeEvent<String>(EventBus.RECREATE) {
-            recreate()
-        }
-        observeEvent<Boolean>(EventBus.NOTIFY_MAIN) {
-            binding.apply {
-                if (it) {
-                    bottomNavigationView.menu.clear()
-                    bottomNavigationView.inflateMenu(R.menu.main_bnv)
-                    onUpBooksBadgeView = null
-                }
-                upBottomMenu()
-                if (it) {
-                    viewPagerMain.setCurrentItem(bottomMenuCount - 1, false)
-                }
-            }
-        }
-        observeEvent<String>(PreferKey.threadCount) {
-            viewModel.upPool()
-        }
-        observeEvent<Boolean>(EventBus.DISABLE_VIEW_PAGER) {
-            (binding.viewPagerMain as? LockableViewPager)?.isSwipeEnabled = !it
-        }
-    }
-
-    private fun upBottomMenu() {
-        val showDiscovery = AppConfig.showDiscovery
-        val showRss = AppConfig.showRSS
-        binding.bottomNavigationView.menu.let { menu ->
-            menu.findItem(R.id.menu_discovery).isVisible = showDiscovery
-            menu.findItem(R.id.menu_rss).isVisible = showRss
-        }
-        var index = 0
-        if (showDiscovery) {
-            index++
-            realPositions[index] = idExplore
-        }
-        if (showRss) {
-            index++
-            realPositions[index] = idRss
-        }
-        index++
-        realPositions[index] = idMy
-        bottomMenuCount = index + 1
-        adapter.notifyDataSetChanged()
-    }
-
-    private fun upHomePage() {
-        when (AppConfig.defaultHomePage) {
-            "bookshelf" -> {}
-            "explore" -> if (AppConfig.showDiscovery) {
-                binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idExplore), false)
-            }
-
-            "rss" -> if (AppConfig.showRSS) {
-                binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idRss), false)
-            }
-
-            "my" -> binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idMy), false)
-        }
-    }
-
-    private fun getFragmentId(position: Int): Int {
-        val id = realPositions[position]
-        if (id == idBookshelf) {
-            // 书架统一使用 Compose 版（内部根据 bookGroupStyle 切换 Tab/文件布局）
-            return idBookshelf1
-        }
-        return id
-    }
-
-    private inner class PageChangeCallback : ViewPager.SimpleOnPageChangeListener() {
-
-        override fun onPageSelected(position: Int) {
-            pagePosition = position
-            binding.bottomNavigationView.menu[realPositions[position]].isChecked = true
-        }
-
-    }
-
-    @Suppress("DEPRECATION")
-    private inner class TabFragmentPageAdapter(fm: FragmentManager) :
-        FragmentStatePagerAdapter(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
-
-        private fun getId(position: Int): Int {
-            return getFragmentId(position)
-        }
-
-        override fun getItemPosition(any: Any): Int {
-            val position = (any as MainFragmentInterface).position
-                ?: return POSITION_NONE
-            val fragmentId = getId(position)
-            if ((fragmentId == idBookshelf1 && any is BookshelfComposeFragment)
-                || (fragmentId == idExplore && any is ExploreFragment)
-                || (fragmentId == idRss && any is RssFragment)
-                || (fragmentId == idMy && any is MyFragment)
-            ) {
-                return POSITION_UNCHANGED
-            }
-            return POSITION_NONE
-        }
-
-        override fun getItem(position: Int): Fragment {
-            return when (getId(position)) {
-                idBookshelf1 -> BookshelfComposeFragment(position)
-                idExplore -> ExploreFragment(position)
-                idRss -> RssFragment(position)
-                else -> MyFragment(position)
-            }
-        }
-
-        override fun getCount(): Int {
-            return bottomMenuCount
-        }
-
-        override fun instantiateItem(container: ViewGroup, position: Int): Any {
-            var fragment = super.instantiateItem(container, position) as Fragment
-            if (fragment.isCreated && getItemPosition(fragment) == POSITION_NONE) {
-                destroyItem(container, position, fragment)
-                fragment = super.instantiateItem(container, position) as Fragment
-            }
-            fragmentMap[getId(position)] = fragment
-            return fragment
-        }
-
-    }
-
 }

@@ -95,6 +95,7 @@ sealed interface SearchIntent {
     data class ApplyScopeUpdate(val scopeRaw: String) : SearchIntent
     data class ToggleScopeItem(val itemName: String) : SearchIntent
     data object SelectAllScope : SearchIntent
+    data object ClearSearchResults : SearchIntent
 }
 
 sealed interface SearchEffect {

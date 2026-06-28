@@ -354,7 +354,7 @@ private fun MyRootScreen(
 
 /** 阅读记录路由内容。零参 ReadRecordViewModel，沿用 remember 方式。 */
 @Composable
-private fun ReadRecordRoute(
+internal fun ReadRecordRoute(
     onBack: () -> Unit,
     onOverview: () -> Unit,
     onNavigateToBook: (String, String) -> Unit,
@@ -377,12 +377,13 @@ private fun ReadRecordRoute(
 
 /** AI 词典路由内容。AiDictRuleViewModel(application) 借 Fragment 的 ViewModelStore。 */
 @Composable
-private fun AiDictRuleRoute(
-    fragment: Fragment,
+internal fun AiDictRuleRoute(
+    fragment: Fragment? = null,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val viewModel: AiDictRuleViewModel = viewModel(viewModelStoreOwner = fragment)
+    val owner = fragment ?: androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current!!
+    val viewModel: AiDictRuleViewModel = viewModel(viewModelStoreOwner = owner)
     val rules by viewModel.rulesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     AiDictRuleListScreen(
         rules = rules,
@@ -402,7 +403,7 @@ private fun AiDictRuleRoute(
  * 阅读记录总览路由内容。无 ViewModel，本地 state + 协程加载，逻辑迁自 ReadRecordOverviewActivity。
  */
 @Composable
-private fun ReadRecordOverviewRoute(
+internal fun ReadRecordOverviewRoute(
     onBack: () -> Unit,
     onBookClick: (String, String) -> Unit,
 ) {

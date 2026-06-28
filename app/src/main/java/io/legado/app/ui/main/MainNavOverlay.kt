@@ -23,19 +23,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import org.koin.androidx.compose.koinViewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import io.legado.app.R
 import io.legado.app.constant.EventBus
-import io.legado.app.constant.PreferKey
 import io.legado.app.ui.book.info.compose.BookInfoRouteScreen
 import io.legado.app.ui.book.search.SearchIntent
 import io.legado.app.ui.book.search.SearchScreen
 import io.legado.app.ui.book.search.SearchViewModel
 import io.legado.app.ui.book.source.manage.BookSourceActivity
-import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.showLogSheet
 import io.legado.app.utils.startActivity
@@ -54,7 +55,7 @@ fun MainNavOverlay(
 ) {
     val context = LocalContext.current
     val backStack = rememberNavBackStack(MainRouteEmpty)
-    val searchViewModel = viewModel<SearchViewModel>()
+    val searchViewModel = koinViewModel<SearchViewModel>()
     val pendingRoute by navOverlayRoute.collectAsStateWithLifecycle()
 
     // 响应 MainActivity.navigateToSearch() 的调用
@@ -81,19 +82,35 @@ fun MainNavOverlay(
 
     NavDisplay(
         backStack = backStack,
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
+        sceneStrategies = listOf(SinglePaneSceneStrategy()),
         transitionSpec = {
             (slideIntoContainer(
                 towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(easing = FastOutSlowInEasing),
+                animationSpec = tween(durationMillis = 480, easing = FastOutSlowInEasing),
                 initialOffset = { fullWidth -> fullWidth }
-            ) + fadeIn(animationSpec = tween(easing = LinearOutSlowInEasing))) togetherWith
+            ) + fadeIn(animationSpec = tween(durationMillis = 360, easing = LinearOutSlowInEasing))) togetherWith
                 (slideOutOfContainer(
                     towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                    animationSpec = tween(easing = FastOutSlowInEasing),
+                    animationSpec = tween(durationMillis = 480, easing = FastOutSlowInEasing),
                     targetOffset = { fullWidth -> fullWidth / 4 }
-                ) + fadeOut(animationSpec = tween(easing = LinearOutSlowInEasing)))
+                ) + fadeOut(animationSpec = tween(durationMillis = 360, easing = LinearOutSlowInEasing)))
         },
         popTransitionSpec = {
+            (slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(durationMillis = 480, easing = FastOutSlowInEasing),
+                initialOffset = { fullWidth -> -fullWidth / 4 }
+            ) + fadeIn(animationSpec = tween(durationMillis = 360, easing = LinearOutSlowInEasing))) togetherWith
+                (scaleOut(
+                    targetScale = 0.8f,
+                    animationSpec = tween(durationMillis = 480, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(durationMillis = 360)))
+        },
+        predictivePopTransitionSpec = { _ ->
             (slideIntoContainer(
                 towards = AnimatedContentTransitionScope.SlideDirection.Start,
                 animationSpec = tween(easing = FastOutSlowInEasing),
@@ -102,27 +119,7 @@ fun MainNavOverlay(
                 (scaleOut(
                     targetScale = 0.8f,
                     animationSpec = tween(easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(easing = LinearOutSlowInEasing)))
-        },
-        predictivePopTransitionSpec = { _ ->
-            if (context.getPrefBoolean(PreferKey.predictiveBack, true)) {
-                (slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                    animationSpec = tween(easing = FastOutSlowInEasing),
-                    initialOffset = { fullWidth -> -fullWidth / 4 }
-                ) + fadeIn(animationSpec = tween(easing = LinearOutSlowInEasing))) togetherWith
-                    (scaleOut(
-                        targetScale = 0.8f,
-                        animationSpec = tween(easing = FastOutSlowInEasing)
-                    ) + fadeOut(animationSpec = tween()))
-            } else {
-                (slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                    animationSpec = tween(easing = FastOutSlowInEasing),
-                    initialOffset = { fullWidth -> -fullWidth / 4 }
-                ) + fadeIn(animationSpec = tween(easing = LinearOutSlowInEasing))) togetherWith
-                    fadeOut(animationSpec = tween(easing = LinearOutSlowInEasing))
-            }
+                ) + fadeOut(animationSpec = tween()))
         },
         onBack = { backStack.removeLastOrNull() },
         entryProvider = entryProvider {
@@ -140,7 +137,10 @@ fun MainNavOverlay(
                     viewModel = searchViewModel,
                     onBack = {
                         if (bookInfoOverlay != null) bookInfoOverlay = null
-                        else backStack.removeLastOrNull()
+                        else {
+                            searchViewModel.onIntent(SearchIntent.ClearSearchResults)
+                            backStack.removeLastOrNull()
+                        }
                     },
                     onOpenBookInfo = { name, author, bookUrl, origin, coverPath, sharedCoverKey ->
                         bookInfoOverlay = BookInfoOverlayParams(
@@ -180,7 +180,7 @@ fun MainNavOverlay(
     )
 }
 
-private data class BookInfoOverlayParams(
+internal data class BookInfoOverlayParams(
     val name: String,
     val author: String,
     val bookUrl: String,

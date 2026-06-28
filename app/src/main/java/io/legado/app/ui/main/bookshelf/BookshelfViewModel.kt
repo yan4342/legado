@@ -2,12 +2,15 @@ package io.legado.app.ui.main.bookshelf
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.asFlow
+import androidx.lifecycle.viewModelScope
 import com.google.gson.stream.JsonWriter
 import io.legado.app.R
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.config.AppConfig
@@ -25,15 +28,49 @@ import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.isJsonArray
 import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.toastOnUi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 
+/**
+ * Book.equals 只比较 bookUrl(主键),改书名/作者不改变 equals。
+ * 若用 MutableStateFlow<List<Book>>,value setter 的 == 去重会拦截更新。
+ * 用 data class 包一层 + version 字段,让每次写入必定不 equals。
+ */
+data class BookshelfData(
+    val books: List<Book> = emptyList(),
+    val groups: List<BookGroup> = emptyList(),
+    val version: Long = 0
+)
+
 class BookshelfViewModel(application: Application) : BaseViewModel(application) {
     val addBookProgressLiveData = MutableLiveData(-1)
     var addBookJob: Coroutine<*>? = null
+
+    // 用 version 字段绕开 Book.equals 的去重拦截
+    private val _data = MutableStateFlow(BookshelfData())
+    val dataFlow: StateFlow<BookshelfData> = _data.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            appDb.bookDao.flowByGroup(BookGroup.IdAll).collect { books ->
+                val old = _data.value
+                _data.value = old.copy(books = books, version = old.version + 1)
+            }
+        }
+        viewModelScope.launch {
+            appDb.bookGroupDao.show.asFlow().collect { groups ->
+                val old = _data.value
+                _data.value = old.copy(groups = groups, version = old.version + 1)
+            }
+        }
+    }
 
     fun addBookByUrl(bookUrls: String) {
         var successCount = 0

@@ -45,6 +45,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.preference.PreferenceManager
 import io.legado.app.R
+import io.legado.app.base.LocalStatusBarTransparent
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.BookType
 import io.legado.app.constant.PreferKey
@@ -173,6 +174,13 @@ fun BookInfoRouteScreen(
     // Loading state (replaces WaitDialog)
     var isLoading by remember { mutableStateOf(false) }
     var loadingText by remember { mutableStateOf("Loading.....") }
+
+    // 状态栏透明，透出底层背景图
+    val statusBarTransparent = LocalStatusBarTransparent.current
+    DisposableEffect(Unit) {
+        statusBarTransparent?.value = true
+        onDispose { statusBarTransparent?.value = false }
+    }
 
     LaunchedEffect(bookUrl, name, author) {
         // Init full data from DB (eager book already rendered with cover)

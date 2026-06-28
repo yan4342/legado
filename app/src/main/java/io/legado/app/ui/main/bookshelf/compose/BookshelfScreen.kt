@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -43,6 +44,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -69,6 +71,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.lerp
+import io.legado.app.base.LocalStatusBarColor
 import io.legado.app.R
 import io.legado.app.constant.BookType
 import io.legado.app.data.entities.Book
@@ -143,12 +147,44 @@ fun BookshelfScreen(
     val view = LocalView.current
     val coroutineScope = rememberCoroutineScope()
     val touchSlopPx = with(LocalDensity.current) { 8.dp.toPx() }
+    // pinned bar 固定高度，与下方 TopAppBar 的 Modifier.height(64.dp) 对齐，
+    // 用于把 contentOffset 归一化为 0..1 的折叠进度。
+    val topBarHeightPx = with(LocalDensity.current) { 64.dp.toPx() }
 
     // 只有当 top bar 处于完全展开状态（未滚动）时，才允许下拉刷新，
     // 避免与上滑回顶使 top bar 变色的效果冲突。
     // 用 contentOffset 而非 collapsedFraction，因为 pinned 行为下 heightOffset 始终为 0。
     // 直接读 State 让 Compose 自动追踪变化，避免 LaunchedEffect/snapshotFlow 的时序问题。
     val topBarAtRest = scrollBehavior.state.contentOffset < 0.5f
+
+    // 随 TopAppBar 滑动同步更新状态栏颜色。
+    // pinnedScrollBehavior 下 collapsedFraction 恒为 0，改用 contentOffset 驱动；
+    // 取绝对值以兼容 contentOffset 在不同滚动方向下的正负约定。
+    // 颜色与 TopAppBar 保持一致：静止时 primary，滑过一个 bar 高度后过渡到 surface。
+    val statusBarColorFlow = LocalStatusBarColor.current
+    if (statusBarColorFlow != null) {
+        val statusBarExpandedColor = if (AppConfig.isEInkMode) {
+            MaterialTheme.colorScheme.surface
+        } else {
+            MaterialTheme.colorScheme.primary
+        }
+        // 折叠色用 surfaceContainer，与 TopAppBar 滚动后的 scrolledContainerColor
+        // （AppBarTokens.OnScrollContainerColor = SurfaceContainer）对齐，避免色差。
+        val statusBarCollapsedColor = MaterialTheme.colorScheme.surfaceContainer
+        LaunchedEffect(scrollBehavior) {
+            snapshotFlow { abs(scrollBehavior.state.contentOffset) / topBarHeightPx }
+                .collect { fraction ->
+                    statusBarColorFlow.value = lerp(
+                        statusBarExpandedColor,
+                        statusBarCollapsedColor,
+                        fraction.coerceIn(0f, 1f),
+                    )
+                }
+        }
+        DisposableEffect(Unit) {
+            onDispose { statusBarColorFlow.value = null }
+        }
+    }
 
     // 是否为 Tab 分组模式且有多于一个分组可用
     val usePager = bookGroupStyle == 0 && groups.size > 1
@@ -204,8 +240,11 @@ fun BookshelfScreen(
 
     Scaffold(
         modifier = Modifier,
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                modifier = Modifier.height(64.dp),
+                windowInsets = WindowInsets(0.dp),
                 title = {
                     Text(
                         stringResource(R.string.bookshelf),

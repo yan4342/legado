@@ -299,7 +299,13 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
     implementation libs.activity.compose
     implementation libs.lifecycle.viewmodel.compose
+    implementation libs.lifecycle.viewmodel.navigation3
     implementation libs.lifecycle.runtime.compose
+    implementation platform(libs.koin.bom)
+    implementation libs.koin.core
+    implementation libs.koin.android
+    implementation libs.koin.compose
+    implementation libs.koin.compose.viewmodel
     implementation libs.androidx.navigation3.runtime
     implementation libs.androidx.navigation3.ui
     implementation libs.kotlinx.serialization.json

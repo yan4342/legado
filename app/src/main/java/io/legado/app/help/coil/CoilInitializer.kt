@@ -40,13 +40,13 @@ object CoilInitializer : SingletonImageLoader.Factory {
                     .build()
             }
             .memoryCachePolicy(CachePolicy.ENABLED)
-            .apply {
-                if (!BuildConfig.DEBUG) {
-                    // Release 模式关闭日志
-                } else {
-                    logger(DebugLogger())
-                }
-            }
+//            .apply {
+//                if (!BuildConfig.DEBUG) {
+//                    // Release 模式关闭日志
+//                } else {
+//                    logger(DebugLogger())
+//                }
+//            }
             .build()
     }
 }

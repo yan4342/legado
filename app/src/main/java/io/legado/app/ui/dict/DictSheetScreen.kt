@@ -38,7 +38,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
 import io.legado.app.R
 import io.legado.app.ui.common.compose.ModalLegadoBottomSheet
 import io.legado.app.ui.widget.dialog.rememberDelayedDismiss
@@ -48,7 +48,7 @@ import io.legado.app.ui.widget.dialog.rememberDelayedDismiss
 fun DictSheetScreen(
     word: String,
     onDismiss: () -> Unit,
-    dictViewModel: DictViewModel = viewModel()
+    dictViewModel: DictViewModel = koinViewModel()
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val requestDismiss = rememberDelayedDismiss(sheetState, onDismiss)

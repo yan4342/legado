@@ -211,6 +211,17 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             }
             is SearchIntent.SaveScrollState -> _uiState.update { it.copy(savedScrollIndex = intent.index, savedScrollOffset = intent.offset) }
             is SearchIntent.SaveExpandedSourceScrollState -> _uiState.update { it.copy(expandedSourceSavedScrollIndex = intent.index, expandedSourceSavedScrollOffset = intent.offset) }
+            SearchIntent.ClearSearchResults -> {
+                stopSearch()
+                _uiState.update {
+                    it.copy(
+                        committedQuery = "",
+                        results = emptyList(),
+                        isManualStop = false,
+                        hasMore = true,
+                    )
+                }
+            }
         }
     }
 
@@ -250,6 +261,17 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             val hasActiveSearch = _uiState.value.committedQuery.isNotEmpty()
             if (!hasActiveSearch) {
                 updateQuery(initKey, showSuggestions = true)
+            }
+        } else {
+            stopSearch()
+            updateQuery("", showSuggestions = true)
+            _uiState.update {
+                it.copy(
+                    committedQuery = "",
+                    results = emptyList(),
+                    isManualStop = false,
+                    hasMore = true,
+                )
             }
         }
     }

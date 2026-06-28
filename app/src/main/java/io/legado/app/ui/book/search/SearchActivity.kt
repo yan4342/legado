@@ -60,7 +60,11 @@ class SearchActivity : AppCompatActivity() {
                             viewModel = viewModel,
                             onBack = {
                                 if (bookInfoOverlay != null) bookInfoOverlay = null
-                                else if (hasWindowFocus()) finish()
+                                else if (hasWindowFocus()) {
+                                    viewModel.onIntent(SearchIntent.StopSearch)
+                                    viewModel.onIntent(SearchIntent.UpdateQuery(""))
+                                    finish()
+                                }
                             },
                             onOpenBookInfo = { name, author, bookUrl, origin, coverPath, sharedCoverKey ->
                                 bookInfoOverlay = BookInfoOverlayParams(

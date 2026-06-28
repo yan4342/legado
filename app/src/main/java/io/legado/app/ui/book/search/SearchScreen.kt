@@ -373,7 +373,6 @@ fun SearchScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
-                    val avs: AnimatedVisibilityScope = this
                     if (state.results.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             SearchResultFooter(isSearching = state.isSearching, hasMore = state.hasMore, hasResult = false, committedQuery = state.committedQuery)
@@ -403,7 +402,7 @@ fun SearchScreen(
                                             onLongClickBook = { previewBook = it },
                                             onViewAll = { viewModel.onIntent(SearchIntent.ExpandSource(group.origin, group.sourceName)) },
                                             sharedTransitionScope = sharedTransitionScope,
-                                            animatedVisibilityScope = avs,
+                                            animatedVisibilityScope = animatedVisibilityScope,
                                         )
                                     }
                                 }
@@ -427,7 +426,7 @@ fun SearchScreen(
                                         onLongClick = { previewBook = it },
                                         sourceCount = item.book.origins.size,
                                         sharedTransitionScope = sharedTransitionScope,
-                                        animatedVisibilityScope = avs,
+                                        animatedVisibilityScope = animatedVisibilityScope,
                                         sharedCoverKey = coverKey,
                                     )
                                 }

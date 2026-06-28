@@ -9,6 +9,8 @@ import android.content.pm.ActivityInfo
 import android.content.pm.ApplicationInfo
 import android.content.res.Configuration
 import android.os.Build
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
 import com.github.liuyueyi.quick.transfer.constants.TransType
 import com.jeremyliao.liveeventbus.LiveEventBus
 import com.jeremyliao.liveeventbus.logger.DefaultLogger
@@ -30,6 +32,8 @@ import io.legado.app.data.entities.rule.BookInfoRule
 import io.legado.app.data.entities.rule.ContentRule
 import io.legado.app.data.entities.rule.ExploreRule
 import io.legado.app.data.entities.rule.SearchRule
+import io.legado.app.di.appModule
+import io.legado.app.di.databaseModule
 import io.legado.app.help.AppFreezeMonitor
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.CrashHandler
@@ -71,6 +75,10 @@ class App : Application() {
     private lateinit var oldConfig: Configuration
 
     override fun onCreate() {
+        startKoin {
+            androidContext(this@App)
+            modules(databaseModule, appModule)
+        }
         super.onCreate()
         CrashHandler(this)
         if (isDebuggable) {

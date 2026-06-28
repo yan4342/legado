@@ -2,7 +2,10 @@ package io.legado.app.ui.main.my
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.ui.config.ConfigViewModel
 import io.legado.app.ui.config.compose.BackupConfigScreen
@@ -50,11 +53,12 @@ data class CoverConfigActions(
 /** 其他设置路由内容。ConfigViewModel 借 Fragment 的 ViewModelStore。 */
 @Composable
 fun MyOtherConfigRoute(
-    fragment: Fragment,
+    fragment: Fragment? = null,
     onBack: () -> Unit,
     actions: OtherConfigActions,
 ) {
-    val viewModel: ConfigViewModel = viewModel(viewModelStoreOwner = fragment)
+    val owner = fragment ?: LocalViewModelStoreOwner.current!!
+    val viewModel: ConfigViewModel = viewModel(viewModelStoreOwner = owner)
     OtherConfigScreen(
         onBackClick = onBack,
         viewModel = viewModel,
@@ -66,11 +70,12 @@ fun MyOtherConfigRoute(
 /** 备份路由内容。ConfigViewModel 借 Fragment 的 ViewModelStore。 */
 @Composable
 fun MyBackupConfigRoute(
-    fragment: Fragment,
+    fragment: Fragment? = null,
     onBack: () -> Unit,
     actions: BackupConfigActions,
 ) {
-    val viewModel: ConfigViewModel = viewModel(viewModelStoreOwner = fragment)
+    val owner = fragment ?: LocalViewModelStoreOwner.current!!
+    val viewModel: ConfigViewModel = viewModel(viewModelStoreOwner = owner)
     BackupConfigScreen(
         onBackClick = onBack,
         viewModel = viewModel,
@@ -106,7 +111,7 @@ fun MyThemeConfigRoute(
 /** 启动界面样式路由内容。Host 为 MyFragment（含欢迎图 launcher）。 */
 @Composable
 fun MyWelcomeConfigRoute(
-    fragment: Fragment,
+    fragment: Fragment? = null,
     onBack: () -> Unit,
     actions: WelcomeConfigActions,
 ) {
@@ -119,7 +124,7 @@ fun MyWelcomeConfigRoute(
 /** 封面配置路由内容。Host 为 MyFragment（含封面图 launcher、封面规则对话框）。 */
 @Composable
 fun MyCoverConfigRoute(
-    fragment: Fragment,
+    fragment: Fragment? = null,
     onBack: () -> Unit,
     actions: CoverConfigActions,
 ) {

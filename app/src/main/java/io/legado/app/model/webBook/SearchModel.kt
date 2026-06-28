@@ -198,6 +198,7 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
         searchPool?.close()
         searchPool = null
         mSearchId = 0L
+        searchKey = ""
     }
 
     interface CallBack {

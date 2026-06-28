@@ -44,7 +44,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
 import io.legado.app.R
 import io.legado.app.constant.AppLog
 import io.legado.app.help.coil.CoilImagesPlugin
@@ -412,7 +412,7 @@ private fun LegadoLogListContentPreview() {
 @Composable
 fun LegadoCrashLogContent(
     onDismiss: () -> Unit,
-    crashViewModel: CrashViewModel = viewModel(),
+    crashViewModel: CrashViewModel = koinViewModel(),
 ) {
     val logs by crashViewModel.logList.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
