@@ -30,6 +30,14 @@ android {
 
 baselineProfile {
     useConnectedDevices = true
+    // useConnectedDevices = false
+    // managedDevices {
+    //     register("pixel6Api34", com.android.build.api.dsl.ManagedVirtualDevice) {
+    //         device = "Pixel 6"
+    //         apiLevel = 34
+    //         systemImageSource = "aosp"
+    //     }
+    // }
 }
 
 dependencies {

@@ -536,6 +536,11 @@
                 tools:node="remove" />
         </provider>
 
+        <!-- <receiver
+            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+            android:permission=""
+            tools:replace="android:permission" /> -->
+
         <meta-data
             android:name="channel"
             android:value="${APP_CHANNEL_VALUE}" />

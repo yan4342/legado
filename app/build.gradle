@@ -159,9 +159,53 @@ androidComponents {
     }
 }
 
+configurations {
+    profileinstallerOriginal {
+        transitive = false
+    }
+}
+
+// Exclude original profileinstaller — replaced by filtered JAR below
+configurations.matching { it.name != 'profileinstallerOriginal' }.configureEach {
+    exclude group: 'androidx.profileinstaller', module: 'profileinstaller'
+}
+
+tasks.register('filterProfileinstaller') {
+    inputs.files(configurations.profileinstallerOriginal)
+    def outputDir = layout.buildDirectory.dir('filteredProfileinstaller')
+    def outputJar = layout.buildDirectory.file('filteredProfileinstaller/profileinstaller-filtered.jar')
+    outputs.file(outputJar)
+
+    doLast {
+        outputDir.get().asFile.deleteDir()
+        outputDir.get().asFile.mkdirs()
+
+        def aar = inputs.files.singleFile
+        def tempDir = new File(outputDir.get().asFile, 'temp')
+        tempDir.mkdirs()
+        ant.unzip(src: aar, dest: tempDir) {
+            patternset { include(name: 'classes.jar') }
+        }
+
+        def classesJar = new File(tempDir, 'classes.jar')
+        ant.jar(destfile: outputJar.get().asFile) {
+            zipfileset(src: classesJar) {
+                exclude(name: 'androidx/profileinstaller/ProfileInstallReceiver.class')
+                exclude(name: 'androidx/profileinstaller/ProfileInstallReceiver$*.class')
+            }
+        }
+
+        tempDir.deleteDir()
+    }
+}
+
 dependencies {
     implementation libs.androidx.material3
-    implementation libs.androidx.profileinstaller
+    // Replaced by filtered JAR below — excludes ProfileInstallReceiver so our shadow class wins
+    // implementation libs.androidx.profileinstaller
+    profileinstallerOriginal(libs.androidx.profileinstaller)
+    def filterTask = tasks.named('filterProfileinstaller')
+    implementation files(filterTask.map { it.outputs.files.singleFile })
     baselineProfile project(':baselineprofile')
 
     //compileOnly "com.android.tools.build:gradle:$agp_version"
