@@ -121,7 +121,7 @@ fun BgTextConfigSheet(
                 }
                 freshStream.close()
                 ReadBookConfig.durConfig.setCurBg(2, fileName)
-                postEvent(EventBus.UP_CONFIG, listOf(1))
+                postEvent(EventBus.UP_CONFIG, arrayListOf(1))
             }.onFailure {
                 context.toastOnUi(it.localizedMessage)
             }
@@ -193,7 +193,7 @@ fun BgTextConfigSheet(
                                     bgAlpha = ReadBookConfig.durConfig.bgAlpha.toFloat()
                                     underLine = ReadBookConfig.durConfig.underline
                                     darkStatusIcon = ReadBookConfig.durConfig.curStatusIconDark()
-                                    postEvent(EventBus.UP_CONFIG, listOf(1, 2, 5))
+                                    postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
                                 }
                             }
                         }
@@ -208,6 +208,7 @@ fun BgTextConfigSheet(
                 onCheckedChange = {
                     darkStatusIcon = it
                     durConfig.setCurStatusIconDark(it)
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(0))
                 },
             )
 
@@ -219,7 +220,7 @@ fun BgTextConfigSheet(
                     onCheckedChange = {
                         underLine = it
                         ReadBookConfig.underline = it
-                        postEvent(EventBus.UP_CONFIG, listOf(6, 9, 11))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(6, 9, 11))
                     },
                 )
             }
@@ -286,7 +287,7 @@ fun BgTextConfigSheet(
                         .size(36.dp)
                         .clickable {
                             if (ReadBookConfig.deleteDur()) {
-                                postEvent(EventBus.UP_CONFIG, listOf(1, 2, 12, 5))
+                                postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 12, 5))
                                 onDismiss()
                             } else {
                                 context.toastOnUi("数量已是最少,不能删除.")
@@ -319,9 +320,9 @@ fun BgTextConfigSheet(
                     onValueChange = {
                         bgAlpha = it
                         ReadBookConfig.bgAlpha = it.toInt()
-                        postEvent(EventBus.UP_CONFIG, listOf(3))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(3))
                     },
-                    valueRange = 0f..255f,
+                    valueRange = 0f..100f,
                     modifier = Modifier.weight(1f),
                 )
                 Text(
@@ -385,7 +386,7 @@ fun BgTextConfigSheet(
                                     }
                                     inputStream.close()
                                     ReadBookConfig.durConfig.setCurBg(2, assetName)
-                                    postEvent(EventBus.UP_CONFIG, listOf(1))
+                                    postEvent(EventBus.UP_CONFIG, arrayListOf(1))
                                 }.onFailure {
                                     context.toastOnUi(it.localizedMessage)
                                 }
@@ -475,7 +476,7 @@ private fun importConfig(byteArray: ByteArray) {
         ReadBookConfig.import(byteArray)
     }.onSuccess {
         ReadBookConfig.durConfig = it
-        postEvent(EventBus.UP_CONFIG, listOf(1, 2, 5))
+        postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
         appCtx.toastOnUi("导入成功")
     }.onError {
         it.printOnDebug()

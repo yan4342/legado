@@ -60,7 +60,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.paddingTop,
                     onValueChange = {
                         ReadBookConfig.paddingTop = it
-                        postEvent(EventBus.UP_CONFIG, listOf(10, 5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(10, 5))
                     },
                 )
                 PaddingSlider(
@@ -68,7 +68,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.paddingBottom,
                     onValueChange = {
                         ReadBookConfig.paddingBottom = it
-                        postEvent(EventBus.UP_CONFIG, listOf(10, 5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(10, 5))
                     },
                 )
                 PaddingSlider(
@@ -76,7 +76,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.paddingLeft,
                     onValueChange = {
                         ReadBookConfig.paddingLeft = it
-                        postEvent(EventBus.UP_CONFIG, listOf(10, 5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(10, 5))
                     },
                 )
                 PaddingSlider(
@@ -84,7 +84,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.paddingRight,
                     onValueChange = {
                         ReadBookConfig.paddingRight = it
-                        postEvent(EventBus.UP_CONFIG, listOf(10, 5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(10, 5))
                     },
                 )
 
@@ -97,7 +97,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.headerPaddingTop,
                     onValueChange = {
                         ReadBookConfig.headerPaddingTop = it
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
                 PaddingSlider(
@@ -105,7 +105,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.headerPaddingBottom,
                     onValueChange = {
                         ReadBookConfig.headerPaddingBottom = it
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
                 PaddingSlider(
@@ -113,7 +113,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.headerPaddingLeft,
                     onValueChange = {
                         ReadBookConfig.headerPaddingLeft = it
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
                 PaddingSlider(
@@ -121,7 +121,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.headerPaddingRight,
                     onValueChange = {
                         ReadBookConfig.headerPaddingRight = it
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
 
@@ -134,7 +134,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.footerPaddingTop,
                     onValueChange = {
                         ReadBookConfig.footerPaddingTop = it
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
                 PaddingSlider(
@@ -142,7 +142,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.footerPaddingBottom,
                     onValueChange = {
                         ReadBookConfig.footerPaddingBottom = it
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
                 PaddingSlider(
@@ -150,7 +150,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.footerPaddingLeft,
                     onValueChange = {
                         ReadBookConfig.footerPaddingLeft = it
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
                 PaddingSlider(
@@ -158,7 +158,7 @@ fun PaddingConfigSection() {
                     value = ReadBookConfig.footerPaddingRight,
                     onValueChange = {
                         ReadBookConfig.footerPaddingRight = it
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
 
@@ -170,7 +170,7 @@ fun PaddingConfigSection() {
                     checked = ReadBookConfig.showHeaderLine,
                     onCheckedChange = {
                         ReadBookConfig.showHeaderLine = it
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
                 SwitchRow(
@@ -178,7 +178,7 @@ fun PaddingConfigSection() {
                     checked = ReadBookConfig.showFooterLine,
                     onCheckedChange = {
                         ReadBookConfig.showFooterLine = it
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
             }

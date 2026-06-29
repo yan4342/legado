@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -105,11 +105,14 @@ private fun WheelNumberPicker(
     val density = LocalDensity.current
     val itemHeightPx = with(density) { itemHeightDp.toPx() }
 
-    val items = remember(minValue, maxValue) {
-        (minValue..maxValue).toList()
+    // Use count-based items to avoid materializing the entire range into a List.
+    // (minValue..maxValue).toList() would OOM for huge ranges like Int.MAX_VALUE.
+    val itemCount = remember(minValue, maxValue) {
+        val rangeSize = maxValue.toLong() - minValue.toLong() + 1L
+        rangeSize.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
 
-    val initialRealIndex = (value - minValue).coerceIn(0, items.lastIndex)
+    val initialRealIndex = (value - minValue).coerceIn(0, itemCount - 1)
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = initialRealIndex
     )
@@ -119,7 +122,7 @@ private fun WheelNumberPicker(
         val vpCenter = listState.layoutInfo.viewportSize.height / 2f
         val offsetFromFirst = vpCenter + listState.firstVisibleItemScrollOffset
         val raw = listState.firstVisibleItemIndex + (offsetFromFirst / itemHeightPx).toInt()
-        return raw.coerceIn(halfVisible, halfVisible + items.lastIndex)
+        return raw.coerceIn(halfVisible, halfVisible + itemCount - 1)
     }
 
     val centerIndex by remember {
@@ -138,8 +141,9 @@ private fun WheelNumberPicker(
                     listState.animateScrollToItem(targetFirst, 0)
                 }
                 val realIndex = snapped - halfVisible
-                if (realIndex in items.indices && items[realIndex] != value) {
-                    onValueChange(items[realIndex])
+                val itemValue = minValue + realIndex
+                if (realIndex in 0 until itemCount && itemValue != value) {
+                    onValueChange(itemValue)
                 }
             }
     }
@@ -147,7 +151,7 @@ private fun WheelNumberPicker(
     // React to external value changes (e.g. default button)
     LaunchedEffect(value) {
         if (!listState.isScrollInProgress) {
-            val targetReal = (value - minValue).coerceIn(0, items.lastIndex)
+            val targetReal = (value - minValue).coerceIn(0, itemCount - 1)
             val currentReal = centerItemIndex() - halfVisible
             if (targetReal != currentReal) {
                 listState.animateScrollToItem(targetReal, 0)
@@ -187,7 +191,8 @@ private fun WheelNumberPicker(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             item { Spacer(Modifier.height(itemHeightDp * halfVisible)) }
-            itemsIndexed(items) { index, item ->
+            items(count = itemCount) { index ->
+                val itemValue = minValue + index
                 val isSelected = index + halfVisible == centerIndex
                 Box(
                     modifier = Modifier
@@ -196,7 +201,7 @@ private fun WheelNumberPicker(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = item.toString(),
+                        text = itemValue.toString(),
                         style = MaterialTheme.typography.titleLarge.copy(
                             textAlign = TextAlign.Center,
                         ),

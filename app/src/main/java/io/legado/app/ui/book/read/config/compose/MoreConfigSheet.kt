@@ -56,6 +56,7 @@ fun MoreConfigSheet(
     onCustomPageKey: () -> Unit,
     onPageTouchSlop: () -> Unit,
     onRecreate: () -> Unit,
+    onExpandTextMenuChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -172,7 +173,7 @@ fun MoreConfigSheet(
                         hideStatusBar = it
                         context.putPrefBoolean(PreferKey.hideStatusBar, it)
                         ReadBookConfig.hideStatusBar = it
-                        postEvent(EventBus.UP_CONFIG, listOf(0, 2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(0, 2))
                     },
                 )
                 SwitchSettingItem(
@@ -182,7 +183,7 @@ fun MoreConfigSheet(
                         hideNavigationBar = it
                         context.putPrefBoolean(PreferKey.hideNavigationBar, it)
                         ReadBookConfig.hideNavigationBar = it
-                        postEvent(EventBus.UP_CONFIG, listOf(0, 2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(0, 2))
                     },
                 )
                 SwitchSettingItem(
@@ -201,7 +202,7 @@ fun MoreConfigSheet(
                     onCheckedChange = {
                         paddingDisplayCutouts = it
                         context.putPrefBoolean(PreferKey.paddingDisplayCutouts, it)
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
             }
@@ -271,7 +272,7 @@ fun MoreConfigSheet(
                         useZhLayout = it
                         context.putPrefBoolean(PreferKey.useZhLayout, it)
                         ReadBookConfig.useZhLayout = it
-                        postEvent(EventBus.UP_CONFIG, listOf(5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
                     },
                 )
                 SwitchSettingItem(
@@ -280,7 +281,7 @@ fun MoreConfigSheet(
                     onCheckedChange = {
                         textFullJustify = it
                         context.putPrefBoolean(PreferKey.textFullJustify, it)
-                        postEvent(EventBus.UP_CONFIG, listOf(5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
                     },
                 )
                 SwitchSettingItem(
@@ -289,7 +290,7 @@ fun MoreConfigSheet(
                     onCheckedChange = {
                         textBottomJustify = it
                         context.putPrefBoolean(PreferKey.textBottomJustify, it)
-                        postEvent(EventBus.UP_CONFIG, listOf(5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
                     },
                 )
                 if (supportsOptimizeRender) {
@@ -380,6 +381,7 @@ fun MoreConfigSheet(
                     onCheckedChange = {
                         expandTextMenu = it
                         context.putPrefBoolean(PreferKey.expandTextMenu, it)
+                        onExpandTextMenuChange(it)
                     },
                 )
                 SwitchSettingItem(

@@ -72,7 +72,7 @@ fun HeaderFooterSection() {
                     selectedIndex = ReadBookConfig.titleMode.coerceIn(0, 2),
                     onSelect = {
                         ReadBookConfig.titleMode = it
-                        postEvent(EventBus.UP_CONFIG, listOf(5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
                     },
                 )
 
@@ -84,7 +84,7 @@ fun HeaderFooterSection() {
                     onValueChange = {
                         titleSize = it
                         ReadBookConfig.titleSize = it
-                        postEvent(EventBus.UP_CONFIG, listOf(8, 5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
                     },
                 )
 
@@ -96,7 +96,7 @@ fun HeaderFooterSection() {
                     onValueChange = {
                         titleTop = it
                         ReadBookConfig.titleTopSpacing = it
-                        postEvent(EventBus.UP_CONFIG, listOf(8, 5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
                     },
                 )
 
@@ -108,7 +108,7 @@ fun HeaderFooterSection() {
                     onValueChange = {
                         titleBottom = it
                         ReadBookConfig.titleBottomSpacing = it
-                        postEvent(EventBus.UP_CONFIG, listOf(8, 5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
                     },
                 )
 
@@ -123,21 +123,21 @@ fun HeaderFooterSection() {
                     selectedIndex = headerModes.keys.indexOf(ReadTipConfig.headerMode).coerceAtLeast(0),
                     onSelect = { idx ->
                         ReadTipConfig.headerMode = headerModes.keys.toList()[idx]
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
 
                 TipContentRow("Left", ReadTipConfig.tipHeaderLeft) { tipValue ->
                     ReadTipConfig.tipHeaderLeft = tipValue
-                    postEvent(EventBus.UP_CONFIG, listOf(2, 6))
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(2, 6))
                 }
                 TipContentRow("Middle", ReadTipConfig.tipHeaderMiddle) { tipValue ->
                     ReadTipConfig.tipHeaderMiddle = tipValue
-                    postEvent(EventBus.UP_CONFIG, listOf(2, 6))
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(2, 6))
                 }
                 TipContentRow("Right", ReadTipConfig.tipHeaderRight) { tipValue ->
                     ReadTipConfig.tipHeaderRight = tipValue
-                    postEvent(EventBus.UP_CONFIG, listOf(2, 6))
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(2, 6))
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -151,21 +151,21 @@ fun HeaderFooterSection() {
                     selectedIndex = footerModes.keys.indexOf(ReadTipConfig.footerMode).coerceAtLeast(0),
                     onSelect = { idx ->
                         ReadTipConfig.footerMode = footerModes.keys.toList()[idx]
-                        postEvent(EventBus.UP_CONFIG, listOf(2))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
 
                 TipContentRow("Left", ReadTipConfig.tipFooterLeft) { tipValue ->
                     ReadTipConfig.tipFooterLeft = tipValue
-                    postEvent(EventBus.UP_CONFIG, listOf(2, 6))
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(2, 6))
                 }
                 TipContentRow("Middle", ReadTipConfig.tipFooterMiddle) { tipValue ->
                     ReadTipConfig.tipFooterMiddle = tipValue
-                    postEvent(EventBus.UP_CONFIG, listOf(2, 6))
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(2, 6))
                 }
                 TipContentRow("Right", ReadTipConfig.tipFooterRight) { tipValue ->
                     ReadTipConfig.tipFooterRight = tipValue
-                    postEvent(EventBus.UP_CONFIG, listOf(2, 6))
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(2, 6))
                 }
             }
         }

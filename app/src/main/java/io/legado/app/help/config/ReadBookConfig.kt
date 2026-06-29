@@ -149,7 +149,7 @@ object ReadBookConfig {
 
     fun deleteDur(): Boolean {
         if (configList.size > 5) {
-            val removeIndex = styleSelect
+            val removeIndex = styleSelect.coerceIn(0, configList.lastIndex)
             configList.removeAt(removeIndex)
             if (removeIndex <= readStyleSelect) {
                 readStyleSelect -= 1

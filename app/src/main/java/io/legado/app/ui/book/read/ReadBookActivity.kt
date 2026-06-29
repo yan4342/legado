@@ -125,6 +125,7 @@ import io.legado.app.utils.hexString
 import io.legado.app.utils.iconItemOnLongClick
 import io.legado.app.utils.invisible
 import io.legado.app.utils.invisible
+import io.legado.app.utils.putPrefString
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.isTrue
 import io.legado.app.utils.launch
@@ -166,6 +167,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     ReadBook.CallBack,
     AutoReadDialog.CallBack,
     TxtTocRuleDialog.CallBack,
+    FontSelectDialog.CallBack,
     ColorPickerDialogListener,
     LayoutProgressListener {
 
@@ -227,6 +229,14 @@ class ReadBookActivity : BaseReadBookActivity(),
     private var menu: Menu? = null
     private var backupJob: Job? = null
     private var tts: TTS? = null
+    override val curFontPath: String
+        get() = ReadBookConfig.textFont
+    override fun selectFont(path: String) {
+        if (path != ReadBookConfig.textFont || path.isEmpty()) {
+            ReadBookConfig.textFont = path
+            postEvent(EventBus.UP_CONFIG, arrayListOf(2, 5))
+        }
+    }
     val textActionMenu: TextActionMenu by lazy {
         TextActionMenu(this, this)
     }
@@ -278,7 +288,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             LegadoTheme {
                 ReadStyleSheet(
                     show = showReadStyleSheet,
-                    onDismiss = { showReadStyleSheet = false },
+                    onDismiss = { bottomDialog--; showReadStyleSheet = false },
                     onFontSelect = { showDialogFragment<FontSelectDialog>() },
                     onTextColorClick = { color ->
                         com.jaredrummler.android.colorpicker.ColorPickerDialog.newBuilder()
@@ -303,8 +313,17 @@ class ReadBookActivity : BaseReadBookActivity(),
                 )
                 MoreConfigSheet(
                     show = showMoreConfigSheet,
-                    onDismiss = { showMoreConfigSheet = false },
-                    onOrientationChange = { setOrientation() },
+                    onDismiss = { bottomDialog--; showMoreConfigSheet = false },
+                    onOrientationChange = {
+                        val items = resources.getStringArray(R.array.screen_direction_title).toList()
+                        this@ReadBookActivity.selector(
+                            getString(R.string.screen_direction),
+                            items,
+                        ) { _, i ->
+                            this@ReadBookActivity.putPrefString(PreferKey.screenOrientation, i.toString())
+                            setOrientation()
+                        }
+                    },
                     onReadBodyToLh = { recreate() },
                     onClickRegionalConfig = { showClickRegionalConfig() },
                     onCustomPageKey = { showCustomPageKeyConfig() },
@@ -1297,6 +1316,7 @@ class ReadBookActivity : BaseReadBookActivity(),
      * 显示阅读样式配置
      */
     override fun showReadStyle() {
+        bottomDialog++
         showReadStyleSheet = true
     }
 
@@ -1304,10 +1324,12 @@ class ReadBookActivity : BaseReadBookActivity(),
      * 显示更多设置
      */
     override fun showMoreSetting() {
+        bottomDialog++
         showMoreConfigSheet = true
     }
 
     override fun showSearchSetting() {
+        bottomDialog++
         showMoreConfigSheet = true
     }
 

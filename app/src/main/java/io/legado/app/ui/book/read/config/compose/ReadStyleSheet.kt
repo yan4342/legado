@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.help.config.AppConfig
@@ -62,7 +63,6 @@ fun ReadStyleSheet(
     var shareLayout by remember(show) { mutableStateOf(ReadBookConfig.shareLayout) }
 
     var showBgTextConfig by remember { mutableStateOf(false) }
-    var bgTextEditIndex by remember { mutableIntStateOf(0) }
     var selectedPreset by remember(show) { mutableIntStateOf(ReadBookConfig.styleSelect) }
 
     val fontWeightOptions = context.resources.getStringArray(R.array.text_font_weight).toList()
@@ -108,7 +108,7 @@ fun ReadStyleSheet(
                     onClick = {
                         textBold = (textBold + 1) % 3
                         ReadBookConfig.textBold = textBold
-                        postEvent(EventBus.UP_CONFIG, listOf(8, 9, 6))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(8, 9, 6))
                     },
                     label = {
                         Text(
@@ -135,7 +135,7 @@ fun ReadStyleSheet(
                     onClick = {
                         val newIndent = (indent + 1) % 4
                         ReadBookConfig.paragraphIndent = "　".repeat(newIndent)
-                        postEvent(EventBus.UP_CONFIG, listOf(8, 5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
                     },
                     label = {
                         Text(
@@ -155,7 +155,7 @@ fun ReadStyleSheet(
                             1 -> ChineseUtils.preLoad(false, TransType.TRADITIONAL_TO_SIMPLE)
                             2 -> ChineseUtils.preLoad(false, TransType.SIMPLE_TO_TRADITIONAL)
                         }
-                        postEvent(EventBus.UP_CONFIG, listOf(5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
                     },
                     label = {
                         Text(
@@ -195,48 +195,47 @@ fun ReadStyleSheet(
             // ── SeekBars ──
             LabeledSlider(
                 label = stringResource(R.string.text_size),
-                value = textSize,
-                valueRange = 0f..40f,
-                displayValue = "${textSize + 5}",
-                onValueChange = {
-                    textSize = it
+                initialValue = textSize,
+                valueRange = 0f..45f,
+                displayFormat = { "${it + 5}" },
+                onApply = {
                     ReadBookConfig.textSize = it + 5
-                    postEvent(EventBus.UP_CONFIG, listOf(8, 5))
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
                 },
+                updateKey = selectedPreset,
             )
             LabeledSlider(
                 label = stringResource(R.string.text_letter_spacing),
-                value = ((letterSpacing * 100).toInt() + 50).coerceIn(0, 100),
+                initialValue = ((letterSpacing * 100).toInt() + 50).coerceIn(0, 100),
                 valueRange = 0f..100f,
-                displayValue = "%.2f".format(letterSpacing),
-                onValueChange = {
-                    val valFloat = (it - 50) / 100f
-                    letterSpacing = valFloat
-                    ReadBookConfig.letterSpacing = valFloat
-                    postEvent(EventBus.UP_CONFIG, listOf(8, 5))
+                displayFormat = { "%.2f".format((it - 50) / 100f) },
+                onApply = {
+                    ReadBookConfig.letterSpacing = (it - 50) / 100f
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
                 },
+                updateKey = selectedPreset,
             )
             LabeledSlider(
                 label = stringResource(R.string.line_size),
-                value = lineSpacing,
-                valueRange = 0f..50f,
-                displayValue = "%.1f".format(lineSpacing / 10f),
-                onValueChange = {
-                    lineSpacing = it
+                initialValue = lineSpacing,
+                valueRange = 0f..20f,
+                displayFormat = { "%.1f".format(it / 10f) },
+                onApply = {
                     ReadBookConfig.lineSpacingExtra = it
-                    postEvent(EventBus.UP_CONFIG, listOf(8, 5))
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
                 },
+                updateKey = selectedPreset,
             )
             LabeledSlider(
                 label = stringResource(R.string.paragraph_size),
-                value = paragraphSpacing,
-                valueRange = 0f..50f,
-                displayValue = "%.1f".format(paragraphSpacing / 10f),
-                onValueChange = {
-                    paragraphSpacing = it
+                initialValue = paragraphSpacing,
+                valueRange = 0f..20f,
+                displayFormat = { "%.1f".format(it / 10f) },
+                onApply = {
                     ReadBookConfig.paragraphSpacing = it
-                    postEvent(EventBus.UP_CONFIG, listOf(8, 5))
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
                 },
+                updateKey = selectedPreset,
             )
 
 
@@ -252,13 +251,12 @@ fun ReadStyleSheet(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 pageAnimOptions.forEachIndexed { index, name ->
-                    val pageAnimValue = index + 1
                     FilterChip(
-                        selected = pageAnim == pageAnimValue,
+                        selected = pageAnim == index,
                         onClick = {
-                            pageAnim = pageAnimValue
+                            pageAnim = index
                             ReadBook.book?.setPageAnim(-1)
-                            ReadBookConfig.pageAnim = pageAnimValue
+                            ReadBookConfig.pageAnim = index
                             ReadBook.callBack?.upPageAnim()
                             ReadBook.loadContent(false)
                         },
@@ -266,6 +264,8 @@ fun ReadStyleSheet(
                             Text(
                                 text = name,
                                 style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
                             )
                         },
                         modifier = Modifier.weight(1f),
@@ -296,7 +296,7 @@ fun ReadStyleSheet(
                     onCheckedChange = {
                         shareLayout = it
                         ReadBookConfig.shareLayout = it
-                        postEvent(EventBus.UP_CONFIG, listOf(1, 2, 5))
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
                     },
                 )
             }
@@ -308,7 +308,14 @@ fun ReadStyleSheet(
                     if (index != selectedPreset) {
                         selectedPreset = index
                         ReadBookConfig.styleSelect = index
-                        postEvent(EventBus.UP_CONFIG, listOf(1, 2, 5))
+                        textSize = ReadBookConfig.textSize - 5
+                        letterSpacing = ReadBookConfig.letterSpacing
+                        lineSpacing = ReadBookConfig.lineSpacingExtra
+                        paragraphSpacing = ReadBookConfig.paragraphSpacing
+                        pageAnim = ReadBook.pageAnim()
+                        textBold = ReadBookConfig.textBold
+                        shareLayout = ReadBookConfig.shareLayout
+                        postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
                         if (AppConfig.readBarStyleFollowPage) {
                             postEvent(EventBus.UPDATE_READ_ACTION_BAR, true)
                         }
@@ -317,13 +324,28 @@ fun ReadStyleSheet(
                 onLongPress = { index ->
                     selectedPreset = index
                     ReadBookConfig.styleSelect = index
-                    postEvent(EventBus.UP_CONFIG, listOf(1, 2, 5))
-                    bgTextEditIndex = index
+                    textSize = ReadBookConfig.textSize - 5
+                    letterSpacing = ReadBookConfig.letterSpacing
+                    lineSpacing = ReadBookConfig.lineSpacingExtra
+                    paragraphSpacing = ReadBookConfig.paragraphSpacing
+                    pageAnim = ReadBook.pageAnim()
+                    textBold = ReadBookConfig.textBold
+                    shareLayout = ReadBookConfig.shareLayout
+                    postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
                     showBgTextConfig = true
                 },
                 onAdd = {
                     ReadBookConfig.configList.add(ReadBookConfig.Config())
-                    bgTextEditIndex = ReadBookConfig.configList.lastIndex
+                    val newIndex = ReadBookConfig.configList.lastIndex
+                    selectedPreset = newIndex
+                    ReadBookConfig.styleSelect = newIndex
+                    textSize = ReadBookConfig.textSize - 5
+                    letterSpacing = ReadBookConfig.letterSpacing
+                    lineSpacing = ReadBookConfig.lineSpacingExtra
+                    paragraphSpacing = ReadBookConfig.paragraphSpacing
+                    pageAnim = ReadBook.pageAnim()
+                    textBold = ReadBookConfig.textBold
+                    shareLayout = ReadBookConfig.shareLayout
                     showBgTextConfig = true
                 },
             )
@@ -335,8 +357,16 @@ fun ReadStyleSheet(
     BgTextConfigSheet(
         show = showBgTextConfig,
         onDismiss = {
+            selectedPreset = ReadBookConfig.styleSelect
+            textSize = ReadBookConfig.textSize - 5
+            letterSpacing = ReadBookConfig.letterSpacing
+            lineSpacing = ReadBookConfig.lineSpacingExtra
+            paragraphSpacing = ReadBookConfig.paragraphSpacing
+            pageAnim = ReadBook.pageAnim()
+            textBold = ReadBookConfig.textBold
+            shareLayout = ReadBookConfig.shareLayout
             showBgTextConfig = false
-            postEvent(EventBus.UP_CONFIG, listOf(1, 2, 5))
+            postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
         },
         onTextColorClick = onTextColorClick,
         onBgColorClick = onBgColorClick,
@@ -346,11 +376,13 @@ fun ReadStyleSheet(
 @Composable
 private fun LabeledSlider(
     label: String,
-    value: Int,
+    initialValue: Int,
     valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
-    displayValue: String = "$value",
-    onValueChange: (Int) -> Unit,
+    displayFormat: (Int) -> String = { it.toString() },
+    onApply: (Int) -> Unit,
+    updateKey: Any? = null,
 ) {
+    var sliderValue by remember(initialValue, updateKey) { mutableIntStateOf(initialValue) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -364,15 +396,16 @@ private fun LabeledSlider(
             modifier = Modifier.width(48.dp),
         )
         Slider(
-            value = value.toFloat(),
-            onValueChange = { onValueChange(it.toInt()) },
+            value = sliderValue.toFloat(),
+            onValueChange = { sliderValue = it.toInt() },
+            onValueChangeFinished = { onApply(sliderValue) },
             valueRange = valueRange,
             modifier = Modifier
                 .weight(1f)
                 .height(20.dp),
         )
         Text(
-            text = displayValue,
+            text = displayFormat(sliderValue),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.width(36.dp),

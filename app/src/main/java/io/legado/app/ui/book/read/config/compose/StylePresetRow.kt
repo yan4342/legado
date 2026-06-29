@@ -46,7 +46,7 @@ fun StylePresetRow(
     onLongPress: (Int) -> Unit,
     onAdd: () -> Unit,
 ) {
-    val configList = remember { ReadBookConfig.configList }
+    val configList = ReadBookConfig.configList
     val borderColor = MaterialTheme.colorScheme.primary
     val surfaceColor = MaterialTheme.colorScheme.surfaceVariant
 
