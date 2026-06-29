@@ -9,6 +9,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.Fragment
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.data.appDb
@@ -76,7 +77,7 @@ internal fun AiDictRuleRoute(
             factory = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.getInstance(application)
         )
     }
-    val rules by viewModel.rulesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val rules by viewModel.rulesFlow.collectAsState()
     AiDictRuleListScreen(
         rules = rules,
         onAdd = { context.startActivity<AiDictRuleEditActivity>() },

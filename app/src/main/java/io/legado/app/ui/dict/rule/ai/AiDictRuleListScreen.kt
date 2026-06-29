@@ -153,11 +153,11 @@ private fun AiDictRuleItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(vertical = 12.dp, horizontal = 4.dp)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onDelete,
-            )
-            .padding(vertical = 12.dp, horizontal = 4.dp),
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {

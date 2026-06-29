@@ -1,6 +1,7 @@
 package io.legado.app.ui.main
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -30,12 +31,30 @@ import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import android.app.Activity
+import android.net.Uri
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
+import com.jaredrummler.android.colorpicker.ColorPickerDialog
+import com.jaredrummler.android.colorpicker.ColorPickerDialogListener
+import com.jaredrummler.android.colorpicker.ColorShape
 import io.legado.app.R
+import io.legado.app.constant.AppLog
+import io.legado.app.constant.PreferKey
+import io.legado.app.exception.NoStackTraceException
+import io.legado.app.help.AppWebDav
+import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.ThemeConfig
+import io.legado.app.help.storage.BackupConfig
+import io.legado.app.help.storage.ImportOldData
+import io.legado.app.help.storage.Restore
+import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.dialogs.selector
+import io.legado.app.lib.prefs.ColorPreference
 import io.legado.app.ui.book.info.compose.BookInfoRouteScreen
 import io.legado.app.ui.book.search.SearchIntent
 import io.legado.app.ui.book.search.SearchScreen
@@ -45,7 +64,11 @@ import io.legado.app.ui.book.explore.ExploreShowScreen
 import io.legado.app.ui.book.explore.ExploreShowViewModel
 import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.ui.config.CheckSourceConfig
+import io.legado.app.ui.config.CoverRuleConfigDialog
 import io.legado.app.ui.config.DirectLinkUploadConfig
+import io.legado.app.ui.config.ThemeListDialog
+import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.ui.main.my.AboutActions
 import io.legado.app.ui.main.my.AiDictRuleRoute
 import io.legado.app.ui.main.my.BackupConfigActions
@@ -61,7 +84,18 @@ import io.legado.app.ui.main.my.ReadRecordRoute
 import io.legado.app.ui.main.my.ReadRecordOverviewRoute
 import io.legado.app.ui.main.my.ThemeConfigActions
 import io.legado.app.ui.main.my.WelcomeConfigActions
+import io.legado.app.utils.FileUtils
+import io.legado.app.utils.MD5Utils
+import io.legado.app.utils.externalFiles
+import io.legado.app.utils.getPrefInt
+import io.legado.app.utils.getPrefString
+import io.legado.app.utils.inputStream
+import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.openUrl
+import io.legado.app.utils.putPrefInt
+import io.legado.app.utils.putPrefString
+import io.legado.app.utils.readUri
+import io.legado.app.utils.removePref
 import io.legado.app.utils.share
 import io.legado.app.utils.showCrashLogSheet
 import io.legado.app.utils.showDialogFragment
@@ -69,9 +103,206 @@ import io.legado.app.utils.showLogSheet
 import io.legado.app.utils.showMarkdownSheet
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
+import splitties.init.appCtx
+import java.io.FileOutputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+// --- Config route helpers (migrated from deleted MyFragment) ---
+
+private fun setImageFromUri(context: android.content.Context, uri: Uri, prefKey: String, onSuccess: (() -> Unit)? = null) {
+    val act = context as? AppCompatActivity ?: return
+    act.readUri(uri) { fileDoc, inputStream ->
+        kotlin.runCatching {
+            var file = context.externalFiles
+            val suffix = fileDoc.name.substringAfterLast(".")
+            val fileName = uri.inputStream(context).getOrThrow().use {
+                MD5Utils.md5Encode(it) + ".$suffix"
+            }
+            file = FileUtils.createFileIfNotExist(file, prefKey, fileName)
+            FileOutputStream(file).use { inputStream.copyTo(it) }
+            context.putPrefString(prefKey, file.absolutePath)
+            onSuccess?.invoke()
+        }.onFailure {
+            appCtx.toastOnUi(it.localizedMessage)
+        }
+    }
+}
+
+private fun setCoverFromUri(context: android.content.Context, uri: Uri, prefKey: String) {
+    val act = context as? AppCompatActivity ?: return
+    act.readUri(uri) { fileDoc, inputStream ->
+        kotlin.runCatching {
+            var file = context.externalFiles
+            val suffix = fileDoc.name.substringAfterLast(".")
+            val fileName = uri.inputStream(context).getOrThrow().use {
+                MD5Utils.md5Encode(it) + ".$suffix"
+            }
+            file = FileUtils.createFileIfNotExist(file, "covers", fileName)
+            FileOutputStream(file).use { inputStream.copyTo(it) }
+            context.putPrefString(prefKey, file.absolutePath)
+            io.legado.app.model.BookCover.upDefaultCover()
+        }.onFailure {
+            appCtx.toastOnUi(it.localizedMessage)
+        }
+    }
+}
+
+private fun upTheme(context: android.content.Context, isNightTheme: Boolean) {
+    if (AppConfig.isNightTheme == isNightTheme) {
+        ThemeConfig.applyTheme(context)
+        io.legado.app.utils.postEvent(io.legado.app.constant.EventBus.RECREATE, "")
+    }
+}
+
+private fun selectBgAction(
+    context: android.content.Context,
+    isNight: Boolean,
+    selectBgImage: androidx.activity.result.ActivityResultLauncher<(HandleFileContract.HandleFileParam.() -> Unit)?>,
+) {
+    val bgKey = if (isNight) PreferKey.bgImageN else PreferKey.bgImage
+    val blurringKey = if (isNight) PreferKey.bgImageNBlurring else PreferKey.bgImageBlurring
+    val actions = arrayListOf(
+        context.getString(R.string.background_image_blurring),
+        context.getString(R.string.select_image),
+    )
+    if (!context.getPrefString(bgKey).isNullOrEmpty()) {
+        actions.add(context.getString(R.string.delete))
+    }
+    context.selector(items = actions) { _, i ->
+        when (i) {
+            0 -> {
+                context.alert(R.string.background_image_blurring) {
+                    val alertBinding = io.legado.app.databinding.DialogImageBlurringBinding.inflate(
+                        android.view.LayoutInflater.from(context)
+                    ).apply {
+                        context.getPrefInt(blurringKey, 0).let {
+                            seekBar.progress = it
+                            textViewValue.text = it.toString()
+                        }
+                        seekBar.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                            override fun onProgressChanged(seekBar: android.widget.SeekBar, progress: Int, fromUser: Boolean) {
+                                textViewValue.text = progress.toString()
+                            }
+                            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
+                            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
+                        })
+                    }
+                    customView { alertBinding.root }
+                    okButton {
+                        alertBinding.seekBar.progress.let {
+                            context.putPrefInt(blurringKey, it)
+                            upTheme(context, isNight)
+                        }
+                    }
+                    cancelButton()
+                }
+            }
+            1 -> {
+                selectBgImage.launch {
+                    this.requestCode = if (isNight) 122 else 121
+                    this.mode = HandleFileContract.IMAGE
+                }
+            }
+            2 -> {
+                context.removePref(bgKey)
+                upTheme(context, isNight)
+            }
+        }
+    }
+}
+
+// --- Backup helpers (migrated from deleted MyFragment) ---
+
+private fun backupIgnore(context: android.content.Context) {
+    val checkedItems = BooleanArray(BackupConfig.ignoreKeys.size) {
+        BackupConfig.ignoreConfig[BackupConfig.ignoreKeys[it]] ?: false
+    }
+    context.alert(R.string.restore_ignore) {
+        multiChoiceItems(BackupConfig.ignoreTitle, checkedItems) { _, which, isChecked ->
+            BackupConfig.ignoreConfig[BackupConfig.ignoreKeys[which]] = isChecked
+        }
+        onDismiss {
+            BackupConfig.saveIgnoreConfig()
+        }
+    }
+}
+
+private fun webDavRestore(
+    context: android.content.Context,
+    backupWaitDialog: WaitDialog,
+    scope: kotlinx.coroutines.CoroutineScope,
+    appCompatActivity: AppCompatActivity?,
+) {
+    backupWaitDialog.setText(R.string.loading)
+    backupWaitDialog.setOnCancelListener { /* handled in launched coroutine */ }
+    backupWaitDialog.show()
+    scope.launch {
+        val job = currentCoroutineContext()[Job]
+        backupWaitDialog.setOnCancelListener { job?.cancel() }
+        try {
+            showRestoreDialog(context, appCompatActivity, backupWaitDialog)
+        } catch (e: Exception) {
+            AppLog.put("WebDav恢复出错\n${e.localizedMessage}", e)
+            appCtx.toastOnUi("WebDav恢复出错\n${e.localizedMessage}")
+        } finally {
+            backupWaitDialog.dismiss()
+        }
+    }
+}
+
+private suspend fun showRestoreDialog(
+    context: android.content.Context,
+    appCompatActivity: AppCompatActivity?,
+    backupWaitDialog: WaitDialog,
+) {
+    val names = withContext(Dispatchers.IO) { AppWebDav.getBackupNames() }
+    if (AppWebDav.isJianGuoYun && names.size > 700) {
+        context.toastOnUi("由于坚果云限制列出文件数量，部分备份可能未显示，请及时清理旧备份")
+    }
+    if (names.isNotEmpty()) {
+        currentCoroutineContext().ensureActive()
+        withContext(Main) {
+            context.selector(
+                title = context.getString(R.string.select_restore_file),
+                items = names
+            ) { _, index ->
+                if (index in 0 until names.size) {
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        restoreWebDav(context, names[index], backupWaitDialog)
+                    }
+                }
+            }
+        }
+    } else {
+        throw NoStackTraceException("Web dav no back up file")
+    }
+}
+
+private fun restoreWebDav(
+    context: android.content.Context,
+    name: String,
+    backupWaitDialog: WaitDialog,
+) {
+    backupWaitDialog.setText("恢复中…")
+    backupWaitDialog.show()
+    val task = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+        AppWebDav.restoreWebDav(name)
+    }
+    task.invokeOnCompletion {
+        appCtx.mainLooper.run { backupWaitDialog.dismiss() }
+    }
+    backupWaitDialog.setOnCancelListener {
+        task.cancel()
+    }
+}
+
+// --- End config route helpers ---
 
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -86,6 +317,80 @@ fun MainNavHost(
     val scope = rememberCoroutineScope()
 
     var onNavigateToRoute: (MainRoute) -> Unit by remember { mutableStateOf({}) }
+
+    // --- Config route action state (migrated from deleted MyFragment) ---
+    val appCompatActivity = remember(context) { context as? AppCompatActivity }
+    var pendingColorCallback by remember { mutableStateOf<((Color) -> Unit)?>(null) }
+    var pendingBgIsNight by remember { mutableStateOf(false) }
+    var pendingBgChange by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var pendingWelcomeIsNight by remember { mutableStateOf(false) }
+    var pendingCoverIsNight by remember { mutableStateOf(false) }
+
+    val colorPickerListener = remember {
+        object : ColorPickerDialogListener {
+            override fun onColorSelected(dialogId: Int, color: Int) {
+                pendingColorCallback?.invoke(Color(color))
+                pendingColorCallback = null
+            }
+            override fun onDialogDismissed(dialogId: Int) {
+                pendingColorCallback = null
+            }
+        }
+    }
+
+    val selectBgImage = rememberLauncherForActivityResult(HandleFileContract()) { result ->
+        result.uri?.let { uri ->
+            val bgKey = if (pendingBgIsNight) PreferKey.bgImageN else PreferKey.bgImage
+            setImageFromUri(context, uri, bgKey) { pendingBgChange?.invoke() }
+        }
+    }
+
+    val selectWelcomeImage = rememberLauncherForActivityResult(HandleFileContract()) { result ->
+        result.uri?.let { uri ->
+            val key = if (pendingWelcomeIsNight) PreferKey.welcomeImageDark else PreferKey.welcomeImage
+            setImageFromUri(context, uri, key)
+        }
+    }
+
+    val selectCoverImage = rememberLauncherForActivityResult(HandleFileContract()) { result ->
+        result.uri?.let { uri ->
+            val key = if (pendingCoverIsNight) PreferKey.defaultCoverDark else PreferKey.defaultCover
+            setCoverFromUri(context, uri, key)
+        }
+    }
+    // --- Backup/restore state (migrated from deleted MyFragment) ---
+    val backupWaitDialog = remember { WaitDialog(context) }
+    var restoreJob by remember { mutableStateOf<Job?>(null) }
+
+    val selectBackupPath = rememberLauncherForActivityResult(HandleFileContract()) { result ->
+        result.uri?.let { uri ->
+            val path = if (uri.isContentScheme()) uri.toString() else uri.path ?: return@rememberLauncherForActivityResult
+            AppConfig.backupPath = path
+        }
+    }
+
+    val restoreDoc = rememberLauncherForActivityResult(HandleFileContract()) { result ->
+        result.uri?.let { uri ->
+            backupWaitDialog.setText("恢复中…")
+            backupWaitDialog.show()
+            val task = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                Restore.restore(appCtx, uri)
+            }
+            task.invokeOnCompletion {
+                appCtx.mainLooper.run { backupWaitDialog.dismiss() }
+            }
+            backupWaitDialog.setOnCancelListener {
+                task.cancel()
+            }
+        }
+    }
+
+    val restoreOld = rememberLauncherForActivityResult(HandleFileContract()) { result ->
+        result.uri?.let { uri ->
+            ImportOldData.importUri(appCtx, uri)
+        }
+    }
+    // --- End config route action state ---
 
     // Helper: read markdown from assets and show sheet
     fun showMdFile(title: String, fileName: String) {
@@ -319,13 +624,32 @@ fun MainNavHost(
                     fragment = null,
                     onBack = onNavigateBack,
                     actions = BackupConfigActions(
-                        onBackupPath = {},
-                        onRestoreIgnore = {},
-                        onImportOld = {},
-                        onLocalRestore = {},
-                        onWebDavRestore = {},
-                        onHelp = {},
-                        onLog = {},
+                        onBackupPath = { selectBackupPath.launch {} },
+                        onRestoreIgnore = { backupIgnore(context) },
+                        onImportOld = { restoreOld.launch {} },
+                        onLocalRestore = {
+                            restoreDoc.launch {
+                                this.title = context.getString(R.string.select_restore_file)
+                                this.mode = HandleFileContract.FILE
+                                this.allowExtensions = arrayOf("zip")
+                            }
+                        },
+                        onWebDavRestore = {
+                            webDavRestore(context, backupWaitDialog, scope, appCompatActivity)
+                        },
+                        onHelp = {
+                            scope.launch {
+                                val mdText = withContext(Dispatchers.IO) {
+                                    runCatching {
+                                        context.assets.open("web/help/md/webDavHelp.md").bufferedReader().readText()
+                                    }.getOrNull() ?: ""
+                                }
+                                (context as? FragmentActivity)?.showMarkdownSheet(
+                                    context.getString(R.string.help), mdText
+                                )
+                            }
+                        },
+                        onLog = { (context as? FragmentActivity)?.showLogSheet() },
                     ),
                 )
             }
@@ -334,10 +658,49 @@ fun MainNavHost(
                 MyThemeConfigRoute(
                     onBack = onNavigateBack,
                     actions = ThemeConfigActions(
-                        onRequestColorPicker = { _, _, _ -> },
-                        onThemeList = {},
-                        onBgImage = {},
-                        onThemeModeToggle = {},
+                        onRequestColorPicker = { title, currentColor, onChange ->
+                            pendingColorCallback = onChange
+                            val colorInt = if (currentColor != Color.Unspecified) {
+                                val r = (currentColor.red * 255).toInt()
+                                val g = (currentColor.green * 255).toInt()
+                                val b = (currentColor.blue * 255).toInt()
+                                (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+                            } else {
+                                android.graphics.Color.GRAY
+                            }
+                            val dialog = ColorPreference.ColorPickerDialogCompat.newBuilder()
+                                .setDialogType(ColorPickerDialog.TYPE_PRESETS)
+                                .setDialogTitle(0)
+                                .setColorShape(ColorShape.CIRCLE)
+                                .setPresets(ColorPickerDialog.MATERIAL_COLORS)
+                                .setAllowPresets(true)
+                                .setAllowCustom(true)
+                                .setShowAlphaSlider(false)
+                                .setShowColorShades(true)
+                                .setColor(colorInt)
+                                .create()
+                            dialog.setColorPickerDialogListener(colorPickerListener)
+                            appCompatActivity?.supportFragmentManager
+                                ?.beginTransaction()
+                                ?.add(dialog, "color_$title")
+                                ?.commitAllowingStateLoss()
+                        },
+                        onThemeList = {
+                            appCompatActivity?.supportFragmentManager?.let { fm ->
+                                ThemeListDialog().show(fm, "themeList")
+                            }
+                        },
+                        onBgImage = { isNight ->
+                            pendingBgIsNight = isNight
+                            pendingBgChange = {
+                                ThemeConfig.applyTheme(context)
+                            }
+                            selectBgAction(context, isNight, selectBgImage)
+                        },
+                        onThemeModeToggle = {
+                            AppConfig.isNightTheme = !AppConfig.isNightTheme
+                            ThemeConfig.applyDayNight(context)
+                        },
                     ),
                     onWelcomeStyle = { onNavigateToRoute(MainRouteWelcomeConfig) },
                     onCoverConfig = { onNavigateToRoute(MainRouteCoverConfig) },
@@ -348,7 +711,42 @@ fun MainNavHost(
                 MyWelcomeConfigRoute(
                     fragment = null,
                     onBack = onNavigateBack,
-                    actions = WelcomeConfigActions(onWelcomeImage = {}),
+                    actions = WelcomeConfigActions(
+                        onWelcomeImage = { isNight ->
+                            pendingWelcomeIsNight = isNight
+                            val key = if (isNight) PreferKey.welcomeImageDark else PreferKey.welcomeImage
+                            if (context.getPrefString(key).isNullOrEmpty()) {
+                                selectWelcomeImage.launch {
+                                    this.requestCode = if (isNight) 222 else 221
+                                    this.mode = HandleFileContract.IMAGE
+                                }
+                            } else {
+                                context.selector(
+                                    items = arrayListOf(
+                                        context.getString(R.string.delete),
+                                        context.getString(R.string.select_image),
+                                    )
+                                ) { _, i ->
+                                    if (i == 0) {
+                                        context.removePref(key)
+                                        if (isNight) {
+                                            AppConfig.welcomeShowTextDark = true
+                                            AppConfig.welcomeShowIconDark = true
+                                        } else {
+                                            AppConfig.welcomeShowText = true
+                                            AppConfig.welcomeShowIcon = true
+                                        }
+                                        io.legado.app.model.BookCover.upDefaultCover()
+                                    } else {
+                                        selectWelcomeImage.launch {
+                                            this.requestCode = if (isNight) 222 else 221
+                                            this.mode = HandleFileContract.IMAGE
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    ),
                 )
             }
 
@@ -357,8 +755,36 @@ fun MainNavHost(
                     fragment = null,
                     onBack = onNavigateBack,
                     actions = CoverConfigActions(
-                        onCoverRule = {},
-                        onDefaultCover = {},
+                        onCoverRule = {
+                            (context as? AppCompatActivity)?.showDialogFragment<CoverRuleConfigDialog>()
+                        },
+                        onDefaultCover = { isNight ->
+                            pendingCoverIsNight = isNight
+                            val key = if (isNight) PreferKey.defaultCoverDark else PreferKey.defaultCover
+                            if (context.getPrefString(key).isNullOrEmpty()) {
+                                selectCoverImage.launch {
+                                    this.requestCode = if (isNight) 112 else 111
+                                    this.mode = HandleFileContract.IMAGE
+                                }
+                            } else {
+                                context.selector(
+                                    items = arrayListOf(
+                                        context.getString(R.string.delete),
+                                        context.getString(R.string.select_image),
+                                    )
+                                ) { _, i ->
+                                    if (i == 0) {
+                                        context.removePref(key)
+                                        io.legado.app.model.BookCover.upDefaultCover()
+                                    } else {
+                                        selectCoverImage.launch {
+                                            this.requestCode = if (isNight) 112 else 111
+                                            this.mode = HandleFileContract.IMAGE
+                                        }
+                                    }
+                                }
+                            }
+                        },
                     ),
                 )
             }

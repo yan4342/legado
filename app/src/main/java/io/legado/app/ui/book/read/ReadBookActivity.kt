@@ -16,6 +16,10 @@ import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import androidx.core.view.get
 import androidx.core.view.size
@@ -75,9 +79,12 @@ import io.legado.app.ui.book.info.compose.BookInfoComposeActivity
 import io.legado.app.ui.book.read.config.AutoReadDialog
 import io.legado.app.ui.book.read.config.BgTextConfigDialog.Companion.BG_COLOR
 import io.legado.app.ui.book.read.config.BgTextConfigDialog.Companion.TEXT_COLOR
+import io.legado.app.ui.book.read.config.compose.MoreConfigSheet
+import io.legado.app.ui.book.read.config.compose.ReadStyleSheet
 import io.legado.app.ui.book.read.config.MoreConfigDialog
 import io.legado.app.ui.book.read.config.ReadAloudDialog
 import io.legado.app.ui.book.read.config.ReadStyleDialog
+import io.legado.app.ui.book.read.config.TipConfigDialog
 import io.legado.app.ui.book.read.config.TipConfigDialog.Companion.TIP_COLOR
 import io.legado.app.ui.book.read.config.TipConfigDialog.Companion.TIP_DIVIDER_COLOR
 import io.legado.app.ui.book.read.page.ContentTextView
@@ -99,13 +106,16 @@ import io.legado.app.ui.replace.ReplaceRuleActivity
 import io.legado.app.ui.replace.edit.ReplaceEditActivity
 import io.legado.app.ui.widget.PopupAction
 import io.legado.app.ui.widget.dialog.PhotoDialog
+import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.utils.ACache
 import io.legado.app.utils.Debounce
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.StartActivityContract
 import io.legado.app.ui.common.compose.RoundDropdownMenuItem
+import io.legado.app.ui.common.compose.LegadoTheme
 import io.legado.app.ui.common.compose.showComposeDropdownMenu
+import io.legado.app.ui.font.FontSelectDialog
 import io.legado.app.utils.visible
 import io.legado.app.utils.buildMainHandler
 import io.legado.app.utils.dismissDialogFragment
@@ -259,6 +269,73 @@ class ReadBookActivity : BaseReadBookActivity(),
     private var justInitData: Boolean = false
     private var syncDialog: AlertDialog? = null
 
+    // Compose sheet state
+    private var showReadStyleSheet by mutableStateOf(false)
+    private var showMoreConfigSheet by mutableStateOf(false)
+
+    private fun setupComposeSheets() {
+        composeSheetsView.setContent {
+            LegadoTheme {
+                ReadStyleSheet(
+                    show = showReadStyleSheet,
+                    onDismiss = { showReadStyleSheet = false },
+                    onFontSelect = { showDialogFragment<FontSelectDialog>() },
+                    onTextColorClick = { color ->
+                        com.jaredrummler.android.colorpicker.ColorPickerDialog.newBuilder()
+                            .setColor(color)
+                            .setShowAlphaSlider(false)
+                            .setDialogType(com.jaredrummler.android.colorpicker.ColorPickerDialog.TYPE_CUSTOM)
+                            .setDialogId(TEXT_COLOR)
+                            .show(this@ReadBookActivity)
+                    },
+                    onBgColorClick = { color ->
+                        com.jaredrummler.android.colorpicker.ColorPickerDialog.newBuilder()
+                            .setColor(color)
+                            .setShowAlphaSlider(false)
+                            .setDialogType(com.jaredrummler.android.colorpicker.ColorPickerDialog.TYPE_CUSTOM)
+                            .setDialogId(BG_COLOR)
+                            .show(this@ReadBookActivity)
+                    },
+                    onPaddingConfig = { showPaddingConfig() },
+                    onTipConfig = {
+                        TipConfigDialog().show(supportFragmentManager, "tipConfigDialog")
+                    },
+                )
+                MoreConfigSheet(
+                    show = showMoreConfigSheet,
+                    onDismiss = { showMoreConfigSheet = false },
+                    onOrientationChange = { setOrientation() },
+                    onReadBodyToLh = { recreate() },
+                    onClickRegionalConfig = { showClickRegionalConfig() },
+                    onCustomPageKey = { showCustomPageKeyConfig() },
+                    onPageTouchSlop = {
+                        NumberPickerDialog(this@ReadBookActivity)
+                            .setTitle(getString(R.string.page_touch_slop_dialog_title))
+                            .setMaxValue(9999)
+                            .setMinValue(0)
+                            .setValue(AppConfig.pageTouchSlop)
+                            .show {
+                                AppConfig.pageTouchSlop = it
+                                postEvent(EventBus.UP_CONFIG, listOf(4))
+                            }
+                    },
+                    onRecreate = { recreate() },
+                )
+            }
+        }
+    }
+
+    override fun onPostCreate(savedInstanceState: Bundle?) {
+        super.onPostCreate(savedInstanceState)
+        setupComposeSheets()
+        viewModel.initReadBookConfig(intent)
+        Looper.myQueue().addIdleHandler {
+            viewModel.initData(intent)
+            false
+        }
+        justInitData = true
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
@@ -294,16 +371,6 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
             finish()
         }
-    }
-
-    override fun onPostCreate(savedInstanceState: Bundle?) {
-        super.onPostCreate(savedInstanceState)
-        viewModel.initReadBookConfig(intent)
-        Looper.myQueue().addIdleHandler {
-            viewModel.initData(intent)
-            false
-        }
-        justInitData = true
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -1230,18 +1297,18 @@ class ReadBookActivity : BaseReadBookActivity(),
      * 显示阅读样式配置
      */
     override fun showReadStyle() {
-        showDialogFragment<ReadStyleDialog>()
+        showReadStyleSheet = true
     }
 
     /**
      * 显示更多设置
      */
     override fun showMoreSetting() {
-        showDialogFragment<MoreConfigDialog>()
+        showMoreConfigSheet = true
     }
 
     override fun showSearchSetting() {
-        showDialogFragment<MoreConfigDialog>()
+        showMoreConfigSheet = true
     }
 
     /**

@@ -37,12 +37,15 @@ data class AiDictRule(
 ) {
 
     override fun hashCode(): Int {
-        return name.hashCode()
+        var result = name.hashCode()
+        result = 31 * result + enabled.hashCode()
+        return result
     }
 
     override fun equals(other: Any?): Boolean {
+        if (this === other) return true
         if (other is AiDictRule) {
-            return name == other.name
+            return name == other.name && enabled == other.enabled
         }
         return false
     }

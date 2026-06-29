@@ -15,6 +15,7 @@ import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.prefs.ColorPreference
+import io.legado.app.ui.config.ConfigTag
 import io.legado.app.ui.config.ThemeListDialog
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.ColorUtils
@@ -99,6 +100,22 @@ class ThemeConfigComposeFragment : ConfigComposeFragment(), ColorPickerDialogLis
             onThemeModeToggle = {
                 AppConfig.isNightTheme = !AppConfig.isNightTheme
                 ThemeConfig.applyDayNight(requireContext())
+            },
+            onWelcomeStyleClick = {
+                activity?.let { a ->
+                    a.intent.putExtra("configTag", ConfigTag.WELCOME_CONFIG)
+                    a.supportFragmentManager.beginTransaction()
+                        .replace(R.id.configFrameLayout, WelcomeConfigComposeFragment(), ConfigTag.WELCOME_CONFIG)
+                        .commit()
+                }
+            },
+            onCoverConfigClick = {
+                activity?.let { a ->
+                    a.intent.putExtra("configTag", ConfigTag.COVER_CONFIG)
+                    a.supportFragmentManager.beginTransaction()
+                        .replace(R.id.configFrameLayout, CoverConfigComposeFragment(), ConfigTag.COVER_CONFIG)
+                        .commit()
+                }
             },
         )
     }

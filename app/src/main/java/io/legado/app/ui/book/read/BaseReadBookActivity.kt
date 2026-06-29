@@ -9,7 +9,13 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
+import android.widget.FrameLayout
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
@@ -57,6 +63,7 @@ abstract class BaseReadBookActivity :
 
     override val binding by viewBinding(ActivityBookReadBinding::inflate)
     override val viewModel by viewModels<ReadBookViewModel>()
+    protected lateinit var composeSheetsView: ComposeView
     protected val menuLayoutIsVisible
         get() = bottomDialog > 0 || binding.readMenu.isVisible || binding.searchMenu.bottomMenuVisible
 
@@ -91,6 +98,20 @@ abstract class BaseReadBookActivity :
             }
             windowInsets
         }
+        // ComposeView overlay for settings sheets
+        val composeView = ComposeView(this).apply {
+            id = View.generateViewId()
+            isClickable = false
+            isFocusable = false
+        }
+        binding.root.addView(
+            composeView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        composeSheetsView = composeView
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -137,7 +158,7 @@ abstract class BaseReadBookActivity :
         showDialogFragment<ClickActionConfigDialog>()
     }
 
-    private fun showCustomPageKeyConfig() {
+    protected fun showCustomPageKeyConfig() {
         PageKeyDialog(this).show()
     }
 
