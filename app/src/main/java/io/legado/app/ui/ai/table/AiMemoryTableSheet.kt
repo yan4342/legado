@@ -24,6 +24,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -52,6 +55,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import io.legado.app.ui.common.compose.rememberLegadoBottomSheetState
+import io.legado.app.ui.common.compose.TooltipIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -314,14 +318,20 @@ fun AiMemoryTableSheet(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.onIntent(AiMemoryTableIntent.CopyExportToClipboard)
-                }) { Text("Copy") }
+                TooltipIconButton(
+                    onClick = { viewModel.onIntent(AiMemoryTableIntent.CopyExportToClipboard) },
+                    label = "Copy",
+                ) {
+                    Icon(Icons.Filled.ContentCopy, contentDescription = null)
+                }
             },
             dismissButton = {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = { viewModel.onIntent(AiMemoryTableIntent.ShareExport) }) {
-                        Text("Share")
+                    TooltipIconButton(
+                        onClick = { viewModel.onIntent(AiMemoryTableIntent.ShareExport) },
+                        label = "Share",
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null)
                     }
                     TextButton(onClick = { viewModel.onIntent(AiMemoryTableIntent.DismissExportDialog) }) {
                         Text("Close")
@@ -353,8 +363,11 @@ fun AiMemoryTableSheet(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.onIntent(AiMemoryTableIntent.ConfirmImport) }) {
-                    Text("Import")
+                TooltipIconButton(
+                    onClick = { viewModel.onIntent(AiMemoryTableIntent.ConfirmImport) },
+                    label = "Import",
+                ) {
+                    Icon(Icons.Default.FileUpload, contentDescription = null)
                 }
             },
             dismissButton = {
@@ -942,7 +955,12 @@ private fun RowEditDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onSave) { Text("Save", color = colorScheme.primary) }
+            TooltipIconButton(
+                onClick = onSave,
+                label = "Save",
+            ) {
+                Icon(Icons.Default.Check, contentDescription = null, tint = colorScheme.primary)
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }

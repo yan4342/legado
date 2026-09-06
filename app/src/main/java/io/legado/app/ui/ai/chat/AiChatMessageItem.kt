@@ -22,11 +22,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -79,6 +81,7 @@ import io.legado.app.domain.usecase.ai.DialogueNarrationSplitter
 import io.legado.app.help.config.AiChatColorConfig
 import io.legado.app.lib.theme.LocalAiChatSemanticColors
 import io.legado.app.ui.common.compose.BookCoverCompose
+import io.legado.app.ui.common.compose.TooltipIconButton
 import io.legado.app.utils.GSON
 
 internal val defaultSpeakerColors = AiChatColorConfig.defaultSpeakerColors()
@@ -382,20 +385,37 @@ internal fun ChatMessageItem(
                     }
 
                     if (onDelete != null) {
-                        TextButton(onClick = onDelete) {
-                            Text("Delete", style = MaterialTheme.typography.labelSmall, color = colorScheme.error)
+                        TooltipIconButton(
+                            onClick = onDelete,
+                            label = "Delete",
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = colorScheme.error,
+                            )
                         }
                     }
 
                     if (onEdit != null) {
-                        TextButton(onClick = onEdit) {
-                            Text("Edit", style = MaterialTheme.typography.labelSmall)
+                        TooltipIconButton(
+                            onClick = onEdit,
+                            label = "Edit",
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                         }
                     }
 
                     if (onFork != null) {
-                        TextButton(onClick = onFork) {
-                            Text("Fork", style = MaterialTheme.typography.labelSmall)
+                        TooltipIconButton(
+                            onClick = onFork,
+                            label = "Fork",
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -418,18 +438,35 @@ internal fun ChatMessageItem(
                     }
                 }
                 if (onEdit != null) {
-                    TextButton(onClick = onEdit) {
-                        Text("Edit", style = MaterialTheme.typography.labelSmall)
+                    TooltipIconButton(
+                        onClick = onEdit,
+                        label = "Edit",
+                        modifier = Modifier.size(28.dp),
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                     }
                 }
                 if (onFork != null) {
-                    TextButton(onClick = onFork) {
-                        Text("Fork", style = MaterialTheme.typography.labelSmall)
+                    TooltipIconButton(
+                        onClick = onFork,
+                        label = "Fork",
+                        modifier = Modifier.size(28.dp),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null, modifier = Modifier.size(16.dp))
                     }
                 }
                 if (onDelete != null) {
-                    TextButton(onClick = onDelete) {
-                        Text("Delete", style = MaterialTheme.typography.labelSmall, color = colorScheme.error)
+                    TooltipIconButton(
+                        onClick = onDelete,
+                        label = "Delete",
+                        modifier = Modifier.size(28.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = colorScheme.error,
+                        )
                     }
                 }
             }

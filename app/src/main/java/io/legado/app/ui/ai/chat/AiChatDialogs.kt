@@ -14,6 +14,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -768,9 +771,15 @@ fun AiChatDialogs(
                 }
             },
             confirmButton = {
-                androidx.compose.material3.TextButton(onClick = {
-                    viewModel.onIntent(AiChatIntent.CopyOutlineExport)
-                }) { androidx.compose.material3.Text("复制") }
+                io.legado.app.ui.common.compose.TooltipIconButton(
+                    onClick = { viewModel.onIntent(AiChatIntent.CopyOutlineExport) },
+                    label = "复制",
+                ) {
+                    androidx.compose.material3.Icon(
+                        Icons.Filled.ContentCopy,
+                        contentDescription = null,
+                    )
+                }
             },
             dismissButton = {
                 Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
@@ -812,9 +821,15 @@ fun AiChatDialogs(
                 }
             },
             confirmButton = {
-                androidx.compose.material3.TextButton(onClick = {
-                    viewModel.onIntent(AiChatIntent.ConfirmOutlineImport)
-                }) { androidx.compose.material3.Text(stringResource(R.string.ai_outline_import_json)) }
+                io.legado.app.ui.common.compose.TooltipIconButton(
+                    onClick = { viewModel.onIntent(AiChatIntent.ConfirmOutlineImport) },
+                    label = stringResource(R.string.ai_outline_import_json),
+                ) {
+                    androidx.compose.material3.Icon(
+                        Icons.Default.FileUpload,
+                        contentDescription = null,
+                    )
+                }
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = {

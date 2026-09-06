@@ -75,8 +75,9 @@ class ReplaceEditViewModel(
                         pattern = route.pattern ?: "",
                         isRegex = route.isRegex,
                         scope = route.scope ?: "",
-                        scopeTitle = route.isScopeTitle,
-                        scopeContent = route.isScopeContent,
+                        // 两个生效范围都默认开启，避免新规则因范围全关而不生效
+                        scopeTitle = true,
+                        scopeContent = true,
                         excludeScope = "",
                     )
                 }
@@ -237,6 +238,9 @@ class ReplaceEditViewModel(
 
     private fun deleteGroups(groups: List<String>) {
         viewModelScope.launch {
+            if (_uiState.value.group in groups) {
+                _uiState.update { it.copy(group = "默认") }
+            }
             replaceRuleDao.clearGroups(groups)
             toggleGroupDialog(false)
         }

@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.legado.app.ui.common.compose.TooltipIconButton
 
 /** 消息里的 HTML App 运行卡片：图标 + 标题 + "运行"按钮。 */
 @Composable
@@ -69,9 +70,17 @@ internal fun AiChatHtmlAppCard(
                 )
             }
             if (onRun != null) {
-                Spacer(Modifier.width(12.dp))
-                FilledTonalButton(onClick = onRun) {
-                    Text("运行")
+                Spacer(Modifier.width(4.dp))
+                TooltipIconButton(
+                    onClick = onRun,
+                    label = "运行",
+                    contentDescription = "运行",
+                ) {
+                    Icon(
+                        Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        tint = colorScheme.onSecondaryContainer,
+                    )
                 }
             }
         }

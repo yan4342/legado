@@ -17,6 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
@@ -28,6 +32,7 @@ import androidx.compose.material3.Typography
 import androidx.fragment.app.DialogFragment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,10 +43,13 @@ import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
+import io.legado.app.data.appDb
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.ReadBook
+import io.legado.app.ui.common.compose.LegadoAlertDialog
 import io.legado.app.ui.common.compose.LegadoTheme
 import io.legado.app.utils.setLayout
 import io.legado.app.ui.common.compose.legadoPopupBackgroundColor
@@ -49,6 +57,9 @@ import io.legado.app.ui.common.compose.legadoPopupPrimaryTextColor
 import io.legado.app.ui.common.compose.rememberLegadoColorScheme
 import io.legado.app.ui.replace.ReplaceEditRoute
 import io.legado.app.ui.replace.ReplaceRuleActivity
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * 起效的替换规则（Compose 实现）
@@ -100,6 +111,12 @@ class EffectiveReplacesDialog : DialogFragment() {
                             AppConfig.chineseConverterType = it
                             isEdit = true
                         },
+                        onRuleDeleted = { rule ->
+                            isEdit = true
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                appDb.replaceRuleDao.delete(rule)
+                            }
+                        },
                     )
                 }
             }
@@ -128,11 +145,14 @@ private fun EffectiveReplacesScreen(
     isChineseConvertItem: (ReplaceRule) -> Boolean,
     onItemClick: (ReplaceRule) -> Unit,
     onChineseConvertClick: (Int) -> Unit,
+    onRuleDeleted: (ReplaceRule) -> Unit,
 ) {
     val popupBg = legadoPopupBackgroundColor()
     val popupTextColor = legadoPopupPrimaryTextColor()
 
     var showChineseConvertDialog by remember { mutableStateOf(false) }
+    val ruleItems = remember { mutableStateListOf<ReplaceRule>().apply { addAll(rules) } }
+    var ruleToDelete by remember { mutableStateOf<ReplaceRule?>(null) }
 
     Box(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -158,26 +178,55 @@ private fun EffectiveReplacesScreen(
                         .heightIn(max = 420.dp)
                         .padding(top = 8.dp),
                 ) {
-                    items(rules) { item ->
-                        Text(
-                            text = item.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = popupTextColor,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    if (isChineseConvertItem(item)) {
-                                        showChineseConvertDialog = true
-                                    } else {
-                                        onItemClick(item)
+                    items(ruleItems, key = { it.id }) { item ->
+                        val canDelete = !isChineseConvertItem(item)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = item.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = popupTextColor,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        if (isChineseConvertItem(item)) {
+                                            showChineseConvertDialog = true
+                                        } else {
+                                            onItemClick(item)
+                                        }
                                     }
+                                    .padding(vertical = 14.dp, horizontal = 4.dp),
+                            )
+                            if (canDelete) {
+                                IconButton(onClick = { ruleToDelete = item }) {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        contentDescription = stringResource(R.string.delete),
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
                                 }
-                                .padding(vertical = 14.dp, horizontal = 4.dp),
-                        )
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    ruleToDelete?.let { rule ->
+        LegadoAlertDialog(
+            show = true,
+            onDismissRequest = { ruleToDelete = null },
+            dialogTitle = stringResource(R.string.delete),
+            text = stringResource(R.string.sure_del),
+            onConfirm = {
+                ruleItems.remove(rule)
+                onRuleDeleted(rule)
+            },
+            onDismiss = { ruleToDelete = null },
+        )
     }
 
     if (showChineseConvertDialog) {

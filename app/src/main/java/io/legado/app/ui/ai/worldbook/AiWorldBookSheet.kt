@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Style
@@ -48,6 +49,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import io.legado.app.ui.common.compose.rememberLegadoBottomSheetState
+import io.legado.app.ui.common.compose.TooltipIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -927,8 +929,14 @@ private fun EditLoreEntriesSection(
                     TextButton(onClick = onImportEntries) {
                         Text(stringResource(R.string.ai_world_book_import_entries_into))
                     }
-                    TextButton(onClick = { viewModel.onIntent(AiWorldBookIntent.StartEntryEdit(null)) }) {
-                        Text(stringResource(R.string.add))
+                    TooltipIconButton(
+                        onClick = { viewModel.onIntent(AiWorldBookIntent.StartEntryEdit(null)) },
+                        label = stringResource(R.string.add),
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                        )
                     }
                 }
             }
@@ -1004,8 +1012,14 @@ private fun EditLoreEntriesSection(
                                 modifier = Modifier.size(20.dp),
                             )
                         }
-                        TextButton(onClick = { viewModel.onIntent(AiWorldBookIntent.StartEntryEdit(entry)) }) {
-                            Text(stringResource(R.string.edit))
+                        TooltipIconButton(
+                            onClick = { viewModel.onIntent(AiWorldBookIntent.StartEntryEdit(entry)) },
+                            label = stringResource(R.string.edit),
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = null,
+                            )
                         }
                     }
                 }

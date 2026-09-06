@@ -89,7 +89,7 @@ private fun CapsuleButton(text: String, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(50),
         tonalElevation = 6.dp,
-        shadowElevation = 6.dp,
+        //shadowElevation = 6.dp,
     ) {
         Text(
             text = text,

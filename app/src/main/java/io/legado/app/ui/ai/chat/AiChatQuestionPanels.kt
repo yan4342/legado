@@ -29,6 +29,9 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Feedback
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
@@ -68,6 +71,7 @@ import android.text.Spanned
 import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
+import io.legado.app.ui.common.compose.TooltipIconButton
 import android.view.textclassifier.TextClassifier
 import android.widget.TextView
 import io.legado.app.R
@@ -468,8 +472,16 @@ internal fun PlanApprovalPanel(
                 color = colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = { fullscreen = true }) {
-                Text("全屏", style = MaterialTheme.typography.labelSmall)
+            TooltipIconButton(
+                onClick = { fullscreen = true },
+                label = "全屏",
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    Icons.Default.Fullscreen,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
         Spacer(Modifier.height(6.dp))
@@ -705,12 +717,30 @@ internal fun PlanCard(
                     )
                 }
                 if (onOpen != null) {
-                    Spacer(Modifier.width(4.dp))
-                    TextButton(onClick = onOpen) { Text("查看") }
+                    TooltipIconButton(
+                        onClick = onOpen,
+                        label = "查看",
+                        modifier = Modifier.size(28.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.OpenInNew,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
                 if (status == "rejected" && onFeedback != null) {
-                    Spacer(Modifier.width(4.dp))
-                    OutlinedButton(onClick = { showFeedbackDialog = true }) { Text("反馈") }
+                    TooltipIconButton(
+                        onClick = { showFeedbackDialog = true },
+                        label = "反馈",
+                        modifier = Modifier.size(28.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.Feedback,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
             }
             val label = if (planFileId != null) "$planFileId.md · 修订 #$revision" else "修订 #$revision"
