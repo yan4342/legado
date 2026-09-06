@@ -60,6 +60,7 @@ import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.LauncherIconHelp
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.upType
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.AppConfigStore
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.config.ReadBookConfig
@@ -403,9 +404,7 @@ object Restore {
                                 edit.putString(key, it)
                                 restored[key] = it
                             } ?: let {
-                                if (appCtx.getPrefString(PreferKey.webDavPassword)
-                                        .isNullOrBlank()
-                                ) {
+                                if (AppConfig.webDavPassword.isNullOrBlank()) {
                                     edit.putString(key, value.toString())
                                     restored[key] = value.toString()
                                 }

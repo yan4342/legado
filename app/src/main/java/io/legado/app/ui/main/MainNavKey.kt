@@ -2,6 +2,7 @@ package io.legado.app.ui.main
 
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
+import java.util.UUID
 
 @Serializable
 sealed interface MainRoute : NavKey
@@ -207,6 +208,32 @@ data object MainRouteCoverConfig : MainRoute
 
 @Serializable
 data object MainRouteBackupConfig : MainRoute
+
+// 阶段 2 收编：替换规则管理（列表）——白名单父页为 MainRouteHome。
+@Serializable
+data object MainRouteReplaceRule : MainRoute
+
+// 阶段 2 收编：替换规则编辑页，参数与 ui.replace.ReplaceEditRoute 对齐（均为可序列化的原始类型）。
+// sessionId 为每次入栈随机生成，用于 Koin 按会话隔离 ReplaceEditViewModel。
+@Serializable
+data class MainRouteReplaceEdit(
+    val id: Long = -1,
+    val pattern: String? = null,
+    val isRegex: Boolean = false,
+    val scope: String? = null,
+    val isScopeTitle: Boolean = false,
+    val isScopeContent: Boolean = false,
+    val sessionId: String = UUID.randomUUID().toString(),
+) : MainRoute
+
+// 阶段 2 收编：书源管理——白名单父页为 MainRouteHome；Search 白名单含本路由（MD3 修复对齐）。
+@Serializable
+data object MainRouteBookSourceManage : MainRoute
+
+// 阶段 3：目录路由——entry 内容抽取（TocActivity Compose 内容 → TocEntry）待完成，
+// 完成前 MainNavGraph 暂不接线，仅固化 Navigator 契约与单测。
+@Serializable
+data class MainRouteToc(val bookUrl: String) : MainRoute
 
 object MainRouteConst {
     const val ROUTE_MAIN = "main"

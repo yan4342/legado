@@ -71,6 +71,8 @@ import io.legado.app.ui.book.manga.ReadMangaActivity
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
+import io.legado.app.ui.book.toc.TocRouteResult
+import io.legado.app.ui.book.toc.TocRouteState
 import io.legado.app.ui.common.compose.LegadoAlertDialog
 import io.legado.app.ui.common.compose.ModalLegadoBottomSheet
 import io.legado.app.ui.common.compose.rememberLegadoColorScheme
@@ -120,6 +122,9 @@ fun BookInfoRouteScreen(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     sharedCoverKey: String? = null,
+    // 主栈形态：目录走 MainRouteToc 路由，结果经 tocRouteState 回传；null 时保持 ActivityResult 旧路径。
+    tocRouteState: TocRouteState? = null,
+    onOpenTocRoute: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? AppCompatActivity
@@ -164,6 +169,32 @@ fun BookInfoRouteScreen(
                 }
             }
         } ?: run { if (!vm.inBookshelf) vm.delBook() }
+    }
+
+    // 主栈目录路由的结果回传（pending-holder）：TocEntry 写入后回退，此处消费并清空。
+    // Selection.readerLaunched = true 时 TocScreen 已直接启动阅读器，跳过重复启动；
+    // Cancelled（未选章节返回）对应旧路径的 null result —— 清理未入库的临时书。
+    tocRouteState?.let { state ->
+        LaunchedEffect(state.pendingResult) {
+            val result = state.pendingResult ?: return@LaunchedEffect
+            state.pendingResult = null
+            when (result) {
+                is TocRouteResult.Selection -> {
+                    val book = vm.getBook(false)
+                    if (!result.readerLaunched && book != null && book.bookUrl == result.bookUrl) {
+                        fragActivity?.lifecycleScope?.launch {
+                            withContext(IO) {
+                                book.durChapterIndex = result.index
+                                book.durChapterPos = result.pos
+                                appDb.bookDao.update(book)
+                            }
+                            activity?.startActivity(makeReadIntent(activity, vm, book))
+                        }
+                    }
+                }
+                TocRouteResult.Cancelled -> if (!vm.inBookshelf) vm.delBook()
+            }
+        }
     }
     val readLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         vm.upBook(Intent())
@@ -341,7 +372,10 @@ fun BookInfoRouteScreen(
             onTocClick = {
                 if (chapters.isNullOrEmpty()) activity?.toastOnUi(R.string.chapter_list_empty)
                 else vm.getBook()?.let { b ->
-                    vm.prepareOpenChapterList { tocLauncher.launch(b.bookUrl) }
+                    vm.prepareOpenChapterList {
+                        if (tocRouteState != null) onOpenTocRoute(b.bookUrl)
+                        else tocLauncher.launch(b.bookUrl)
+                    }
                 }
             },
             onEditClick = { editLauncher.launch { putExtra("bookUrl", b.bookUrl) } },

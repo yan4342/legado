@@ -142,8 +142,39 @@ object MainNavigator {
                     currentRoute is MainRouteExploreShow ||
                     currentRoute is MainRouteReadRecord ||
                     currentRoute is MainRouteReadRecordOverview ||
+                    currentRoute is MainRouteBookSourceManage ||
                     currentRoute is MainRouteSearch
                 ) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
+            // --- 阶段 2 收编：替换规则 / 书源管理 ---
+            MainRouteReplaceRule -> {
+                if (currentRoute == MainRouteHome) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
+            is MainRouteReplaceEdit -> {
+                backStack.add(route)
+            }
+
+            is MainRouteToc -> {
+                // 目录只在书籍详情上下文中有意义；白名单外(理论上不发生)同样压栈保留来源
+                backStack.add(route)
+            }
+
+            MainRouteBookSourceManage -> {
+                if (currentRoute == MainRouteHome) {
                     backStack.add(route)
                 } else {
                     backStack.clear()

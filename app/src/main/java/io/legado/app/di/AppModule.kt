@@ -149,6 +149,7 @@ import io.legado.app.data.repository.manga.MangaReaderDataRepository
 import io.legado.app.domain.gateway.MangaReaderDataGateway
 import io.legado.app.domain.gateway.MangaReaderSessionFactory
 import io.legado.app.ui.book.source.manage.BookSourceViewModel
+import io.legado.app.ui.book.toc.TocViewModel
 import io.legado.app.ui.book.toc.rule.TxtTocRuleViewModel
 import io.legado.app.ui.config.ai.AiConfigViewModel
 import io.legado.app.ui.config.ai.AiAbilityManagementViewModel
@@ -197,6 +198,9 @@ val appModule = module {
     viewModelOf(::CrashViewModel)
     viewModelOf(::AllBookmarkViewModel)
     viewModelOf(::FileManageViewModel)
+
+    // Toc (chapter list / bookmarks, shared by TocActivity shell and main-stack TocEntry)
+    viewModelOf(::TocViewModel)
 
     // Rule management pages
     viewModelOf(::TxtTocRuleViewModel)
