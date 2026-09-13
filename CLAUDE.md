@@ -355,7 +355,7 @@ Two custom base adapters, both generic over `<ITEM, VB : ViewBinding>`:
 
 ### Dialog Widget Library (`ui/widget/dialog/`)
 
-Reusable dialogs: `TextDialog` (text/markdown/HTML with toolbar), `TextListDialog`, `CodeDialog`, `PhotoDialog`, `UrlOptionDialog`, `WaitDialog` (loading spinner), `VariableDialog`, `NumberPickerDialog`
+Reusable dialogs: `CodeDialog`, `PhotoDialog`, `WaitDialog` (loading spinner), `VariableDialog`, `NumberPickerDialog`. Compose dialog shells: `LegadoAlertDialog` / `M3EditInputDialog` (`ui/common/compose/`), `LegadoSheetDialog` (bottom sheet).
 
 ### Layout Conventions
 
@@ -408,7 +408,7 @@ Extensive E-Ink handling throughout: removes animations and dim, uses border dra
 
 - **Build files**: Groovy DSL (not Kotlin DSL)
 - **Version catalog**: `gradle/libs.versions.toml`
-- **Gradle**: 9.3.1, **AGP**: 9.1.0, **Kotlin**: 2.3.0, **KSP**: 2.3.4
+- **Gradle**: 9.4.1, **AGP**: 9.1.0, **Kotlin**: 2.3.0, **KSP**: 2.3.4
 - **compileSdk/targetSdk**: 36, **minSdk**: 28
 - **JVM toolchain**: Java 21
 - **Product flavors**: dimension `mode`, flavor `app` (CI also builds `google` for Play Store)

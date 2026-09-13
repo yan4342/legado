@@ -189,7 +189,16 @@ fun ReplaceRuleScreen(
                     actions = {
                         if (!inSelectionMode && !showSearch) {
                             IconButton(onClick = { showSearch = true; onIntent(ReplaceRuleIntent.SetSearchMode(true)) }) { Icon(Icons.Filled.Search, contentDescription = "Search", tint = onSurfaceColor) }
-                            IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = onSurfaceColor) }
+                            Box {
+                                IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = onSurfaceColor) }
+                                RoundDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) { dismiss ->
+                                    RoundDropdownMenuItem(text = stringResource(R.string.menu_action_group), onClick = { dismiss(); showGroupSheet = true })
+                                    RoundDropdownMenuItem(text = stringResource(R.string.import_local), onClick = { dismiss(); filePicker.launch(arrayOf("application/json", "text/*")) })
+                                    RoundDropdownMenuItem(text = stringResource(R.string.import_on_line), onClick = { dismiss(); showUrlInput = true })
+                                    RoundDropdownMenuItem(text = stringResource(R.string.import_by_qr_code), onClick = { dismiss(); qrLauncher.launch(null) })
+                                    RoundDropdownMenuItem(text = stringResource(R.string.help), onClick = { dismiss(); (context as? AppCompatActivity)?.showHelp("replaceRuleHelp") })
+                                }
+                            }
                         }
                         if (inSelectionMode) {
                             IconButton(onClick = { onIntent(ReplaceRuleIntent.ClearSelection) }) { Icon(Icons.Default.Close, contentDescription = "Clear", tint = onSurfaceColor) }
@@ -256,15 +265,6 @@ fun ReplaceRuleScreen(
                 }
             }
         }
-    }
-
-    // More menu (TopAppBar)
-    RoundDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) { dismiss ->
-        RoundDropdownMenuItem(text = stringResource(R.string.menu_action_group), onClick = { dismiss(); showGroupSheet = true })
-        RoundDropdownMenuItem(text = stringResource(R.string.import_local), onClick = { dismiss(); filePicker.launch(arrayOf("application/json", "text/*")) })
-        RoundDropdownMenuItem(text = stringResource(R.string.import_on_line), onClick = { dismiss(); showUrlInput = true })
-        RoundDropdownMenuItem(text = stringResource(R.string.import_by_qr_code), onClick = { dismiss(); qrLauncher.launch(null) })
-        RoundDropdownMenuItem(text = stringResource(R.string.help), onClick = { dismiss(); (context as? AppCompatActivity)?.showHelp("replaceRuleHelp") })
     }
 
     // Delete confirmation

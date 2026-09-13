@@ -13,11 +13,9 @@ import io.legado.app.constant.AppConst
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.IntentAction
 import io.legado.app.constant.NotificationId
-import io.legado.app.constant.PreferKey
+import io.legado.app.help.config.AppConfig
 import io.legado.app.receiver.NetworkChangedListener
 import io.legado.app.utils.NetworkUtils
-import io.legado.app.utils.getPrefBoolean
-import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.sendToClip
@@ -59,7 +57,7 @@ class WebService : BaseService() {
         }
     }
 
-    private val useWakeLock = appCtx.getPrefBoolean(PreferKey.webServiceWakeLock, false)
+    private val useWakeLock = AppConfig.webServiceWakeLock
     private val wakeLock: PowerManager.WakeLock by lazy {
         powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "legado:WebService")
             .apply {
@@ -183,7 +181,7 @@ class WebService : BaseService() {
     }
 
     private fun getPort(): Int {
-        var port = getPrefInt(PreferKey.webPort, 1122)
+        var port = AppConfig.webPort
         if (port > 65530 || port < 1024) {
             port = 1122
         }

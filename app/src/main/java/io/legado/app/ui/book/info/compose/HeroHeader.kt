@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -49,10 +52,14 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.ViewCompat
 import coil3.compose.AsyncImage
 import io.legado.app.R
+import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
+import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.BookCover
 import io.legado.app.ui.common.compose.BookCoverCompose
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -78,6 +85,18 @@ fun HeroHeader(
         runCatching { AppConfig.useDefaultCover }.getOrDefault(false)
     // 墨水屏模式下不显示动画效果
     val isEInkMode = runCatching { AppConfig.isEInkMode }.getOrDefault(false)
+    // 【书源来源】— 异步查询书源名称，显示在作者名下方；本地书无书源，显示"本地"
+    val sourceName by produceState<String?>(null, book.origin, book.isLocal, book.originName) {
+        if (!book.isLocal) {
+            value = withContext(Dispatchers.IO) {
+                runCatching {
+                    appDb.bookSourceDao.getBookSource(book.origin)?.bookSourceName
+                }.getOrNull()?.takeIf { it.isNotBlank() }
+                    ?: book.originName.takeIf { it.isNotBlank() }
+            }
+        }
+    }
+    val showSource = book.isLocal || !sourceName.isNullOrBlank()
     // 状态栏高度，用于让模糊背景延伸到状态栏区域
     val statusBarHeightDp = with(LocalDensity.current) {
         WindowInsets.statusBars.getTop(this).toDp()
@@ -190,6 +209,20 @@ fun HeroHeader(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
+                    )
+                }
+                if (showSource) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (book.isLocal) {
+                            stringResource(R.string.local)
+                        } else {
+                            sourceName.orEmpty()
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

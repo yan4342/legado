@@ -23,7 +23,7 @@ object ImageUtils {
     ): ByteArray? {
         val ruleJs = getRuleJs(source, isCover)
         if (ruleJs.isNullOrBlank()) return bytes
-        //解密库hutool.crypto ByteArray|InputStream -> ByteArray
+        //解密库 ByteArray|InputStream -> ByteArray
         return kotlin.runCatching {
             source?.evalJS(ruleJs) {
                 put("book", book)
@@ -41,7 +41,7 @@ object ImageUtils {
     ): InputStream? {
         val ruleJs = getRuleJs(source, isCover)
         if (ruleJs.isNullOrBlank()) return inputStream
-        //解密库hutool.crypto ByteArray|InputStream -> ByteArray
+        //解密库 ByteArray|InputStream -> ByteArray
         return kotlin.runCatching {
             val bytes = source?.evalJS(ruleJs) {
                 put("book", book)

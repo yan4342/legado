@@ -4,9 +4,6 @@ import android.annotation.SuppressLint
 import android.util.Base64
 import androidx.annotation.Keep
 import androidx.media3.common.MediaItem
-import cn.hutool.core.codec.PercentCodec
-import cn.hutool.core.net.RFC3986
-import cn.hutool.core.util.HexUtil
 import com.script.buildScriptBindings
 import com.script.rhino.RhinoScriptEngine
 import com.script.rhino.runScriptWithContext
@@ -21,6 +18,7 @@ import io.legado.app.help.CacheManager
 import io.legado.app.help.ConcurrentRateLimiter
 import io.legado.app.help.JsExtensions
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.crypto.toHexString
 import io.legado.app.help.exoplayer.ExoPlayerHelper
 import io.legado.app.help.http.BackstageWebView
 import io.legado.app.help.http.CookieManager
@@ -293,7 +291,7 @@ class AnalyzeUrl(
             if (NetworkUtils.encodedQuery(params)) {
                 return params
             }
-            return queryEncoder.encode(params, charset)
+            return encodeQueryParams(params, charset)
         }
         val len = params.length
         val sb = StringBuilder()
@@ -401,7 +399,7 @@ class AnalyzeUrl(
         useWebView: Boolean = true,
     ): StrResponse {
         if (type != null) {
-            return StrResponse(url, HexUtil.encodeHexStr(getByteArrayAwait()))
+            return StrResponse(url, getByteArrayAwait().toHexString())
         }
         concurrentRateLimiter.withLimit {
             setCookie()
@@ -666,8 +664,33 @@ class AnalyzeUrl(
     companion object {
         val paramPattern: Pattern = Pattern.compile("\\s*,\\s*(?=\\{)")
         private val pagePattern = Pattern.compile("<(.*?)>")
-        private val queryEncoder =
-            RFC3986.UNRESERVED.orNew(PercentCodec.of("!$%&()*+,/:;=?@[\\]^`{|}"))
+        private const val QUERY_HEX_UPPER = "0123456789ABCDEF"
+        private val queryEncoderSafeChars: BooleanArray = BooleanArray(128).apply {
+            for (c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-~!$%&()*+,/:;=?@[\\]^`{|}") {
+                this[c.code] = true
+            }
+        }
+
+        /**
+         * 编码query参数, 保留unreserved字符和!$%&()*+,/:;=?@[\]^`{|}, 其余转%XX
+         */
+        private fun encodeQueryParams(str: String, charset: Charset): String {
+            val builder = StringBuilder(str.length)
+            for (c in str) {
+                if (c.code < 128 && queryEncoderSafeChars[c.code]) {
+                    builder.append(c)
+                } else {
+                    val bytes = c.toString().toByteArray(charset)
+                    for (b in bytes) {
+                        val v = b.toInt() and 0xFF
+                        builder.append('%')
+                        builder.append(QUERY_HEX_UPPER[v ushr 4])
+                        builder.append(QUERY_HEX_UPPER[v and 0x0F])
+                    }
+                }
+            }
+            return builder.toString()
+        }
 
         fun AnalyzeUrl.getMediaItem(): MediaItem {
             setCookie()

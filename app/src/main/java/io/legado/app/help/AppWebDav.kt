@@ -3,7 +3,6 @@ package io.legado.app.help
 import android.net.Uri
 import io.legado.app.R
 import io.legado.app.constant.AppLog
-import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookProgress
@@ -23,10 +22,8 @@ import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.UrlUtil
 import io.legado.app.utils.compress.ZipUtils
 import io.legado.app.utils.fromJsonObject
-import io.legado.app.utils.getPrefString
 import io.legado.app.utils.isJson
 import io.legado.app.utils.normalizeFileName
-import io.legado.app.utils.removePref
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -60,7 +57,7 @@ object AppWebDav {
 
     private val rootWebDavUrl: String
         get() {
-            val configUrl = appCtx.getPrefString(PreferKey.webDavUrl)?.trim()
+            val configUrl = AppConfig.webDavUrl?.trim()
             var url = if (configUrl.isNullOrEmpty()) defaultWebDavUrl else configUrl
             if (!url.endsWith("/")) url = "${url}/"
             AppConfig.webDavDir?.trim()?.let {
@@ -75,8 +72,8 @@ object AppWebDav {
         kotlin.runCatching {
             authorization = null
             defaultBookWebDav = null
-            val account = appCtx.getPrefString(PreferKey.webDavAccount)
-            val password = appCtx.getPrefString(PreferKey.webDavPassword)
+            val account = AppConfig.webDavAccount
+            val password = AppConfig.webDavPassword
             if (!account.isNullOrEmpty() && !password.isNullOrEmpty()) {
                 val mAuthorization = Authorization(account, password)
                 checkAuthorization(mAuthorization)
@@ -88,15 +85,24 @@ object AppWebDav {
                 defaultBookWebDav = RemoteBookWebDav(rootBooksUrl, mAuthorization)
                 authorization = mAuthorization
             }
+        }.onFailure { e ->
+            currentCoroutineContext().ensureActive()
+            AppLog.put("WebDav配置初始化失败: ${e.localizedMessage}", e)
         }
     }
 
     @Throws(WebDavException::class)
     private suspend fun checkAuthorization(authorization: Authorization) {
-        if (!WebDav(rootWebDavUrl, authorization).check()) {
-            appCtx.removePref(PreferKey.webDavPassword)
-            appCtx.toastOnUi(R.string.webdav_application_authorization_error)
-            throw WebDavException(appCtx.getString(R.string.webdav_application_authorization_error))
+        try {
+            if (!WebDav(rootWebDavUrl, authorization).check()) {
+                AppConfig.webDavPassword = null
+                appCtx.toastOnUi(R.string.webdav_application_authorization_error)
+                throw WebDavException(appCtx.getString(R.string.webdav_application_authorization_error))
+            }
+        } catch (e: WebDavException) {
+            AppConfig.webDavPassword = null
+            appCtx.toastOnUi("WebDav鉴权失败: ${e.localizedMessage}")
+            throw e
         }
     }
 
@@ -105,12 +111,19 @@ object AppWebDav {
      */
     suspend fun testConnection(): Result<Boolean> {
         return kotlin.runCatching {
-            val account = appCtx.getPrefString(PreferKey.webDavAccount)
-            if (account.isNullOrEmpty()) {
-                throw NoStackTraceException(appCtx.getString(R.string.web_dav_account_s))
+            val url = AppConfig.webDavUrl?.trim()
+            if (url.isNullOrEmpty()) {
+                throw NoStackTraceException("请先填写WebDav服务器地址")
             }
-            val password = appCtx.getPrefString(PreferKey.webDavPassword)
-            val mAuthorization = Authorization(account, password ?: "")
+            val account = AppConfig.webDavAccount
+            if (account.isNullOrEmpty()) {
+                throw NoStackTraceException("请先填写WebDav账号")
+            }
+            val password = AppConfig.webDavPassword
+            if (password.isNullOrEmpty()) {
+                throw NoStackTraceException("请先填写WebDav密码")
+            }
+            val mAuthorization = Authorization(account, password)
             val webDav = WebDav(rootWebDavUrl, mAuthorization)
             webDav.check()
         }
@@ -119,30 +132,37 @@ object AppWebDav {
     @Throws(Exception::class)
     suspend fun getBackupNames(): ArrayList<String> {
         val names = arrayListOf<String>()
-        authorization?.let {
-            var files = WebDav(rootWebDavUrl, it).listFiles()
-            files = files.sortedWith { o1, o2 ->
-                AlphanumComparator.compare(o1.displayName, o2.displayName)
-            }.reversed()
-            files.forEach { webDav ->
-                val name = webDav.displayName
-                if (name.startsWith("backup")) {
-                    names.add(name)
-                }
+        val auth = authorization ?: throw NoStackTraceException("WebDav未配置，请先填写账号密码并测试连接")
+        var files = WebDav(rootWebDavUrl, auth).listFiles()
+        files = files.sortedWith { o1, o2 ->
+            AlphanumComparator.compare(o1.displayName, o2.displayName)
+        }.reversed()
+        files.forEach { webDav ->
+            val name = webDav.displayName
+            if (name.startsWith("backup")) {
+                names.add(name)
             }
-        } ?: throw NoStackTraceException("webDav没有配置")
+        }
         return names
     }
 
     @Throws(WebDavException::class)
     suspend fun restoreWebDav(name: String) {
-        authorization?.let {
-            val webDav = WebDav(rootWebDavUrl + name, it)
+        val auth = authorization
+            ?: throw NoStackTraceException("WebDav未配置，无法恢复备份")
+        val webDav = WebDav(rootWebDavUrl + name, auth)
+        try {
             webDav.downloadTo(Backup.zipFilePath, true)
+        } catch (e: Exception) {
+            throw WebDavException("下载备份文件失败: $name\n${e.localizedMessage}")
+        }
+        try {
             FileUtils.delete(Backup.backupPath)
             ZipUtils.unZipToPath(File(Backup.zipFilePath), Backup.backupPath)
-            Restore.restoreLocked(Backup.backupPath)
+        } catch (e: Exception) {
+            throw WebDavException("解压备份文件失败: $name\n${e.localizedMessage}")
         }
+        Restore.restoreLocked(Backup.backupPath)
     }
 
     suspend fun hasBackUp(backUpName: String): Boolean {
@@ -177,11 +197,13 @@ object AppWebDav {
      */
     @Throws(Exception::class)
     suspend fun backUpWebDav(fileName: String) {
-        if (!NetworkUtils.isAvailable()) return
-        authorization?.let {
-            val putUrl = "$rootWebDavUrl$fileName"
-            WebDav(putUrl, it).upload(Backup.zipFilePath)
+        if (!NetworkUtils.isAvailable()) {
+            throw NoStackTraceException("网络未连接，无法上传备份到WebDav")
         }
+        val auth = authorization
+            ?: throw NoStackTraceException("WebDav未配置，无法上传备份")
+        val putUrl = "$rootWebDavUrl$fileName"
+        WebDav(putUrl, auth).upload(Backup.zipFilePath)
     }
 
     /**
@@ -190,11 +212,10 @@ object AppWebDav {
     private suspend fun getAllBgWebDavFiles(): Result<List<WebDavFile>> {
         return kotlin.runCatching {
             if (!NetworkUtils.isAvailable())
-                throw NoStackTraceException("网络未连接")
-            authorization.let {
-                it ?: throw NoStackTraceException("webDav未配置")
-                WebDav(bgWebDavUrl, it).listFiles()
-            }
+                throw NoStackTraceException("网络未连接，无法获取WebDav背景文件列表")
+            val auth = authorization
+                ?: throw NoStackTraceException("WebDav未配置，无法获取背景文件列表")
+            WebDav(bgWebDavUrl, auth).listFiles()
         }
     }
 
@@ -230,28 +251,28 @@ object AppWebDav {
     suspend fun exportWebDav(byteArray: ByteArray, fileName: String) {
         if (!NetworkUtils.isAvailable()) return
         try {
-            authorization?.let {
-                // 如果导出的本地文件存在,开始上传
-                val putUrl = exportsWebDavUrl + fileName
-                WebDav(putUrl, it).upload(byteArray, "text/plain")
-            }
+            val auth = authorization
+                ?: throw NoStackTraceException("WebDav未配置，无法导出文件")
+            // 如果导出的本地文件存在,开始上传
+            val putUrl = exportsWebDavUrl + fileName
+            WebDav(putUrl, auth).upload(byteArray, "text/plain")
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
-            AppLog.put("WebDav导出失败\n${e.localizedMessage}", e, true)
+            AppLog.put("WebDav导出文件失败: $fileName\n${e.localizedMessage}", e, true)
         }
     }
 
     suspend fun exportWebDav(uri: Uri, fileName: String) {
         if (!NetworkUtils.isAvailable()) return
         try {
-            authorization?.let {
-                // 如果导出的本地文件存在,开始上传
-                val putUrl = exportsWebDavUrl + fileName
-                WebDav(putUrl, it).upload(uri, "text/plain")
-            }
+            val auth = authorization
+                ?: throw NoStackTraceException("WebDav未配置，无法导出文件")
+            // 如果导出的本地文件存在,开始上传
+            val putUrl = exportsWebDavUrl + fileName
+            WebDav(putUrl, auth).upload(uri, "text/plain")
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
-            AppLog.put("WebDav导出失败\n${e.localizedMessage}", e, true)
+            AppLog.put("WebDav导出文件失败: $fileName\n${e.localizedMessage}", e, true)
         }
     }
 
@@ -272,7 +293,7 @@ object AppWebDav {
             onSuccess?.invoke()
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
-            AppLog.put("上传进度失败\n${e.localizedMessage}", e, toast)
+            AppLog.put("上传阅读进度失败: ${book.name}\n${e.localizedMessage}", e, toast)
         }
     }
 
@@ -287,7 +308,7 @@ object AppWebDav {
             onSuccess?.invoke()
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
-            AppLog.put("上传进度失败\n${e.localizedMessage}", e)
+            AppLog.put("上传阅读进度失败: ${bookProgress.name}\n${e.localizedMessage}", e)
         }
     }
 
@@ -314,7 +335,7 @@ object AppWebDav {
             }
         }.onFailure {
             currentCoroutineContext().ensureActive()
-            AppLog.put("获取书籍进度失败\n${it.localizedMessage}", it)
+            AppLog.put("获取阅读进度失败: ${book.name}\n${it.localizedMessage}", it)
         }
         return null
     }

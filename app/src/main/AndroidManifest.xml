@@ -191,10 +191,6 @@
             android:configChanges="locale|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize|stateHidden" />
-        <!-- 配置界面 -->
-        <activity
-            android:name=".ui.config.ConfigActivity"
-            android:launchMode="standard" />
         <!-- 搜索界面 -->
         <activity
             android:name=".ui.book.search.SearchActivity"
@@ -274,10 +270,6 @@
         <activity
             android:name=".ui.rss.favorites.RssFavoritesActivity"
             android:launchMode="singleTop" />
-        <!-- 书签 -->
-        <activity
-            android:name=".ui.book.bookmark.AllBookmarkActivity"
-            android:launchMode="singleTop" />
         <!-- 缓存界面 -->
         <activity
             android:name=".ui.book.cache.CacheActivity"
@@ -303,23 +295,8 @@
             android:name=".ui.about.ReadRecordOverviewActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
-        <!-- 字典管理 -->
-        <activity
-            android:name=".ui.dict.rule.DictRuleActivity"
-            android:configChanges="orientation|screenSize"
-            android:hardwareAccelerated="true" />
-        <!-- AI 字典管理 -->
-        <activity
-            android:name=".ui.dict.rule.ai.AiDictRuleActivity"
-            android:configChanges="orientation|screenSize"
-            android:hardwareAccelerated="true" />
         <activity
             android:name=".ui.dict.rule.ai.AiDictRuleEditActivity"
-            android:configChanges="orientation|screenSize"
-            android:hardwareAccelerated="true" />
-        <!-- 文件管理 -->
-        <activity
-            android:name=".ui.file.FileManageActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
         <!-- 选择文件 -->

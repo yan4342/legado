@@ -1,6 +1,7 @@
 package io.legado.app.ui.config.compose
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -39,16 +40,13 @@ import io.legado.app.ui.common.compose.SectionCard
 import io.legado.app.ui.common.compose.settingItem.ClickableSettingItem
 import io.legado.app.ui.common.compose.settingItem.SwitchSettingItem
 import io.legado.app.ui.config.ConfigViewModel
-import io.legado.app.utils.getPrefBoolean
-import io.legado.app.utils.getPrefString
-import io.legado.app.utils.putPrefBoolean
-import io.legado.app.utils.putPrefString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BackupConfigScreen(
     onBackClick: () -> Unit,
     viewModel: ConfigViewModel,
+    backupPath: String = "",
     onBackupPathClick: () -> Unit = {},
     onRestoreIgnoreClick: () -> Unit = {},
     onImportOldClick: () -> Unit = {},
@@ -60,25 +58,25 @@ fun BackupConfigScreen(
     val context = LocalContext.current
 
     var syncBookProgress by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.syncBookProgress, false))
+        mutableStateOf(AppConfig.syncBookProgress)
     }
     var syncBookProgressPlus by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.syncBookProgressPlus, false))
+        mutableStateOf(AppConfig.syncBookProgressPlus)
     }
     var onlyLatestBackup by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.onlyLatestBackup, false))
+        mutableStateOf(AppConfig.onlyLatestBackup)
     }
     var autoCheckNewBackup by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.autoCheckNewBackup, false))
+        mutableStateOf(AppConfig.autoCheckNewBackup)
     }
     var webDavUrl by remember {
-        mutableStateOf(context.getPrefString(PreferKey.webDavUrl, "") ?: "")
+        mutableStateOf(AppConfig.webDavUrl ?: "")
     }
     var webDavAccount by remember {
-        mutableStateOf(context.getPrefString(PreferKey.webDavAccount, "") ?: "")
+        mutableStateOf(AppConfig.webDavAccount ?: "")
     }
-    var backupPath by remember {
-        mutableStateOf(context.getPrefString(PreferKey.backupPath, "") ?: "")
+    val displayBackupPath = backupPath.ifEmpty {
+        AppConfig.backupPath ?: ""
     }
 
     var showMenu by remember { mutableStateOf(false) }
@@ -100,20 +98,22 @@ fun BackupConfigScreen(
                     IconButton(onClick = onHelpClick) {
                         Icon(painterResource(R.drawable.ic_help), contentDescription = stringResource(R.string.help))
                     }
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = null)
-                    }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.log)) },
-                            onClick = {
-                                showMenu = false
-                                onLogClick()
-                            },
-                        )
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = null)
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.log)) },
+                                onClick = {
+                                    showMenu = false
+                                    onLogClick()
+                                },
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -139,7 +139,7 @@ fun BackupConfigScreen(
                         onClick = {
                             editDialogInfo = EditDialogInfo(context.getString(R.string.web_dav_url), webDavUrl) { v ->
                                 webDavUrl = v
-                                context.putPrefString(PreferKey.webDavUrl, v)
+                                AppConfig.webDavUrl = v
                                 viewModel.upWebDavConfig()
                             }
                         },
@@ -150,7 +150,7 @@ fun BackupConfigScreen(
                         onClick = {
                             editDialogInfo = EditDialogInfo(context.getString(R.string.web_dav_account), webDavAccount) { v ->
                                 webDavAccount = v
-                                context.putPrefString(PreferKey.webDavAccount, v)
+                                AppConfig.webDavAccount = v
                                 viewModel.upWebDavConfig()
                             }
                         },
@@ -165,7 +165,7 @@ fun BackupConfigScreen(
                         description = AppConfig.webDavDir ?: "legado",
                         onClick = {
                             editDialogInfo = EditDialogInfo(context.getString(R.string.sub_dir), AppConfig.webDavDir ?: "legado") { v ->
-                                context.putPrefString(PreferKey.webDavDir, v)
+                                AppConfig.webDavDir = v
                                 viewModel.upWebDavConfig()
                             }
                         },
@@ -175,7 +175,7 @@ fun BackupConfigScreen(
                         description = AppConfig.webDavDeviceName ?: "",
                         onClick = {
                             editDialogInfo = EditDialogInfo(context.getString(R.string.webdav_device_name), AppConfig.webDavDeviceName ?: "") { v ->
-                                context.putPrefString(PreferKey.webDavDeviceName, v)
+                                AppConfig.webDavDeviceName = v
                                 viewModel.upWebDavConfig()
                             }
                         },
@@ -186,7 +186,7 @@ fun BackupConfigScreen(
                         checked = syncBookProgress,
                         onCheckedChange = { v ->
                             syncBookProgress = v
-                            context.putPrefBoolean(PreferKey.syncBookProgress, v)
+                            AppConfig.syncBookProgress = v
                         },
                     )
                     ClickableSettingItem(
@@ -201,7 +201,7 @@ fun BackupConfigScreen(
                         enabled = syncBookProgress,
                         onCheckedChange = { v ->
                             syncBookProgressPlus = v
-                            context.putPrefBoolean(PreferKey.syncBookProgressPlus, v)
+                            AppConfig.syncBookProgressPlus = v
                         },
                     )
                 }
@@ -213,7 +213,7 @@ fun BackupConfigScreen(
                 SectionCard {
                     ClickableSettingItem(
                         title = stringResource(R.string.backup_path),
-                        description = backupPath.ifEmpty { stringResource(R.string.select_backup_path) },
+                        description = displayBackupPath.ifEmpty { stringResource(R.string.select_backup_path) },
                         onClick = onBackupPathClick,
                     )
                     ClickableSettingItem(
@@ -242,7 +242,7 @@ fun BackupConfigScreen(
                         checked = onlyLatestBackup,
                         onCheckedChange = { v ->
                             onlyLatestBackup = v
-                            context.putPrefBoolean(PreferKey.onlyLatestBackup, v)
+                            AppConfig.onlyLatestBackup = v
                         },
                     )
                 }
@@ -268,7 +268,7 @@ fun BackupConfigScreen(
                         checked = autoCheckNewBackup,
                         onCheckedChange = { v ->
                             autoCheckNewBackup = v
-                            context.putPrefBoolean(PreferKey.autoCheckNewBackup, v)
+                            AppConfig.autoCheckNewBackup = v
                         },
                     )
                 }
@@ -320,8 +320,10 @@ fun BackupConfigScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         showWebDavPwdDialog = false
-                        context.putPrefString(PreferKey.webDavPassword, pwd)
-                        viewModel.upWebDavConfig()
+                        if (pwd.isNotEmpty()) {
+                            AppConfig.webDavPassword = pwd
+                            viewModel.upWebDavConfig()
+                        }
                     }) {
                         Text(stringResource(android.R.string.ok))
                     }

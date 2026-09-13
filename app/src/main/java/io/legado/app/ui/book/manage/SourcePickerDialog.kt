@@ -23,10 +23,11 @@ import io.legado.app.databinding.Item1lineTextBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
-import io.legado.app.ui.widget.number.NumberPickerDialog
+import io.legado.app.ui.common.compose.M3NumberPickerDialog
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.setLayout
+import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
@@ -106,14 +107,17 @@ class SourcePickerDialog : BaseDialogFragment(R.layout.dialog_source_picker),
 
     override fun onMenuItemClick(item: MenuItem?): Boolean {
         when (item?.itemId) {
-            R.id.menu_change_source_delay -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.change_source_delay))
-                .setMaxValue(9999)
-                .setMinValue(0)
-                .setValue(AppConfig.batchChangeSourceDelay)
-                .show {
-                    AppConfig.batchChangeSourceDelay = it
-                }
+            R.id.menu_change_source_delay -> showDialogFragment(
+                M3NumberPickerDialog.create(
+                    title = getString(R.string.change_source_delay),
+                    value = AppConfig.batchChangeSourceDelay,
+                    minValue = 0,
+                    maxValue = 9999,
+                    onConfirm = {
+                        AppConfig.batchChangeSourceDelay = it
+                    }
+                )
+            )
         }
         return true
     }

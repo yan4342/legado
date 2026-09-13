@@ -61,6 +61,27 @@ data class MainRouteCache(val groupId: Long) : MainRoute
 data object MainRouteBookCacheManage : MainRoute
 
 @Serializable
+data object MainRouteReadAloudPlayer : MainRoute
+
+@Serializable
+data class MainRouteBookVoiceCasting(val bookUrl: String) : MainRoute
+
+@Serializable
+data class MainRouteBookCharacterNetwork(
+    val bookUrl: String,
+    val focusCharacterId: String? = null,
+) : MainRoute
+
+@Serializable
+data class MainRouteBookCharacterList(val bookUrl: String) : MainRoute
+
+@Serializable
+data class MainRouteCloudTtsEngines(val bookUrl: String? = null) : MainRoute
+
+@Serializable
+data object MainRouteTtsCache : MainRoute
+
+@Serializable
 data class MainRouteReadBook(
     val bookUrl: String? = null,
     val readAloud: Boolean = false,
@@ -109,13 +130,65 @@ data object MainRouteRuleSub : MainRoute
 data object MainRouteMy : MainRoute
 
 @Serializable
+data object MainRouteAllBookmark : MainRoute
+
+@Serializable
+data object MainRouteFileManage : MainRoute
+
+@Serializable
+data object MainRouteDictRule : MainRoute
+
+@Serializable
 data object MainRouteReadRecord : MainRoute
 
 @Serializable
 data object MainRouteReadRecordOverview : MainRoute
 
 @Serializable
+data object MainRouteAiUsageOverview : MainRoute
+
+@Serializable
 data object MainRouteAiDictRule : MainRoute
+
+// AI routes
+@Serializable
+data object MainRouteAiChat : MainRoute
+
+@Serializable
+data object MainRouteSettingsAi : MainRoute
+
+@Serializable
+data class MainRouteSettingsAiProfileEdit(val providerId: String? = null) : MainRoute
+
+@Serializable
+data class MainRouteSettingsAiModelEdit(val providerId: String, val modelProfileId: String? = null) : MainRoute
+
+@Serializable
+data object MainRouteSettingsAiAbilityManagement : MainRoute
+
+@Serializable
+data object MainRouteSettingsAiSkills : MainRoute
+
+/** skillId blank = create; otherwise open SKILL.md for edit. */
+@Serializable
+data class MainRouteSettingsAiSkillEdit(
+    val skillId: String = "",
+) : MainRoute
+
+@Serializable
+data object MainRouteSettingsAiWebSearch : MainRoute
+
+@Serializable
+data object MainRouteSettingsAiPromptTemplates : MainRoute
+
+@Serializable
+data object MainRouteSettingsAiPromptPipeline : MainRoute
+
+@Serializable
+data object MainRouteSettingsAiChatColors : MainRoute
+
+@Serializable
+data object MainRouteSettingsAiHtmlThemes : MainRoute
 
 @Serializable
 data object MainRouteAbout : MainRoute
@@ -151,6 +224,12 @@ object MainRouteConst {
     const val ROUTE_IMPORT_REMOTE = "import/remote"
     const val ROUTE_CACHE = "cache"
     const val ROUTE_BOOK_CACHE_MANAGE = "book/cache/manage"
+    const val ROUTE_BOOK_VOICE_CASTING = "book/voice_casting"
+    const val ROUTE_BOOK_CHARACTER_NETWORK = "book/character_network"
+    const val ROUTE_BOOK_CHARACTER_LIST = "book/character_list"
+    const val ROUTE_CLOUD_TTS = "book/cloud_tts"
+    const val ROUTE_READ_ALOUD_PLAYER = "book/read_aloud_player"
+    const val ROUTE_TTS_CACHE = "book/tts_cache"
     const val ROUTE_READ_BOOK = "book/read"
     const val ROUTE_SEARCH = "search"
     const val ROUTE_SEARCH_CONTENT = "book/searchContent"
@@ -161,4 +240,6 @@ object MainRouteConst {
     const val ROUTE_READ_RECORD = "read_record"
     const val ROUTE_READ_RECORD_OVERVIEW = "read_record_overview"
     const val ROUTE_ABOUT = "about"
+    const val ROUTE_AI_CHAT = "ai/chat"
+    const val ROUTE_SETTINGS_AI = "settings/ai"
 }

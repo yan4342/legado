@@ -1,41 +1,40 @@
 package io.legado.app.ui.association
 
-import android.annotation.SuppressLint
-import android.content.Context
 import android.content.DialogInterface
 import android.os.Bundle
-import android.view.MenuItem
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.widget.Toolbar
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.viewModels
-import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.R
-import io.legado.app.base.BaseDialogFragment
-import io.legado.app.base.adapter.ItemViewHolder
-import io.legado.app.base.adapter.RecyclerAdapter
-import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.ReplaceRule
-import io.legado.app.databinding.DialogCustomGroupBinding
-import io.legado.app.databinding.DialogRecyclerViewBinding
-import io.legado.app.databinding.ItemSourceImportBinding
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.filletBackground
+import io.legado.app.databinding.DialogCustomGroupBinding
+import io.legado.app.ui.association.compose.ImportListItem
+import io.legado.app.ui.association.compose.ImportListScreen
+import io.legado.app.ui.association.compose.ImportMenuAction
+import io.legado.app.ui.common.compose.LegadoTheme
+import io.legado.app.ui.common.compose.LegadoWaitState
 import io.legado.app.ui.widget.dialog.CodeDialog
-import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.fromJsonObject
-import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.showDialogFragment
-import io.legado.app.utils.viewbindingdelegate.viewBinding
-import io.legado.app.utils.visible
-import splitties.views.onClick
 
-class ImportReplaceRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_view),
-    Toolbar.OnMenuItemClickListener,
+/**
+ * 导入替换规则（Compose 实现）
+ */
+class ImportReplaceRuleDialog() : DialogFragment(),
     CodeDialog.Callback {
 
     constructor(source: String, finishOnDismiss: Boolean = false) : this() {
@@ -45,13 +44,20 @@ class ImportReplaceRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_vi
         }
     }
 
-    private val binding by viewBinding(DialogRecyclerViewBinding::bind)
     private val viewModel by viewModels<ImportReplaceRuleViewModel>()
-    private val adapter by lazy { SourcesAdapter(requireContext()) }
+    private val waitState = LegadoWaitState()
+
+    private var loading by mutableStateOf(true)
+    private var message by mutableStateOf<String?>(null)
+    private var rules by mutableStateOf<List<ReplaceRule>>(emptyList())
+    private var stateTexts by mutableStateOf<List<String?>>(emptyList())
+    private var checked by mutableStateOf<List<Boolean>>(emptyList())
+    private var groupLabel by mutableStateOf("")
 
     override fun onStart() {
         super.onStart()
-        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog?.window?.setBackgroundDrawable(requireContext().filletBackground)
+        setLayout(MATCH_PARENT, WRAP_CONTENT)
     }
 
     override fun onDismiss(dialog: DialogInterface) {
@@ -61,82 +67,92 @@ class ImportReplaceRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_vi
         }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(primaryColor)
-        binding.toolBar.setTitle(R.string.import_replace_rule)
-        binding.rotateLoading.visible()
-        initMenu()
-        binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
-        binding.recyclerView.adapter = adapter
-        binding.tvCancel.visible()
-        binding.tvCancel.setOnClickListener {
-            dismissAllowingStateLoss()
-        }
-        binding.tvOk.visible()
-        binding.tvOk.setOnClickListener {
-            val waitDialog = WaitDialog(requireContext())
-            waitDialog.show()
-            viewModel.importSelect {
-                waitDialog.dismiss()
-                dismissAllowingStateLoss()
-            }
-        }
-        binding.tvFooterLeft.visible()
-        binding.tvFooterLeft.setOnClickListener {
-            val selectAll = viewModel.isSelectAll
-            viewModel.selectStatus.forEachIndexed { index, b ->
-                if (b != !selectAll) {
-                    viewModel.selectStatus[index] = !selectAll
-                }
-            }
-            adapter.notifyDataSetChanged()
-            upSelectText()
-        }
-        viewModel.errorLiveData.observe(this) {
-            binding.rotateLoading.gone()
-            binding.tvMsg.apply {
-                text = it
-                visible()
-            }
-        }
-        viewModel.successLiveData.observe(this) {
-            binding.rotateLoading.gone()
-            if (it > 0) {
-                adapter.setItems(viewModel.allRules)
-                upSelectText()
-            } else {
-                binding.tvMsg.apply {
-                    setText(R.string.wrong_format)
-                    visible()
-                }
-            }
-        }
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         val source = arguments?.getString("source")
         if (source.isNullOrEmpty()) {
-            dismiss()
-            return
+            dismissAllowingStateLoss()
+        } else {
+            viewModel.errorLiveData.observe(viewLifecycleOwner) {
+                loading = false
+                message = it
+            }
+            viewModel.successLiveData.observe(viewLifecycleOwner) {
+                loading = false
+                if (it > 0) {
+                    snapshotItems()
+                } else {
+                    message = getString(R.string.wrong_format)
+                }
+            }
+            viewModel.import(source)
         }
-        viewModel.import(source)
-    }
-
-    private fun initMenu() {
-        binding.toolBar.setOnMenuItemClickListener(this)
-        binding.toolBar.inflateMenu(R.menu.import_replace)
-    }
-
-    override fun onMenuItemClick(item: MenuItem?): Boolean {
-        when (item?.itemId) {
-            R.id.menu_new_group -> alertCustomGroup(item)
-            R.id.menu_keep_original_name -> {
-                item.isChecked = !item.isChecked
-                putPrefBoolean(PreferKey.importKeepName, item.isChecked)
+        return ComposeView(requireContext()).apply {
+            setContent {
+                LegadoTheme {
+                    ImportListScreen(
+                        title = getString(R.string.import_replace_rule),
+                        items = rules.mapIndexed { index, rule ->
+                            ImportListItem(
+                                title = if (rule.group.isNullOrBlank()) {
+                                    rule.name
+                                } else {
+                                    "${rule.name}(${rule.group})"
+                                },
+                                stateText = stateTexts.getOrNull(index),
+                                selected = checked.getOrElse(index) { true },
+                            )
+                        },
+                        loading = loading,
+                        message = message,
+                        footerText = footerText(),
+                        waitState = waitState,
+                        menuActions = listOf(
+                            ImportMenuAction(
+                                title = groupLabel.ifBlank { getString(R.string.diy_source_group) },
+                                showInBar = true,
+                            ) { alertCustomGroup() }
+                        ),
+                        onItemClick = { index ->
+                            viewModel.selectStatus[index] = !viewModel.selectStatus[index]
+                            refreshChecked()
+                        },
+                        onItemOpen = { index ->
+                            showDialogFragment(
+                                CodeDialog(
+                                    GSON.toJson(rules[index]),
+                                    disableEdit = false,
+                                    requestId = index.toString()
+                                )
+                            )
+                        },
+                        onFooterClick = {
+                            val selectAll = viewModel.isSelectAll
+                            viewModel.selectStatus.forEachIndexed { i, b ->
+                                if (b != !selectAll) {
+                                    viewModel.selectStatus[i] = !selectAll
+                                }
+                            }
+                            refreshChecked()
+                        },
+                        onCancelClick = { dismissAllowingStateLoss() },
+                        onOkClick = {
+                            waitState.show()
+                            viewModel.importSelect {
+                                waitState.dismiss()
+                                dismissAllowingStateLoss()
+                            }
+                        },
+                    )
+                }
             }
         }
-        return true
     }
 
-    private fun alertCustomGroup(item: MenuItem) {
+    private fun alertCustomGroup() {
         alert(R.string.diy_edit_source_group) {
             val alertBinding = DialogCustomGroupBinding.inflate(layoutInflater).apply {
                 val groups = appDb.replaceRuleDao.allGroups()
@@ -150,34 +166,14 @@ class ImportReplaceRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_vi
             okButton {
                 viewModel.isAddGroup = alertBinding.swAddGroup.isChecked
                 viewModel.groupName = alertBinding.editView.text?.toString()
-                if (viewModel.groupName.isNullOrBlank()) {
-                    item.title = getString(R.string.diy_source_group)
+                groupLabel = if (viewModel.groupName.isNullOrBlank()) {
+                    getString(R.string.diy_source_group)
                 } else {
                     val group = getString(R.string.diy_edit_source_group_title, viewModel.groupName)
-                    if (viewModel.isAddGroup) {
-                        item.title = "+$group"
-                    } else {
-                        item.title = group
-                    }
+                    if (viewModel.isAddGroup) "+$group" else group
                 }
             }
             noButton()
-        }
-    }
-
-    private fun upSelectText() {
-        if (viewModel.isSelectAll) {
-            binding.tvFooterLeft.text = getString(
-                R.string.select_cancel_count,
-                viewModel.selectCount,
-                viewModel.allRules.size
-            )
-        } else {
-            binding.tvFooterLeft.text = getString(
-                R.string.select_all_count,
-                viewModel.selectCount,
-                viewModel.allRules.size
-            )
         }
     }
 
@@ -185,69 +181,37 @@ class ImportReplaceRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_vi
         requestId?.toInt()?.let {
             GSON.fromJsonObject<ReplaceRule>(code).getOrNull()?.let { rule ->
                 viewModel.allRules[it] = rule
-                adapter.setItem(it, rule)
+                snapshotItems()
             }
         }
     }
 
-    inner class SourcesAdapter(context: Context) :
-        RecyclerAdapter<ReplaceRule, ItemSourceImportBinding>(context) {
+    private fun snapshotItems() {
+        rules = viewModel.allRules.toList()
+        stateTexts = viewModel.checkRules.mapIndexed { index, localRule ->
+            val item = viewModel.allRules.getOrNull(index) ?: return@mapIndexed null
+            when {
+                localRule == null -> "新增"
+                item.pattern != localRule.pattern
+                        || item.replacement != localRule.replacement
+                        || item.isRegex != localRule.isRegex
+                        || item.scope != localRule.scope -> "更新"
 
-        override fun getViewBinding(parent: ViewGroup): ItemSourceImportBinding {
-            return ItemSourceImportBinding.inflate(inflater, parent, false)
-        }
-
-        @SuppressLint("SetTextI18n")
-        override fun convert(
-            holder: ItemViewHolder,
-            binding: ItemSourceImportBinding,
-            item: ReplaceRule,
-            payloads: MutableList<Any>
-        ) {
-            binding.run {
-                cbSourceName.isChecked = viewModel.selectStatus[holder.layoutPosition]
-                cbSourceName.text = if (item.group.isNullOrBlank()) {
-                    item.name
-                } else {
-                    "${item.name}(${item.group})"
-                }
-                val localRule = viewModel.checkRules[holder.layoutPosition]
-                tvSourceState.text = when {
-                    localRule == null -> "新增"
-                    item.pattern != localRule.pattern
-                            || item.replacement != localRule.replacement
-                            || item.isRegex != localRule.isRegex
-                            || item.scope != localRule.scope -> "更新"
-
-                    else -> "已有"
-                }
+                else -> "已有"
             }
         }
-
-        override fun registerListener(holder: ItemViewHolder, binding: ItemSourceImportBinding) {
-            binding.run {
-                cbSourceName.setOnUserCheckedChangeListener { isChecked ->
-                    viewModel.selectStatus[holder.layoutPosition] = isChecked
-                    upSelectText()
-                }
-                root.onClick {
-                    cbSourceName.isChecked = !cbSourceName.isChecked
-                    viewModel.selectStatus[holder.layoutPosition] = cbSourceName.isChecked
-                    upSelectText()
-                }
-                tvOpen.setOnClickListener {
-                    val source = viewModel.allRules[holder.layoutPosition]
-                    showDialogFragment(
-                        CodeDialog(
-                            GSON.toJson(source),
-                            disableEdit = false,
-                            requestId = holder.layoutPosition.toString()
-                        )
-                    )
-                }
-            }
-        }
-
+        refreshChecked()
     }
+
+    private fun refreshChecked() {
+        checked = viewModel.selectStatus.toList()
+    }
+
+    private fun footerText(): String =
+        if (viewModel.isSelectAll) {
+            getString(R.string.select_cancel_count, viewModel.selectCount, viewModel.allRules.size)
+        } else {
+            getString(R.string.select_all_count, viewModel.selectCount, viewModel.allRules.size)
+        }
 
 }

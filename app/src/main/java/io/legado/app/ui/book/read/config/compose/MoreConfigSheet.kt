@@ -30,6 +30,7 @@ import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.AppConfigStore
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.page.provider.ChapterProvider
@@ -38,12 +39,11 @@ import io.legado.app.ui.common.compose.SectionCard
 import io.legado.app.ui.common.compose.settingItem.ClickableSettingItem
 import io.legado.app.ui.common.compose.settingItem.SwitchSettingItem
 import io.legado.app.utils.canvasrecorder.CanvasRecorderFactory
-import io.legado.app.utils.getPrefBoolean
-import io.legado.app.utils.getPrefString
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.putPrefString
 import io.legado.app.lib.dialogs.selector
+import splitties.init.appCtx
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,62 +65,68 @@ fun MoreConfigSheet(
     var hideStatusBar by remember(show) { mutableStateOf(ReadBookConfig.hideStatusBar) }
     var hideNavigationBar by remember(show) { mutableStateOf(ReadBookConfig.hideNavigationBar) }
     var keepLight by remember(show) {
-        mutableStateOf((context.getPrefString(PreferKey.keepLight) ?: "0").toIntOrNull() ?: 0)
+        mutableStateOf(AppConfigStore.getString(PreferKey.keepLight)?.toIntOrNull() ?: 0)
     }
     var readBodyToLh by remember(show) { mutableStateOf(ReadBookConfig.readBodyToLh) }
     var paddingDisplayCutouts by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.paddingDisplayCutouts, false))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.paddingDisplayCutouts) ?: false)
     }
     var doubleHorizontalPage by remember(show) {
-        mutableStateOf((context.getPrefString(PreferKey.doublePageHorizontal) ?: "0").toIntOrNull() ?: 0)
+        mutableStateOf(AppConfigStore.getString(PreferKey.doublePageHorizontal)?.toIntOrNull() ?: 0)
     }
     var progressBarBehavior by remember(show) {
-        mutableStateOf(context.getPrefString(PreferKey.progressBarBehavior) ?: "page")
+        mutableStateOf(AppConfigStore.getString(PreferKey.progressBarBehavior) ?: "page")
     }
     var useZhLayout by remember(show) { mutableStateOf(ReadBookConfig.useZhLayout) }
     var textFullJustify by remember(show) { mutableStateOf(ReadBookConfig.textFullJustify) }
     var textBottomJustify by remember(show) { mutableStateOf(ReadBookConfig.textBottomJustify) }
     var mouseWheelPage by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.mouseWheelPage, true))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.mouseWheelPage) ?: true)
     }
     var volumeKeyPage by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.volumeKeyPage, true))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.volumeKeyPage) ?: true)
     }
     var volumeKeyPageOnPlay by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.volumeKeyPageOnPlay, false))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.volumeKeyPageOnPlay) ?: false)
     }
     var keyPageOnLongPress by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.keyPageOnLongPress, false))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.keyPageOnLongPress) ?: false)
     }
     var autoChangeSource by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.autoChangeSource, true))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.autoChangeSource) ?: true)
     }
     var selectText by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.textSelectAble, true))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.textSelectAble) ?: true)
     }
     var showBrightnessView by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.showBrightnessView, true))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.showBrightnessView) ?: true)
     }
     var noAnimScrollPage by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.noAnimScrollPage, false))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.noAnimScrollPage) ?: false)
+    }
+    var readingAnchorEnabled by remember(show) {
+        mutableStateOf(ReadBookConfig.readingAnchorEnabled)
+    }
+    var readAloudDetachReminderEnabled by remember(show) {
+        mutableStateOf(ReadBookConfig.readAloudDetachReminderEnabled)
     }
     var previewImageByClick by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.previewImageByClick, false))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.previewImageByClick) ?: false)
     }
     var optimizeRender by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.optimizeRender, false))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.optimizeRender) ?: false)
     }
     var disableReturnKey by remember(show) {
-        mutableStateOf(context.getPrefBoolean("disableReturnKey", false))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.disableReturnKey) ?: false)
     }
     var expandTextMenu by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.expandTextMenu, false))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.expandTextMenu) ?: false)
     }
     var showReadTitleAddition by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.showReadTitleAddition, true))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.showReadTitleAddition) ?: true)
     }
     var readBarStyleFollowPage by remember(show) {
-        mutableStateOf(context.getPrefBoolean(PreferKey.readBarStyleFollowPage, false))
+        mutableStateOf(AppConfigStore.getBoolean(PreferKey.readBarStyleFollowPage) ?: false)
     }
 
     val supportsOptimizeRender = remember { CanvasRecorderFactory.isSupport }
@@ -161,7 +167,9 @@ fun MoreConfigSheet(
                     onClick = {
                         context.selector(items = keepLightOptions) { _, i ->
                             keepLight = keepLightValues[i].toInt()
-                            context.putPrefString(PreferKey.keepLight, keepLight.toString())
+                            AppConfigStore.putString(PreferKey.keepLight, keepLight.toString())
+                            // SP 镜像：Backup 的 config.xml 来自 SP 全量，Phase 4 前必须保留
+                            appCtx.putPrefString(PreferKey.keepLight, keepLight.toString())
                             postEvent(PreferKey.keepLight, true)
                         }
                     },
@@ -171,7 +179,6 @@ fun MoreConfigSheet(
                     checked = hideStatusBar,
                     onCheckedChange = {
                         hideStatusBar = it
-                        context.putPrefBoolean(PreferKey.hideStatusBar, it)
                         ReadBookConfig.hideStatusBar = it
                         postEvent(EventBus.UP_CONFIG, arrayListOf(0, 2))
                     },
@@ -181,7 +188,6 @@ fun MoreConfigSheet(
                     checked = hideNavigationBar,
                     onCheckedChange = {
                         hideNavigationBar = it
-                        context.putPrefBoolean(PreferKey.hideNavigationBar, it)
                         ReadBookConfig.hideNavigationBar = it
                         postEvent(EventBus.UP_CONFIG, arrayListOf(0, 2))
                     },
@@ -191,7 +197,6 @@ fun MoreConfigSheet(
                     checked = readBodyToLh,
                     onCheckedChange = {
                         readBodyToLh = it
-                        context.putPrefBoolean(PreferKey.readBodyToLh, it)
                         ReadBookConfig.readBodyToLh = it
                         onReadBodyToLh()
                     },
@@ -201,7 +206,8 @@ fun MoreConfigSheet(
                     checked = paddingDisplayCutouts,
                     onCheckedChange = {
                         paddingDisplayCutouts = it
-                        context.putPrefBoolean(PreferKey.paddingDisplayCutouts, it)
+                        AppConfigStore.putBoolean(PreferKey.paddingDisplayCutouts, it)
+                        appCtx.putPrefBoolean(PreferKey.paddingDisplayCutouts, it)
                         postEvent(EventBus.UP_CONFIG, arrayListOf(2))
                     },
                 )
@@ -219,7 +225,8 @@ fun MoreConfigSheet(
                         val values = listOf("0", "1", "2", "3")
                         context.selector(items = titles) { _, i ->
                             doubleHorizontalPage = values[i].toInt()
-                            context.putPrefString(PreferKey.doublePageHorizontal, doubleHorizontalPage.toString())
+                            AppConfigStore.putString(PreferKey.doublePageHorizontal, doubleHorizontalPage.toString())
+                            appCtx.putPrefString(PreferKey.doublePageHorizontal, doubleHorizontalPage.toString())
                             ChapterProvider.upLayout()
                             ReadBook.loadContent(false)
                         }
@@ -238,7 +245,8 @@ fun MoreConfigSheet(
                         val values = listOf("page", "chapter")
                         context.selector(items = titles) { _, i ->
                             progressBarBehavior = values[i]
-                            context.putPrefString(PreferKey.progressBarBehavior, progressBarBehavior)
+                            AppConfigStore.putString(PreferKey.progressBarBehavior, progressBarBehavior)
+                            appCtx.putPrefString(PreferKey.progressBarBehavior, progressBarBehavior)
                             postEvent(EventBus.UP_SEEK_BAR, true)
                         }
                     },
@@ -248,7 +256,8 @@ fun MoreConfigSheet(
                     checked = noAnimScrollPage,
                     onCheckedChange = {
                         noAnimScrollPage = it
-                        context.putPrefBoolean(PreferKey.noAnimScrollPage, it)
+                        AppConfigStore.putBoolean(PreferKey.noAnimScrollPage, it)
+                        appCtx.putPrefBoolean(PreferKey.noAnimScrollPage, it)
                         ReadBook.callBack?.upPageAnim()
                     },
                 )
@@ -257,8 +266,29 @@ fun MoreConfigSheet(
                     checked = showBrightnessView,
                     onCheckedChange = {
                         showBrightnessView = it
-                        context.putPrefBoolean(PreferKey.showBrightnessView, it)
+                        // DS 沿用 ShowBrightnessViewMigration 规整的 "1"/"0" 字符串格式，
+                        // 避免每次冷启动重复触发该迁移
+                        AppConfigStore.putString(PreferKey.showBrightnessView, if (it) "1" else "0")
+                        appCtx.putPrefBoolean(PreferKey.showBrightnessView, it)
                         postEvent(PreferKey.showBrightnessView, "")
+                    },
+                )
+                SwitchSettingItem(
+                    title = stringResource(R.string.reading_anchor),
+                    checked = readingAnchorEnabled,
+                    onCheckedChange = {
+                        readingAnchorEnabled = it
+                        ReadBookConfig.readingAnchorEnabled = it
+                        if (!it) ReadBook.discardReadingAnchor()
+                    },
+                )
+                SwitchSettingItem(
+                    title = stringResource(R.string.read_aloud_detach_reminder),
+                    description = stringResource(R.string.read_aloud_detach_reminder_summary),
+                    checked = readAloudDetachReminderEnabled,
+                    onCheckedChange = {
+                        readAloudDetachReminderEnabled = it
+                        ReadBookConfig.readAloudDetachReminderEnabled = it
                     },
                 )
             }
@@ -270,7 +300,6 @@ fun MoreConfigSheet(
                     checked = useZhLayout,
                     onCheckedChange = {
                         useZhLayout = it
-                        context.putPrefBoolean(PreferKey.useZhLayout, it)
                         ReadBookConfig.useZhLayout = it
                         postEvent(EventBus.UP_CONFIG, arrayListOf(5))
                     },
@@ -280,7 +309,8 @@ fun MoreConfigSheet(
                     checked = textFullJustify,
                     onCheckedChange = {
                         textFullJustify = it
-                        context.putPrefBoolean(PreferKey.textFullJustify, it)
+                        AppConfigStore.putBoolean(PreferKey.textFullJustify, it)
+                        appCtx.putPrefBoolean(PreferKey.textFullJustify, it)
                         postEvent(EventBus.UP_CONFIG, arrayListOf(5))
                     },
                 )
@@ -289,7 +319,8 @@ fun MoreConfigSheet(
                     checked = textBottomJustify,
                     onCheckedChange = {
                         textBottomJustify = it
-                        context.putPrefBoolean(PreferKey.textBottomJustify, it)
+                        AppConfigStore.putBoolean(PreferKey.textBottomJustify, it)
+                        appCtx.putPrefBoolean(PreferKey.textBottomJustify, it)
                         postEvent(EventBus.UP_CONFIG, arrayListOf(5))
                     },
                 )
@@ -299,7 +330,8 @@ fun MoreConfigSheet(
                         checked = optimizeRender,
                         onCheckedChange = {
                             optimizeRender = it
-                            context.putPrefBoolean(PreferKey.optimizeRender, it)
+                            AppConfigStore.putBoolean(PreferKey.optimizeRender, it)
+                            appCtx.putPrefBoolean(PreferKey.optimizeRender, it)
                             ChapterProvider.upStyle()
                             ReadBook.callBack?.upPageAnim(true)
                             ReadBook.loadContent(false)
@@ -315,7 +347,8 @@ fun MoreConfigSheet(
                     checked = mouseWheelPage,
                     onCheckedChange = {
                         mouseWheelPage = it
-                        context.putPrefBoolean(PreferKey.mouseWheelPage, it)
+                        AppConfigStore.putBoolean(PreferKey.mouseWheelPage, it)
+                        appCtx.putPrefBoolean(PreferKey.mouseWheelPage, it)
                     },
                 )
                 SwitchSettingItem(
@@ -323,7 +356,8 @@ fun MoreConfigSheet(
                     checked = volumeKeyPage,
                     onCheckedChange = {
                         volumeKeyPage = it
-                        context.putPrefBoolean(PreferKey.volumeKeyPage, it)
+                        AppConfigStore.putBoolean(PreferKey.volumeKeyPage, it)
+                        appCtx.putPrefBoolean(PreferKey.volumeKeyPage, it)
                     },
                 )
                 SwitchSettingItem(
@@ -331,7 +365,8 @@ fun MoreConfigSheet(
                     checked = volumeKeyPageOnPlay,
                     onCheckedChange = {
                         volumeKeyPageOnPlay = it
-                        context.putPrefBoolean(PreferKey.volumeKeyPageOnPlay, it)
+                        AppConfigStore.putBoolean(PreferKey.volumeKeyPageOnPlay, it)
+                        appCtx.putPrefBoolean(PreferKey.volumeKeyPageOnPlay, it)
                     },
                 )
                 SwitchSettingItem(
@@ -339,7 +374,8 @@ fun MoreConfigSheet(
                     checked = keyPageOnLongPress,
                     onCheckedChange = {
                         keyPageOnLongPress = it
-                        context.putPrefBoolean(PreferKey.keyPageOnLongPress, it)
+                        AppConfigStore.putBoolean(PreferKey.keyPageOnLongPress, it)
+                        appCtx.putPrefBoolean(PreferKey.keyPageOnLongPress, it)
                     },
                 )
                 SwitchSettingItem(
@@ -347,7 +383,8 @@ fun MoreConfigSheet(
                     checked = autoChangeSource,
                     onCheckedChange = {
                         autoChangeSource = it
-                        context.putPrefBoolean(PreferKey.autoChangeSource, it)
+                        AppConfigStore.putBoolean(PreferKey.autoChangeSource, it)
+                        appCtx.putPrefBoolean(PreferKey.autoChangeSource, it)
                     },
                 )
                 SwitchSettingItem(
@@ -355,7 +392,8 @@ fun MoreConfigSheet(
                     checked = selectText,
                     onCheckedChange = {
                         selectText = it
-                        context.putPrefBoolean(PreferKey.textSelectAble, it)
+                        AppConfigStore.putBoolean(PreferKey.textSelectAble, it)
+                        appCtx.putPrefBoolean(PreferKey.textSelectAble, it)
                         postEvent(PreferKey.textSelectAble, it)
                     },
                 )
@@ -364,7 +402,8 @@ fun MoreConfigSheet(
                     checked = previewImageByClick,
                     onCheckedChange = {
                         previewImageByClick = it
-                        context.putPrefBoolean(PreferKey.previewImageByClick, it)
+                        AppConfigStore.putBoolean(PreferKey.previewImageByClick, it)
+                        appCtx.putPrefBoolean(PreferKey.previewImageByClick, it)
                     },
                 )
                 SwitchSettingItem(
@@ -372,7 +411,8 @@ fun MoreConfigSheet(
                     checked = disableReturnKey,
                     onCheckedChange = {
                         disableReturnKey = it
-                        context.putPrefBoolean("disableReturnKey", it)
+                        AppConfigStore.putBoolean(PreferKey.disableReturnKey, it)
+                        appCtx.putPrefBoolean(PreferKey.disableReturnKey, it)
                     },
                 )
                 SwitchSettingItem(
@@ -380,7 +420,8 @@ fun MoreConfigSheet(
                     checked = expandTextMenu,
                     onCheckedChange = {
                         expandTextMenu = it
-                        context.putPrefBoolean(PreferKey.expandTextMenu, it)
+                        AppConfigStore.putBoolean(PreferKey.expandTextMenu, it)
+                        appCtx.putPrefBoolean(PreferKey.expandTextMenu, it)
                         onExpandTextMenuChange(it)
                     },
                 )
@@ -389,7 +430,8 @@ fun MoreConfigSheet(
                     checked = showReadTitleAddition,
                     onCheckedChange = {
                         showReadTitleAddition = it
-                        context.putPrefBoolean(PreferKey.showReadTitleAddition, it)
+                        AppConfigStore.putBoolean(PreferKey.showReadTitleAddition, it)
+                        appCtx.putPrefBoolean(PreferKey.showReadTitleAddition, it)
                         postEvent(EventBus.UPDATE_READ_ACTION_BAR, true)
                     },
                 )
@@ -398,7 +440,8 @@ fun MoreConfigSheet(
                     checked = readBarStyleFollowPage,
                     onCheckedChange = {
                         readBarStyleFollowPage = it
-                        context.putPrefBoolean(PreferKey.readBarStyleFollowPage, it)
+                        AppConfigStore.putBoolean(PreferKey.readBarStyleFollowPage, it)
+                        appCtx.putPrefBoolean(PreferKey.readBarStyleFollowPage, it)
                         postEvent(EventBus.UPDATE_READ_ACTION_BAR, true)
                     },
                 )

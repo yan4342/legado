@@ -10,7 +10,6 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.constant.AppLog
-import io.legado.app.constant.PreferKey
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.config.AppConfig
@@ -22,10 +21,10 @@ import io.legado.app.help.storage.ImportOldData
 import io.legado.app.help.storage.Restore
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
+import io.legado.app.ui.common.compose.LegadoWaitDialog
+import io.legado.app.ui.common.compose.LegadoWaitState
 import io.legado.app.ui.config.ConfigViewModel
 import io.legado.app.ui.file.HandleFileContract
-import io.legado.app.ui.widget.dialog.WaitDialog
-import io.legado.app.utils.getPrefString
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.showHelp
 import io.legado.app.utils.showLogSheet
@@ -41,7 +40,7 @@ import splitties.init.appCtx
 
 class BackupConfigComposeFragment : ConfigComposeFragment() {
     private val viewModel by activityViewModels<ConfigViewModel>()
-    private val waitDialog by lazy { WaitDialog(requireContext()) }
+    private val waitState = LegadoWaitState()
     private var backupPath by mutableStateOf("")
     private var restoreJob: Job? = null
 
@@ -55,14 +54,13 @@ class BackupConfigComposeFragment : ConfigComposeFragment() {
 
     private val restoreDoc = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
-            waitDialog.setText("恢复中…")
-            waitDialog.show()
+            waitState.show("恢复中…")
             val task = Coroutine.async {
                 Restore.restore(appCtx, uri)
             }.onFinally {
-                waitDialog.dismiss()
+                waitState.dismiss()
             }
-            waitDialog.setOnCancelListener {
+            waitState.onCancel = {
                 task.cancel()
             }
         }
@@ -76,7 +74,7 @@ class BackupConfigComposeFragment : ConfigComposeFragment() {
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         super.onFragmentCreated(view, savedInstanceState)
-        backupPath = getPrefString(PreferKey.backupPath) ?: ""
+        backupPath = AppConfig.backupPath ?: ""
         if (!LocalConfig.backupHelpVersionIsLast) {
             showHelp("webDavHelp")
         }
@@ -87,6 +85,7 @@ class BackupConfigComposeFragment : ConfigComposeFragment() {
         BackupConfigScreen(
             onBackClick = { activity?.finish() },
             viewModel = viewModel,
+            backupPath = backupPath,
             onBackupPathClick = { selectBackupPath.launch {} },
             onRestoreIgnoreClick = { backupIgnore() },
             onImportOldClick = { restoreOld.launch {} },
@@ -101,6 +100,7 @@ class BackupConfigComposeFragment : ConfigComposeFragment() {
             onHelpClick = { showHelp("webDavHelp") },
             onLogClick = { showLogSheet() },
         )
+        LegadoWaitDialog(waitState)
     }
 
     private fun backupIgnore() {
@@ -118,11 +118,10 @@ class BackupConfigComposeFragment : ConfigComposeFragment() {
     }
 
     private fun webDavRestore() {
-        waitDialog.setText(R.string.loading)
-        waitDialog.setOnCancelListener {
+        waitState.onCancel = {
             restoreJob?.cancel()
         }
-        waitDialog.show()
+        waitState.show()
         Coroutine.async {
             restoreJob = coroutineContext[Job]
             showRestoreDialog(requireContext())
@@ -131,7 +130,7 @@ class BackupConfigComposeFragment : ConfigComposeFragment() {
             if (context == null) return@onError
             appCtx.toastOnUi("WebDav恢复出错\n${it.localizedMessage}")
         }.onFinally {
-            waitDialog.dismiss()
+            waitState.dismiss()
         }
     }
 
@@ -158,23 +157,22 @@ class BackupConfigComposeFragment : ConfigComposeFragment() {
     }
 
     private fun restoreWebDav(name: String) {
-        waitDialog.setText("恢复中…")
-        waitDialog.show()
+        waitState.show("恢复中…")
         val task = Coroutine.async {
             AppWebDav.restoreWebDav(name)
         }.onError {
             AppLog.put("WebDav恢复出错\n${it.localizedMessage}", it)
             appCtx.toastOnUi("WebDav恢复出错\n${it.localizedMessage}")
         }.onFinally {
-            waitDialog.dismiss()
+            waitState.dismiss()
         }
-        waitDialog.setOnCancelListener {
+        waitState.onCancel = {
             task.cancel()
         }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        waitDialog.dismiss()
+        waitState.dismiss()
     }
 }

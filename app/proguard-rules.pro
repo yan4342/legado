@@ -61,17 +61,17 @@
 -keep class * extends io.legado.app.help.JsExtensions{*;}
 # 数据类
 -keep class **.data.entities.**{*;}
-# hutool-core hutool-crypto
--keep class
-!cn.hutool.core.util.RuntimeUtil,
-!cn.hutool.core.util.ClassLoaderUtil,
-!cn.hutool.core.util.ReflectUtil,
-!cn.hutool.core.util.SerializeUtil,
-!cn.hutool.core.util.ClassUtil,
-cn.hutool.core.codec.**,
-cn.hutool.core.util.**{*;}
--keep class cn.hutool.crypto.**{*;}
--dontwarn cn.hutool.**
+
+# 重新分章 GSON 反射序列化的数据类(不在 data.entities 包,release 下需保留字段名,
+# 否则持久化的 reChapter/reChapterOriginalToc JSON 字段名被混淆导致跨版本解析失败、分章结果不一致)
+-keep class io.legado.app.help.book.BookHelp$ReChapterSub{*;}
+-keep class io.legado.app.domain.usecase.ReChapterUseCase$ReChapterRecord{*;}
+-keep class io.legado.app.domain.usecase.ReChapterUseCase$OriginalTocEntry{*;}
+
+# Gson reflection for AI undo snapshots (concrete DTOs; avoid Map/List interface fromJson)
+-keepattributes Signature,InnerClasses,EnclosingMethod
+-keep class com.google.gson.** { *; }
+-dontwarn com.google.gson.**
 # 缓存 Cookie
 -keep class **.help.http.CookieStore{*;}
 -keep class **.help.CacheManager{*;}
@@ -128,6 +128,18 @@ cn.hutool.core.util.**{*;}
 -keepclassmembers class org.chromium.net.X509Util {
     *** sDefaultTrustManager;
     *** sTestTrustManager;
+}
+
+# ======== AI HTML Chat Theme ========
+# Bridge: @JavascriptInterface methods called from WebView JS
+-keepclassmembers class io.legado.app.ui.ai.chat.html.AiChatHtmlBridge {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keepclassmembers class io.legado.app.ui.ai.chat.html.AiChatHtmlThemeStore$ThemeInfo {
+    <fields>;
+}
+-keepclassmembers class io.legado.app.ui.ai.chat.html.AiChatHtmlThemeStore$ThemeManifest {
+    <fields>;
 }
 
 # Throwable

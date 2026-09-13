@@ -264,10 +264,10 @@ fun ThemeConfigScreen(
     val context = LocalContext.current
 
     var transparentStatusBar by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.transparentStatusBar, false))
+        mutableStateOf(AppConfig.isTransparentStatusBar)
     }
     var immNavigationBar by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.immNavigationBar, false))
+        mutableStateOf(AppConfig.immNavigationBar)
     }
     var predictiveBack by remember {
         mutableStateOf(context.getPrefBoolean(PreferKey.predictiveBack, true))
@@ -404,7 +404,7 @@ fun ThemeConfigScreen(
                             checked = transparentStatusBar,
                             onCheckedChange = { v ->
                                 transparentStatusBar = v
-                                context.putPrefBoolean(PreferKey.transparentStatusBar, v)
+                                AppConfig.isTransparentStatusBar = v
                                 postEvent(EventBus.RECREATE, "")
                             },
                         )
@@ -414,7 +414,7 @@ fun ThemeConfigScreen(
                             checked = immNavigationBar,
                             onCheckedChange = { v ->
                                 immNavigationBar = v
-                                context.putPrefBoolean(PreferKey.immNavigationBar, v)
+                                AppConfig.immNavigationBar = v
                                 postEvent(EventBus.RECREATE, "")
                             },
                         )

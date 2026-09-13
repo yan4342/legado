@@ -14,4 +14,6 @@
 
     <item name="bettermovementmethod_highlight_background_span" type="id" />
 
+    <item name="plan_feedback_action" type="id" />
+
 </resources>

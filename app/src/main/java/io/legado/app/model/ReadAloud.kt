@@ -26,6 +26,15 @@ object ReadAloud {
 
     private fun getReadAloudClass(): Class<*> {
         val ttsEngine = ttsEngine
+        // Multi-speaker cue routing (system/http/cloud) needs ExoPlayer file playback.
+        if (AppConfig.useMultiSpeaker) {
+            if (!ttsEngine.isNullOrBlank() && StringUtils.isNumeric(ttsEngine)) {
+                httpTTS = appDb.httpTTSDao.get(ttsEngine.toLong())
+            } else {
+                httpTTS = null
+            }
+            return HttpReadAloudService::class.java
+        }
         if (ttsEngine.isNullOrBlank()) {
             return TTSReadAloudService::class.java
         }

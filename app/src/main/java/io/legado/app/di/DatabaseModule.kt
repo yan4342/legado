@@ -9,6 +9,7 @@ val databaseModule = module {
     factory { get<AppDatabase>().bookDao }
     factory { get<AppDatabase>().bookGroupDao }
     factory { get<AppDatabase>().bookSourceDao }
+    factory { get<AppDatabase>().bookSourceVersionDao }
     factory { get<AppDatabase>().bookChapterDao }
     factory { get<AppDatabase>().replaceRuleDao }
     factory { get<AppDatabase>().searchBookDao }
@@ -30,4 +31,29 @@ val databaseModule = module {
     factory { get<AppDatabase>().aiDictRuleDao }
     factory { get<AppDatabase>().keyboardAssistsDao }
     factory { get<AppDatabase>().serverDao }
+    factory { get<AppDatabase>().aiProfileDao }
+    factory { get<AppDatabase>().aiArtifactDao }
+    factory { get<AppDatabase>().aiChatDao }
+    factory { get<AppDatabase>().aiHtmlAppDao }
+    factory { get<AppDatabase>().aiCharacterCardDao }
+    factory { get<AppDatabase>().aiMemoryDao }
+    factory { get<AppDatabase>().aiWritingPromptDao }
+    factory { get<AppDatabase>().aiWorldBookDao }
+    factory { get<AppDatabase>().aiToolConfigDao }
+    factory { get<AppDatabase>().aiSkillDao }
+    factory { get<AppDatabase>().aiMemoryTableDao }
+    factory { get<AppDatabase>().aiPromptTemplateDao }
+    factory { get<AppDatabase>().aiOutlineDao }
+    factory { get<AppDatabase>().aiPlanDao }
+    factory { get<AppDatabase>().aiTodoDao }
+    factory { get<AppDatabase>().aiBookOutlineDao }
+    factory { get<AppDatabase>().aiUsageRecordDao }
+    factory { get<AppDatabase>().aiStructuredDataSnapshotDao }
+    factory { get<AppDatabase>().aiWorkspaceDao }
+    factory { get<AppDatabase>().aiPromptPipelinePresetDao }
+    factory { get<AppDatabase>().aiWorldBookEntryDao }
+    factory { get<AppDatabase>().bookCharacterCastDao }
+    factory { get<AppDatabase>().readAloudVoiceDao }
+    factory { get<AppDatabase>().chapterSpeechDao }
+    factory { get<AppDatabase>().cloudTtsEngineDao }
 }

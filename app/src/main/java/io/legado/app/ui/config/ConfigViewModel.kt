@@ -4,9 +4,11 @@ import android.app.Application
 import android.content.Context
 import io.legado.app.R
 import io.legado.app.base.BaseViewModel
+import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.book.BookHelp
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.storage.Backup
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.restart
@@ -25,8 +27,8 @@ class ConfigViewModel(application: Application) : BaseViewModel(application) {
     fun testWebDav() {
         execute {
             AppWebDav.testConnection()
-                .onSuccess { context.toastOnUi(R.string.success) }
-                .onFailure { context.toastOnUi("WebDAV test failed: ${it.localizedMessage}") }
+                .onSuccess { context.toastOnUi(R.string.web_dav_test_success) }
+                .onFailure { context.toastOnUi("WebDav连接失败: ${it.localizedMessage}") }
         }
     }
 
@@ -36,8 +38,14 @@ class ConfigViewModel(application: Application) : BaseViewModel(application) {
                 context.toastOnUi(R.string.web_dav_not_configured)
                 return@execute
             }
-            Backup.backupWebDavLocked(context)
-            context.toastOnUi(R.string.success)
+            kotlin.runCatching {
+                Backup.backupWebDavLocked(context)
+            }.onSuccess {
+                context.toastOnUi(R.string.backup_success)
+            }.onFailure {
+                context.toastOnUi("WebDav备份失败: ${it.localizedMessage}")
+                AppLog.put("WebDav备份失败: ${it.localizedMessage}", it)
+            }
         }
     }
 
@@ -49,8 +57,19 @@ class ConfigViewModel(application: Application) : BaseViewModel(application) {
 
     fun backupLocal() {
         execute {
-            Backup.backupLocalLocked(context, null)
-            context.toastOnUi(R.string.success)
+            val backupPath = AppConfig.backupPath
+            if (backupPath.isNullOrBlank()) {
+                context.toastOnUi(R.string.select_backup_path)
+                return@execute
+            }
+            kotlin.runCatching {
+                Backup.backupLocalLocked(context, backupPath)
+            }.onSuccess {
+                context.toastOnUi(R.string.backup_success)
+            }.onFailure {
+                context.toastOnUi("本地备份失败: ${it.localizedMessage}")
+                AppLog.put("本地备份失败: ${it.localizedMessage}", it)
+            }
         }
     }
 

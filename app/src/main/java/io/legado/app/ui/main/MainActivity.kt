@@ -2,6 +2,7 @@
 
 package io.legado.app.ui.main
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.KeyEvent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -42,6 +43,15 @@ class MainActivity : BaseComposeActivity() {
         lifecycleScope.launch {
             upVersion()
             notifyAppCrash()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val route = MainNavigator.resolveStartRoute(intent)
+        if (route is MainRoute && route !is MainRouteHome) {
+            onNavigateToRoute?.invoke(route)
         }
     }
 

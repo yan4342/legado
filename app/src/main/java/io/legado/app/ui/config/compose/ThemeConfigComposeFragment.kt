@@ -11,6 +11,7 @@ import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.DialogImageBlurringBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.AppConfigStore
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
@@ -23,13 +24,8 @@ import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.externalFiles
-import io.legado.app.utils.getPrefInt
-import io.legado.app.utils.getPrefString
 import io.legado.app.utils.inputStream
-import io.legado.app.utils.putPrefInt
-import io.legado.app.utils.putPrefString
 import io.legado.app.utils.readUri
-import io.legado.app.utils.removePref
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
 import java.io.FileOutputStream
@@ -160,7 +156,7 @@ class ThemeConfigComposeFragment : ConfigComposeFragment(), ColorPickerDialogLis
             getString(R.string.background_image_blurring),
             getString(R.string.select_image),
         )
-        if (!getPrefString(bgKey).isNullOrEmpty()) {
+        if (!AppConfigStore.getString(bgKey).isNullOrEmpty()) {
             actions.add(getString(R.string.delete))
         }
         context?.selector(items = actions) { _, i ->
@@ -175,7 +171,7 @@ class ThemeConfigComposeFragment : ConfigComposeFragment(), ColorPickerDialogLis
                     }
                 }
                 2 -> {
-                    removePref(bgKey)
+                    AppConfigStore.remove(bgKey)
                     upTheme(isNight)
                 }
             }
@@ -185,7 +181,7 @@ class ThemeConfigComposeFragment : ConfigComposeFragment(), ColorPickerDialogLis
     private fun alertImageBlurring(preferKey: String, success: () -> Unit) {
         alert(R.string.background_image_blurring) {
             val alertBinding = DialogImageBlurringBinding.inflate(layoutInflater).apply {
-                getPrefInt(preferKey, 0).let {
+                (AppConfigStore.getInt(preferKey) ?: 0).let {
                     seekBar.progress = it
                     textViewValue.text = it.toString()
                 }
@@ -200,7 +196,7 @@ class ThemeConfigComposeFragment : ConfigComposeFragment(), ColorPickerDialogLis
             customView { alertBinding.root }
             okButton {
                 alertBinding.seekBar.progress.let {
-                    putPrefInt(preferKey, it)
+                    AppConfigStore.putInt(preferKey, it)
                     success.invoke()
                 }
             }
@@ -227,7 +223,7 @@ class ThemeConfigComposeFragment : ConfigComposeFragment(), ColorPickerDialogLis
                 FileOutputStream(file).use {
                     inputStream.copyTo(it)
                 }
-                putPrefString(preferenceKey, file.absolutePath)
+                AppConfigStore.putString(preferenceKey, file.absolutePath)
                 success()
             }.onFailure {
                 appCtx.toastOnUi(it.localizedMessage)

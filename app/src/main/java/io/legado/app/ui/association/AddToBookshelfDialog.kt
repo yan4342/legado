@@ -1,32 +1,61 @@
 package io.legado.app.ui.association
 
-import android.annotation.SuppressLint
 import android.app.Application
+import android.app.Dialog
 import android.content.DialogInterface
+import android.graphics.Color
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
 import io.legado.app.R
-import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookSource
-import io.legado.app.databinding.DialogAddToBookshelfBinding
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.ui.book.info.compose.BookInfoComposeActivity
+import io.legado.app.ui.common.compose.LegadoTheme
+import io.legado.app.ui.common.compose.legadoPopupBackgroundColor
+import io.legado.app.ui.common.compose.legadoPopupPrimaryTextColor
 import io.legado.app.utils.GSON
 import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.fromJsonObject
-import io.legado.app.utils.setLayout
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
-import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 /**
  * 添加书籍链接到书架，需要对应网站书源
@@ -36,7 +65,7 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
  * - 在所有启用的书源中匹配orgin
  * - 在所有启用的书源中使用详情页正则匹配${origin}/${path}, {origin: bookSourceUrl}
  */
-class AddToBookshelfDialog() : BaseDialogFragment(R.layout.dialog_add_to_bookshelf) {
+class AddToBookshelfDialog() : DialogFragment() {
 
     constructor(bookUrl: String, finishOnDismiss: Boolean = false) : this() {
         arguments = Bundle().apply {
@@ -45,12 +74,18 @@ class AddToBookshelfDialog() : BaseDialogFragment(R.layout.dialog_add_to_bookshe
         }
     }
 
-    val binding by viewBinding(DialogAddToBookshelfBinding::bind)
     val viewModel by viewModels<ViewModel>()
 
-    override fun onStart() {
-        super.onStart()
-        setLayout(0.9f, ViewGroup.LayoutParams.WRAP_CONTENT)
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        val dialog = object : Dialog(requireContext(), android.R.style.Theme_Translucent_NoTitleBar_Fullscreen) {}
+        dialog.window?.apply {
+            clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
+            addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+            addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            statusBarColor = Color.TRANSPARENT
+        }
+        return dialog
     }
 
     override fun onDismiss(dialog: DialogInterface) {
@@ -60,20 +95,16 @@ class AddToBookshelfDialog() : BaseDialogFragment(R.layout.dialog_add_to_bookshe
         }
     }
 
-    @SuppressLint("SetTextI18n")
-    override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val bookUrl = arguments?.getString("bookUrl")
         if (bookUrl.isNullOrBlank()) {
             toastOnUi("url不能为空")
             dismiss()
-            return
+            return View(requireContext())
         }
+        var loading by mutableStateOf(true)
         viewModel.loadStateLiveData.observe(this) {
-            if (it) {
-                binding.rotateLoading.visible()
-            } else {
-                binding.rotateLoading.gone()
-            }
+            loading = it
         }
         viewModel.loadErrorLiveData.observe(this) {
             toastOnUi(it)
@@ -89,8 +120,15 @@ class AddToBookshelfDialog() : BaseDialogFragment(R.layout.dialog_add_to_bookshe
                 dismiss()
             }
         }
-        binding.tvCancel.setOnClickListener {
-            dismiss()
+        return ComposeView(requireContext()).apply {
+            setContent {
+                LegadoTheme {
+                    AddToBookshelfContent(
+                        isLoading = loading,
+                        onCancel = { dismiss() },
+                    )
+                }
+            }
         }
     }
 
@@ -174,4 +212,58 @@ class AddToBookshelfDialog() : BaseDialogFragment(R.layout.dialog_add_to_bookshe
 
     }
 
+}
+
+@Composable
+private fun AddToBookshelfContent(
+    isLoading: Boolean,
+    onCancel: () -> Unit,
+) {
+    val popupBg = legadoPopupBackgroundColor()
+    val popupTextColor = legadoPopupPrimaryTextColor()
+
+    Box(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 40.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = popupBg,
+            tonalElevation = 6.dp,
+            shadowElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column {
+                Text(
+                    text = stringResource(R.string.add_to_bookshelf),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = popupTextColor,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 72.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = onCancel) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+            }
+        }
+    }
 }

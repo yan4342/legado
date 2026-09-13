@@ -158,13 +158,15 @@ fun DictRuleScreen(
                         IconButton(onClick = { onIntent(DictRuleIntent.ClearSelection) }) { Icon(Icons.Default.Close, contentDescription = "Clear", tint = onSurfaceColor) }
                         IconButton(onClick = { onIntent(DictRuleIntent.SelectAll) }) { Icon(Icons.Default.Check, contentDescription = "Select all", tint = onSurfaceColor) }
                     }
-                    IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = onSurfaceColor) }
-                    RoundDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) { dismiss ->
-                        RoundDropdownMenuItem(text = stringResource(R.string.import_local), onClick = { dismiss(); filePicker.launch(arrayOf("application/json", "text/*")) })
-                        RoundDropdownMenuItem(text = stringResource(R.string.import_on_line), onClick = { dismiss(); showUrlInput = true })
-                        RoundDropdownMenuItem(text = stringResource(R.string.import_by_qr_code), onClick = { dismiss(); qrLauncher.launch(null) })
-                        RoundDropdownMenuItem(text = stringResource(R.string.import_default_rule), onClick = { dismiss(); onIntent(DictRuleIntent.ImportDefault) })
-                        RoundDropdownMenuItem(text = stringResource(R.string.help), onClick = { dismiss(); (context as? AppCompatActivity)?.showHelp("dictRuleHelp") })
+                    Box {
+                        IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = onSurfaceColor) }
+                        RoundDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) { dismiss ->
+                            RoundDropdownMenuItem(text = stringResource(R.string.import_local), onClick = { dismiss(); filePicker.launch(arrayOf("application/json", "text/*")) })
+                            RoundDropdownMenuItem(text = stringResource(R.string.import_on_line), onClick = { dismiss(); showUrlInput = true })
+                            RoundDropdownMenuItem(text = stringResource(R.string.import_by_qr_code), onClick = { dismiss(); qrLauncher.launch(null) })
+                            RoundDropdownMenuItem(text = stringResource(R.string.import_default_rule), onClick = { dismiss(); onIntent(DictRuleIntent.ImportDefault) })
+                            RoundDropdownMenuItem(text = stringResource(R.string.help), onClick = { dismiss(); (context as? AppCompatActivity)?.showHelp("dictRuleHelp") })
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = containerColor, titleContentColor = onSurfaceColor, navigationIconContentColor = onSurfaceColor, actionIconContentColor = onSurfaceColor)

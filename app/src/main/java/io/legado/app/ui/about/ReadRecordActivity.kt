@@ -7,7 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.constant.EventBus
@@ -29,7 +29,6 @@ import kotlinx.coroutines.withContext
  * 阅读记录页 — Compose 版（UI 样式参考 MD3 的 ReadRecordScreen）
  *
  * 数据层复用现有 ReadRecordDao 和 DailyReadRecordDao，
- * 无需新增数据库表。
  */
 class ReadRecordActivity : AppCompatActivity() {
 
@@ -45,7 +44,7 @@ class ReadRecordActivity : AppCompatActivity() {
 
         setContent {
             LegadoTheme {
-                val viewModel = remember { ReadRecordViewModel() }
+                val viewModel: ReadRecordViewModel = viewModel()
                 val state by viewModel.uiState.collectAsState()
 
                 ReadRecordScreen(

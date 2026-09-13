@@ -1,6 +1,8 @@
 package io.legado.app.ui.book.readRecord
 
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -25,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +38,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Tab
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -96,6 +104,8 @@ fun ReadRecordScreen(
     onNavigateToBook: (String, String) -> Unit,
     onNavigateToSearch: (String) -> Unit,
     onOverviewClick: () -> Unit = {},
+    onAiOverviewClick: () -> Unit = {},
+    onNavigateToAiChat: () -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val listState = rememberLazyListState()
@@ -142,6 +152,12 @@ fun ReadRecordScreen(
 
     // 跨 Activity 返回由系统处理预测返回动画，无需手动拦截
 
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val appBarTitle = when (state.selectedTab) {
+        RecordTab.READING -> stringResource(R.string.read_record)
+        RecordTab.AI -> stringResource(R.string.ai_usage_title)
+    }
+
     Scaffold(
         modifier = Modifier
             .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -149,7 +165,7 @@ fun ReadRecordScreen(
             Column {
                 TopAppBar(
                     title = { Text(
-                        "阅读记录", 
+                        appBarTitle,
                         color = if (AppConfig.isEInkMode) {
                             MaterialTheme.colorScheme.onSurface
                         } else {
@@ -165,29 +181,58 @@ fun ReadRecordScreen(
                     ),
                     navigationIcon = { IconButton(onClick = onBack) { Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "返回", tint = if (AppConfig.isEInkMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onPrimary) } },
                     actions = {
-                        IconButton(onClick = {
-                            val modes = DisplayMode.entries
-                            val next = modes[(modes.indexOf(state.displayMode) + 1) % modes.size]
-                            onIntent(ReadRecordIntent.SetMode(next))
-                        }) { Icon(painterResource(R.drawable.ic_baseline_sort_24), contentDescription = "切换视图", tint = if (AppConfig.isEInkMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onPrimary) }
-                        IconButton(onClick = { showSearch = !showSearch }) { Icon(painterResource(R.drawable.ic_search), contentDescription = "搜索", tint = if (AppConfig.isEInkMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onPrimary) }
+                        if (state.selectedTab == RecordTab.READING) {
+                            IconButton(onClick = {
+                                val modes = DisplayMode.entries
+                                val next = modes[(modes.indexOf(state.displayMode) + 1) % modes.size]
+                                onIntent(ReadRecordIntent.SetMode(next))
+                            }) { Icon(painterResource(R.drawable.ic_baseline_sort_24), contentDescription = "切换视图", tint = if (AppConfig.isEInkMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onPrimary) }
+                            IconButton(onClick = { showSearch = !showSearch }) { Icon(painterResource(R.drawable.ic_search), contentDescription = "搜索", tint = if (AppConfig.isEInkMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onPrimary) }
+                        }
+                        Box {
                         IconButton(onClick = { showMenu = true }) { Icon(painterResource(R.drawable.ic_more_vert), contentDescription = "菜单", tint = if (AppConfig.isEInkMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onPrimary) }
                         RoundDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) { dismiss ->
-                            DisplayMode.entries.forEach { m ->
+                            if (state.selectedTab == RecordTab.READING) {
+                                DisplayMode.entries.forEach { m ->
+                                    RoundDropdownMenuItem(
+                                        text = m.label,
+                                        onClick = { dismiss(); onIntent(ReadRecordIntent.SetMode(m)) },
+                                    )
+                                }
                                 RoundDropdownMenuItem(
-                                    text = m.label,
-                                    onClick = { dismiss(); onIntent(ReadRecordIntent.SetMode(m)) },
+                                    text = if (state.enableRecord) "关闭阅读记录" else "开启阅读记录",
+                                    onClick = { dismiss(); onIntent(ReadRecordIntent.ToggleEnableRecord) },
+                                )
+                            } else {
+                                AiUsageDisplayMode.entries.forEach { m ->
+                                    RoundDropdownMenuItem(
+                                        text = stringResource(m.labelRes),
+                                        onClick = { dismiss(); onIntent(ReadRecordIntent.SetAiDisplayMode(m)) },
+                                    )
+                                }
+                                RoundDropdownMenuItem(
+                                    text = stringResource(R.string.ai_usage_clear_title),
+                                    onClick = { dismiss(); onIntent(ReadRecordIntent.RequestClearAiUsage) },
                                 )
                             }
-                            RoundDropdownMenuItem(
-                                text = if (state.enableRecord) "关闭阅读记录" else "开启阅读记录",
-                                onClick = { dismiss(); onIntent(ReadRecordIntent.ToggleEnableRecord) },
-                            )
+                        }
                         }
                     },
                     scrollBehavior = scrollBehavior,
                 )
-                AnimatedVisibility(visible = showSearch) {
+                PrimaryTabRow(selectedTabIndex = state.selectedTab.ordinal) {
+                    Tab(
+                        selected = state.selectedTab == RecordTab.READING,
+                        onClick = { onIntent(ReadRecordIntent.SetTab(RecordTab.READING)) },
+                        text = { Text(stringResource(R.string.read_record_tab_reading)) },
+                    )
+                    Tab(
+                        selected = state.selectedTab == RecordTab.AI,
+                        onClick = { onIntent(ReadRecordIntent.SetTab(RecordTab.AI)) },
+                        text = { Text(stringResource(R.string.read_record_tab_ai)) },
+                    )
+                }
+                AnimatedVisibility(visible = showSearch && state.selectedTab == RecordTab.READING) {
                     Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { showSearch = false; searchText = ""; onIntent(ReadRecordIntent.Search(null)) }) { Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "关闭") }
@@ -199,6 +244,56 @@ fun ReadRecordScreen(
             }
         },
     ) { padding ->
+        if (state.showClearAiConfirm) {
+            AlertDialog(
+                onDismissRequest = { onIntent(ReadRecordIntent.DismissClearAiConfirm) },
+                title = { Text(stringResource(R.string.ai_usage_clear_title)) },
+                text = { Text(stringResource(R.string.ai_usage_clear_message)) },
+                confirmButton = {
+                    TextButton(onClick = { onIntent(ReadRecordIntent.ConfirmClearAiUsage) }) {
+                        Text(stringResource(R.string.ai_usage_clear_confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { onIntent(ReadRecordIntent.DismissClearAiConfirm) }) { Text(stringResource(R.string.cancel)) }
+                },
+            )
+        }
+        AnimatedContent(
+            targetState = state.selectedTab,
+            label = "record_tab",
+            transitionSpec = {
+                if (animationsEnabled) fadeIn() togetherWith fadeOut() else EnterTransition.None togetherWith ExitTransition.None
+            },
+        ) { tab ->
+            when (tab) {
+            RecordTab.READING -> ReadRecordReadingContent(
+                state = state,
+                padding = padding,
+                listState = listState,
+                onIntent = onIntent,
+                onOverviewClick = onOverviewClick,
+            )
+            RecordTab.AI -> ReadRecordAiContent(
+                state = state,
+                padding = padding,
+                onIntent = onIntent,
+                onAiOverviewClick = onAiOverviewClick,
+                onNavigateToAiChat = onNavigateToAiChat,
+            )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadRecordReadingContent(
+    state: ReadRecordUiState,
+    padding: PaddingValues,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    onIntent: (ReadRecordIntent) -> Unit,
+    onOverviewClick: () -> Unit,
+) {
         val contentKey = when { state.isLoading -> "loading"; state.books.isEmpty() -> "empty"; else -> "content" }
         AnimatedContent(targetState = contentKey, label = "content", transitionSpec = { fadeIn() togetherWith fadeOut() }) { key ->
             when (key) {
@@ -280,6 +375,94 @@ fun ReadRecordScreen(
                         }
                         item { Spacer(Modifier.height(16.dp)) }
                     }
+                }
+            }
+        }
+}
+
+@Composable
+private fun ReadRecordAiContent(
+    state: ReadRecordUiState,
+    padding: PaddingValues,
+    onIntent: (ReadRecordIntent) -> Unit,
+    onAiOverviewClick: () -> Unit,
+    onNavigateToAiChat: () -> Unit,
+) {
+    val summary = state.aiSummary
+    val contentKey = when {
+        state.isLoading -> "loading"
+        summary == null || (summary.callCount == 0L && state.aiItems.isEmpty()) -> "empty"
+        else -> "content"
+    }
+    AnimatedContent(targetState = contentKey, label = "ai_content", transitionSpec = { fadeIn() togetherWith fadeOut() }) { key ->
+        when (key) {
+            "loading" -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Text(stringResource(R.string.loading))
+            }
+            "empty" -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(R.string.ai_usage_empty_title), style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.ai_usage_empty_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    TextButton(onClick = onNavigateToAiChat) {
+                        Text(stringResource(R.string.ai_usage_go_chat))
+                    }
+                }
+            }
+            "content" -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 16.dp),
+                ) {
+                    if (summary != null) {
+                        item(key = "ai_summary") { AiUsageSummaryCard(summary, onAiOverviewClick) }
+                    }
+                    item(key = "ai_mode_chips") {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(AiUsageDisplayMode.entries) { mode ->
+                                FilterChip(
+                                    selected = state.aiDisplayMode == mode,
+                                    onClick = { onIntent(ReadRecordIntent.SetAiDisplayMode(mode)) },
+                                    label = { Text(stringResource(mode.labelRes)) },
+                                )
+                            }
+                        }
+                    }
+                    item(key = "ai_list_header") {
+                        Text(
+                            stringResource(
+                                R.string.ai_usage_list_header,
+                                stringResource(state.aiDisplayMode.labelRes),
+                                state.aiItems.size,
+                            ),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
+                    }
+                    items(state.aiItems.size, key = { state.aiItems[it].id }) { index ->
+                        AiUsageItemRow(
+                            item = state.aiItems[index],
+                            index = index,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp),
+                        )
+                    }
+                    item { Spacer(Modifier.height(16.dp)) }
                 }
             }
         }

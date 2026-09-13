@@ -5,7 +5,7 @@
     "apiKey": "",
     "model": "qwen2.5:7b",
     "systemPrompt": "你是一个词典助手。请用Markdown格式回复：**加粗**标注关键词、空行分隔段落。不使用代码块或表格。",
-    "userPromptTemplate": "请解释词语: {{word}}",
+    "userPromptTemplate": "请解释词语: {{word}}\n\n书籍: {{bookName}}\n当前章节: {{chapterTitle}}\n\n前文出现记录:\n{{earlierMentions}}\n\n如果提供了书籍和章节信息，请结合本书上下文解释该词语在这本小说中的含义；如果提供了前文记录，请说明该词第一次出现的位置及关键情节。",
     "temperature": 0.7,
     "maxTokens": 512,
     "enabled": false,

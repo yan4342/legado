@@ -19,6 +19,7 @@ import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.ViewReadMenuBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.AppConfigStore
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
@@ -99,10 +100,7 @@ class ReadMenu @JvmOverloads constructor(
         .create()
     private var onMenuOutEnd: (() -> Unit)? = null
     private val showBrightnessView
-        get() = context.getPrefBoolean(
-            PreferKey.showBrightnessView,
-            true
-        )
+        get() = AppConfigStore.getBoolean(PreferKey.showBrightnessView) ?: true
 
     private val menuInListener = object : Animation.AnimationListener {
         override fun onAnimationStart(animation: Animation) {

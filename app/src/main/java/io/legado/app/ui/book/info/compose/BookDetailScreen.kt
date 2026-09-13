@@ -75,6 +75,13 @@ fun BookDetailScreen(
     sharedTransitionScope: androidx.compose.animation.SharedTransitionScope? = null,
     animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null,
     sharedCoverKey: String? = null,
+    characters: List<BookDetailCharacterUi> = emptyList(),
+    onCharacterClick: (String) -> Unit = {},
+    onOpenVoiceCasting: () -> Unit = {},
+    onOpenCharacterList: () -> Unit = {},
+    onOpenNetwork: () -> Unit = {},
+    onOpenWorldBook: () -> Unit = {},
+    onOpenOutline: () -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
     // 状态栏高度，用于让模糊背景延伸到状态栏区域
@@ -153,14 +160,41 @@ fun BookDetailScreen(
                         .verticalScroll(scrollState),
                 ) {
                     // 【信息标签行】— 分类、字数、阅读进度、更新时间
+                    // 本地书优先展示文件类型芯片（如 txt / epub）
+                    val kindList = remember(book.isLocal, book.originName, book.kind, book.wordCount) {
+                        if (book.isLocal) {
+                            val ext = book.originName
+                                .substringAfterLast('.', missingDelimiterValue = "")
+                                .lowercase()
+                                .takeIf { it.isNotBlank() }
+                            buildList {
+                                if (ext != null) add(ext)
+                                addAll(book.getKindList())
+                            }
+                        } else {
+                            book.getKindList()
+                        }
+                    }
                     InfoChipRow(
-                        kindList = book.getKindList(),
+                        kindList = kindList,
                         wordCount = book.wordCount,
                         readProgress = if (totalChapterNum > 0) {
                             (book.durChapterIndex * 100 / totalChapterNum)
                         } else 0,
                         lastUpdateTime = book.latestChapterTime,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
+                    
+                    // 【本书人物】— 横滑角色卡（约 3 张可见）+ 人物列表/关系网/世界书/大纲
+                    BookDetailCastSection(
+                        characters = characters,
+                        onCharacterClick = onCharacterClick,
+                        onOpenVoiceCasting = onOpenVoiceCasting,
+                        onOpenCharacterList = onOpenCharacterList,
+                        onOpenNetwork = onOpenNetwork,
+                        onOpenWorldBook = onOpenWorldBook,
+                        onOpenOutline = onOpenOutline,
+                        modifier = Modifier.padding(vertical = 12.dp),
                     )
 
                     // 【简介卡片】— 书籍内容简介

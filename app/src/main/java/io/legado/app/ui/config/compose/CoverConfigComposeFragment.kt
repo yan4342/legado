@@ -11,11 +11,9 @@ import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.externalFiles
-import io.legado.app.utils.getPrefString
+import io.legado.app.help.config.AppConfigStore
 import io.legado.app.utils.inputStream
-import io.legado.app.utils.putPrefString
 import io.legado.app.utils.readUri
-import io.legado.app.utils.removePref
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
@@ -42,7 +40,7 @@ class CoverConfigComposeFragment : ConfigComposeFragment() {
             onDefaultCoverClick = { isNight ->
                 pendingCoverIsNight = isNight
                 val key = if (isNight) PreferKey.defaultCoverDark else PreferKey.defaultCover
-                if (getPrefString(key).isNullOrEmpty()) {
+                if (AppConfigStore.getString(key).isNullOrEmpty()) {
                     launchCoverPicker(isNight)
                 } else {
                     context?.selector(
@@ -52,7 +50,7 @@ class CoverConfigComposeFragment : ConfigComposeFragment() {
                         )
                     ) { _, i ->
                         if (i == 0) {
-                            removePref(key)
+                            AppConfigStore.remove(key)
                             BookCover.upDefaultCover()
                         } else {
                             launchCoverPicker(isNight)
@@ -83,7 +81,7 @@ class CoverConfigComposeFragment : ConfigComposeFragment() {
                 FileOutputStream(file).use {
                     inputStream.copyTo(it)
                 }
-                putPrefString(preferenceKey, file.absolutePath)
+                AppConfigStore.putString(preferenceKey, file.absolutePath)
                 BookCover.upDefaultCover()
             }.onFailure {
                 appCtx.toastOnUi(it.localizedMessage)

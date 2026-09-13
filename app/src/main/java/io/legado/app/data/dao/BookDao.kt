@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.map
 @Dao
 interface BookDao {
 
+    @Query("select * from books where bookUrl = :bookUrl")
+    fun flowGetBook(bookUrl: String): Flow<Book?>
+
     fun flowByGroup(groupId: Long): Flow<List<Book>> {
         return when (groupId) {
             BookGroup.IdRoot -> flowRoot()

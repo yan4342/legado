@@ -130,6 +130,7 @@ class AudioPlayService : BaseService(),
             BookCover.executeCoverBitmap(
                 context = this@AudioPlayService,
                 path = AudioPlay.book?.getDisplayCover(),
+                sizePx = 256,
             )
         }.onSuccess { bitmap ->
             if (bitmap != null && bitmap.width > 16 && bitmap.height > 16) {

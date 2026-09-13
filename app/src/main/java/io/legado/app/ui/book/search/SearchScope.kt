@@ -101,7 +101,7 @@ data class SearchScope(private var scope: String) {
     /**
      * 搜索范围书源
      */
-    fun getBookSourceParts(): List<BookSourcePart> {
+    fun getBookSourceParts(sourceTypes: Set<Int> = emptySet()): List<BookSourcePart> {
         val list = hashSetOf<BookSourcePart>()
         if (scope.isEmpty()) {
             list.addAll(appDb.bookSourceDao.allEnabledPart)
@@ -134,7 +134,16 @@ data class SearchScope(private var scope: String) {
                 }
             }
         }
-        return list.sortedBy { it.customOrder }
+        return filterBySourceTypes(list.sortedBy { it.customOrder }, sourceTypes)
+    }
+
+    private fun filterBySourceTypes(
+        parts: List<BookSourcePart>,
+        sourceTypes: Set<Int>,
+    ): List<BookSourcePart> {
+        if (sourceTypes.isEmpty()) return parts
+        val typeByUrl = appDb.bookSourceDao.allEnabled.associate { it.bookSourceUrl to it.bookSourceType }
+        return parts.filter { typeByUrl[it.bookSourceUrl] in sourceTypes }
     }
 
     fun isAll(): Boolean {

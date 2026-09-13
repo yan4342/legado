@@ -1,0 +1,48 @@
+---
+description: 在本机运行 Gradle 时使用用户目录缓存，避免 Cursor 沙箱重复下载
+alwaysApply: true
+---
+
+# Gradle 本机缓存（Windows / legado）
+
+## 背景
+
+- 项目使用 **Gradle Wrapper**（`gradlew`），版本见 `gradle/wrapper/gradle-wrapper.properties`（当前 9.4.1）。
+- 本机分发包通常已在：`%USERPROFILE%\.gradle\wrapper\dists\`
+- Cursor 终端沙箱可能把 `GRADLE_USER_HOME` 指到 `AppData\Local\Temp\cursor-sandbox-cache\...`，导致 Wrapper **无视本机缓存**、重新下载 zip 并超时。
+
+## Agent 编译约定
+
+- **不要**使用包装脚本；**不要**在用户未要求时反复触发本机编译。
+- 用户明确要求编译/验证时，在**单条命令**里设 `GRADLE_USER_HOME` 后直接调用 `gradlew`：
+
+```powershell
+$env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"; cd "d:\Android\AndroidStudioProjects\legado"; .\gradlew :app:compileAppDebugKotlin --offline --no-daemon
+```
+
+需要联网拉依赖时去掉 `--offline`。
+
+- PowerShell 用 `;` 串联命令，不要用 `bash` 的 `&&`。
+- 不要改用系统 `gradle` 命令；始终用 `.\gradlew`。
+
+## 测试约定
+
+- **AI 相关测试已删除**（2026-07 后随 AI 功能加入的 `app/src/test/` 单元测试），不再维护，也不要恢复或重写。
+- 早期与 AI 无关的测试保留：`app/src/androidTest/` 全部（HTTP/TTS/JS/迁移等）、`app/src/test/` 下的 `ExampleUnitTest.kt`、`JsTest.kt`。
+- **不要运行任何 `test*` 任务**；验证 Kotlin 代码一律用 `:app:compileAppDebugKotlin`。
+- `app/schemas/`（Room 历史 schema）仍保留，用于数据库迁移对照，不要删除。
+
+## 常用编译命令
+
+```powershell
+$env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"
+.\gradlew :app:compileAppDebugKotlin --offline --no-daemon
+.\gradlew assembleAppDebug --offline --no-daemon
+```
+
+## 若仍失败
+
+1. 确认 `%USERPROFILE%\.gradle\wrapper\dists\gradle-9.4.1-all\` 下存在完整解压目录（含 `bin\gradle.bat`）。
+2. 在 Android Studio 中 Build 一次，或手动下载 zip 后放入上述 dists 目录。
+3. 不要用 Cursor 沙箱内的临时 `GRADLE_USER_HOME` 作为默认路径。
+4. Agent 若仍下载 Gradle：在命令里显式加 `$env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"`。

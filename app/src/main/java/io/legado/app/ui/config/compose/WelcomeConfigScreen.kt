@@ -25,14 +25,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
-import io.legado.app.constant.PreferKey
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.common.compose.SectionCard
 import io.legado.app.ui.common.compose.settingItem.ClickableSettingItem
 import io.legado.app.ui.common.compose.settingItem.SwitchSettingItem
-import io.legado.app.utils.getPrefBoolean
-import io.legado.app.utils.getPrefString
-import io.legado.app.utils.putPrefBoolean
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,25 +39,25 @@ fun WelcomeConfigScreen(
     val context = LocalContext.current
 
     var customWelcome by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.customWelcome, false))
+        mutableStateOf(AppConfig.customWelcome)
     }
     val welcomeImage = remember {
-        context.getPrefString(PreferKey.welcomeImage, "") ?: ""
+        AppConfig.welcomeImage ?: ""
     }
     val welcomeImageDark = remember {
-        context.getPrefString(PreferKey.welcomeImageDark, "") ?: ""
+        AppConfig.welcomeImageDark ?: ""
     }
     var welcomeShowText by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.welcomeShowText, true))
+        mutableStateOf(AppConfig.welcomeShowText)
     }
     var welcomeShowIcon by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.welcomeShowIcon, true))
+        mutableStateOf(AppConfig.welcomeShowIcon)
     }
     var welcomeShowTextDark by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.welcomeShowTextDark, true))
+        mutableStateOf(AppConfig.welcomeShowTextDark)
     }
     var welcomeShowIconDark by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.welcomeShowIconDark, true))
+        mutableStateOf(AppConfig.welcomeShowIconDark)
     }
 
     val dayImageEnabled = welcomeImage.isNotEmpty()
@@ -98,7 +94,7 @@ fun WelcomeConfigScreen(
                         checked = customWelcome,
                         onCheckedChange = { v ->
                             customWelcome = v
-                            context.putPrefBoolean(PreferKey.customWelcome, v)
+                            AppConfig.customWelcome = v
                         },
                     )
                 }
@@ -122,7 +118,7 @@ fun WelcomeConfigScreen(
                         enabled = dayImageEnabled,
                         onCheckedChange = { v ->
                             welcomeShowText = v
-                            context.putPrefBoolean(PreferKey.welcomeShowText, v)
+                            AppConfig.welcomeShowText = v
                         },
                     )
                     SwitchSettingItem(
@@ -132,7 +128,7 @@ fun WelcomeConfigScreen(
                         enabled = dayImageEnabled,
                         onCheckedChange = { v ->
                             welcomeShowIcon = v
-                            context.putPrefBoolean(PreferKey.welcomeShowIcon, v)
+                            AppConfig.welcomeShowIcon = v
                         },
                     )
                 }
@@ -156,7 +152,7 @@ fun WelcomeConfigScreen(
                         enabled = nightImageEnabled,
                         onCheckedChange = { v ->
                             welcomeShowTextDark = v
-                            context.putPrefBoolean(PreferKey.welcomeShowTextDark, v)
+                            AppConfig.welcomeShowTextDark = v
                         },
                     )
                     SwitchSettingItem(
@@ -166,7 +162,7 @@ fun WelcomeConfigScreen(
                         enabled = nightImageEnabled,
                         onCheckedChange = { v ->
                             welcomeShowIconDark = v
-                            context.putPrefBoolean(PreferKey.welcomeShowIconDark, v)
+                            AppConfig.welcomeShowIconDark = v
                         },
                     )
                 }

@@ -23,12 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Observer
 import androidx.preference.PreferenceManager
 import androidx.lifecycle.lifecycleScope
@@ -56,6 +51,7 @@ import io.legado.app.ui.book.audio.AudioPlayActivity
 import io.legado.app.ui.book.changecover.ChangeCoverDialog
 import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
 import io.legado.app.ui.book.group.GroupSelectDialog
+import io.legado.app.domain.gateway.ReadAloudCharacterGateway
 import io.legado.app.ui.book.info.BookInfoViewModel
 import io.legado.app.ui.book.info.edit.BookInfoEditActivity
 import io.legado.app.ui.book.manga.ReadMangaActivity
@@ -63,11 +59,20 @@ import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.ReadBookActivity.Companion.RESULT_DELETED
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import io.legado.app.ui.common.compose.LegadoTheme
+import io.legado.app.ui.common.compose.ModalLegadoBottomSheet
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.login.SourceLoginActivity
 import io.legado.app.ui.widget.dialog.VariableDialog
-import io.legado.app.ui.widget.dialog.WaitDialog
+import io.legado.app.ui.common.compose.LegadoWaitDialog
+import io.legado.app.ui.common.compose.LegadoWaitState
 import io.legado.app.utils.GSON
 import io.legado.app.utils.StartActivityContract
 import io.legado.app.utils.dpToPx
@@ -78,9 +83,13 @@ import io.legado.app.utils.shareWithQr
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.koin.android.ext.android.inject
 
 /**
  * 书籍详情页 — Compose 版。
@@ -89,6 +98,8 @@ import kotlinx.coroutines.withContext
  * 通过 setContent { BookDetailScreen } 渲染 UI。
  * 保留所有原有的业务逻辑回调。
  */
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@OptIn(ExperimentalMaterial3Api::class)
 class BookInfoComposeActivity :
     AppCompatActivity(),
     GroupSelectDialog.CallBack,
@@ -97,17 +108,21 @@ class BookInfoComposeActivity :
     VariableDialog.Callback {
 
     val viewModel by viewModels<BookInfoViewModel>()
+    private val readAloudCharacterGateway: ReadAloudCharacterGateway by inject()
 
     private val tocActivityResult = registerForActivityResult(TocActivityResult()) {
-        it?.let {
-            viewModel.getBook(false)?.let { book ->
-                lifecycleScope.launch {
-                    withContext(IO) {
-                        book.durChapterIndex = it.first
-                        book.durChapterPos = it.second
-                        appDb.bookDao.update(book)
+        it?.let { (index, chapterPos, readerLaunched) ->
+            // TocActivity 已在文本书详情页直达时启动阅读器,跳过重复启动
+            if (!readerLaunched) {
+                viewModel.getBook(false)?.let { book ->
+                    lifecycleScope.launch {
+                        withContext(IO) {
+                            book.durChapterIndex = index
+                            book.durChapterPos = chapterPos
+                            appDb.bookDao.update(book)
+                        }
+                        startReadActivity(book)
                     }
-                    startReadActivity(book)
                 }
             }
         } ?: let {
@@ -149,7 +164,7 @@ class BookInfoComposeActivity :
             viewModel.refreshBook(book)
         }
     }
-    private val waitDialog by lazy { WaitDialog(this) }
+    private val waitState = LegadoWaitState()
     private val book get() = viewModel.getBook(false)
 
     @SuppressLint("PrivateResource")
@@ -183,6 +198,7 @@ class BookInfoComposeActivity :
 
         setContent {
             LegadoTheme {
+                LegadoWaitDialog(waitState)
                 val chapterListState = remember { mutableStateOf(viewModel.chapterListData.value) }
                 var refreshTrigger by remember { mutableStateOf(0) }
 
@@ -223,6 +239,29 @@ class BookInfoComposeActivity :
                         var canUpdateState by remember(book) { mutableStateOf(book.canUpdate) }
                         var splitLongChapterState by remember(book) { mutableStateOf(book.getSplitLongChapter()) }
                         var inBookshelfState by remember { mutableStateOf(viewModel.inBookshelf) }
+                        var showWorldBookSheet by remember { mutableStateOf(false) }
+                        var worldBookHighlightId by remember { mutableStateOf<String?>(null) }
+                        var showOutlineSheet by remember { mutableStateOf(false) }
+                        var outlineSheetContent by remember { mutableStateOf("") }
+                        var editingCharacterId by remember { mutableStateOf<String?>(null) }
+                        val castCharacters by remember(book.bookUrl) {
+                            combine(
+                                readAloudCharacterGateway.observeCharacterCards(book.bookUrl),
+                                readAloudCharacterGateway.observeSpeakerCharacters(book.bookUrl),
+                            ) { cards, speakers ->
+                                val roles = speakers.associate { it.id to it.role }
+                                cards.map { card ->
+                                    BookDetailCharacterUi(
+                                        id = card.id,
+                                        name = card.name,
+                                        subtitle = card.personality.ifBlank { card.description }.take(40),
+                                        dramaticRole = roles[card.id].orEmpty(),
+                                        avatarPath = card.avatarPath,
+                                    )
+                                }
+                            }
+                        }.collectAsStateWithLifecycle(initialValue = emptyList())
+                        val characterUi = castCharacters
                         BookDetailScreen(
                             book = book,
                             latestChapterTitle = book.latestChapterTitle,
@@ -274,6 +313,94 @@ class BookInfoComposeActivity :
                             isSourceVariableVisible = viewModel.bookSource != null,
                             isBookVariableVisible = viewModel.bookSource != null,
                             coverTransitionName = coverTransitionName,
+                            characters = characterUi,
+                            onCharacterClick = { characterId ->
+                                editingCharacterId = characterId
+                            },
+                            onOpenVoiceCasting = {
+                                startActivity(
+                                    io.legado.app.ui.main.MainIntent.createBookVoiceCastingIntent(
+                                        this@BookInfoComposeActivity,
+                                        book.bookUrl,
+                                    )
+                                )
+                            },
+                            onOpenCharacterList = {
+                                startActivity(
+                                    io.legado.app.ui.main.MainIntent.createBookCharacterListIntent(
+                                        this@BookInfoComposeActivity,
+                                        book.bookUrl,
+                                    )
+                                )
+                            },
+                            onOpenNetwork = {
+                                val hubId = characterUi
+                                    .firstOrNull {
+                                        it.dramaticRole == io.legado.app.domain.model.DramaticRole.MALE_LEAD
+                                    }?.id
+                                    ?: characterUi.firstOrNull {
+                                        it.dramaticRole == io.legado.app.domain.model.DramaticRole.FEMALE_LEAD
+                                    }?.id
+                                startActivity(
+                                    io.legado.app.ui.main.MainIntent.createBookCharacterNetworkIntent(
+                                        this@BookInfoComposeActivity,
+                                        book.bookUrl,
+                                        hubId,
+                                    )
+                                )
+                            },
+                            onOpenWorldBook = {
+                                lifecycleScope.launch(Dispatchers.IO) {
+                                    val linked = appDb.aiWorldBookDao.all
+                                        .firstOrNull { it.bookUrl == book.bookUrl }
+                                    withContext(Dispatchers.Main) {
+                                        worldBookHighlightId = linked?.id
+                                        showWorldBookSheet = true
+                                    }
+                                }
+                            },
+                            onOpenOutline = {
+                                lifecycleScope.launch(IO) {
+                                    val outline = appDb.aiOutlineDao.getByBookUrl(book.bookUrl).firstOrNull()
+                                    withContext(Dispatchers.Main) {
+                                        if (outline == null || outline.content.isBlank()) {
+                                            toastOnUi(R.string.book_outline_empty)
+                                        } else {
+                                            outlineSheetContent = outline.content
+                                            showOutlineSheet = true
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                        if (showOutlineSheet) {
+                            ModalLegadoBottomSheet(
+                                show = true,
+                                onDismissRequest = { showOutlineSheet = false },
+                                title = stringResource(R.string.book_outline),
+                            ) {
+                                Text(
+                                    text = outlineSheetContent,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
+                        }
+                        if (showWorldBookSheet) {
+                            io.legado.app.ui.ai.worldbook.AiWorldBookSheet(
+                                onDismiss = {
+                                    showWorldBookSheet = false
+                                    worldBookHighlightId = null
+                                },
+                                highlightWorldBookId = worldBookHighlightId,
+                            )
+                        }
+                        BookDetailCharacterEditOverlay(
+                            characterId = editingCharacterId,
+                            bookUrl = book.bookUrl,
+                            bookName = book.name,
+                            bookAuthor = book.author,
+                            onDismiss = { editingCharacterId = null },
                         )
                     }
                 }
@@ -319,6 +446,12 @@ class BookInfoComposeActivity :
                 viewModel.loadBookInfo(book, false)
             }
             MENU_CLEAR_CACHE -> viewModel.clearCache()
+            MENU_VOICE_CASTING -> startActivity(
+                io.legado.app.ui.main.MainIntent.createBookVoiceCastingIntent(this, book.bookUrl)
+            )
+            MENU_CLOUD_TTS -> startActivity(
+                io.legado.app.ui.main.MainIntent.createCloudTtsIntent(this, book.bookUrl)
+            )
             MENU_LOG -> showLogSheet()
             MENU_UPLOAD -> upLoadBook(book)
             MENU_DELETE -> deleteBook()
@@ -405,8 +538,7 @@ class BookInfoComposeActivity :
 
     private fun upLoadBook(book: Book) {
         lifecycleScope.launch {
-            waitDialog.setText("上传中.....")
-            waitDialog.show()
+            waitState.show("上传中.....")
             try {
                 val bookWebDav = AppWebDav.defaultBookWebDav
                 if (bookWebDav == null) {
@@ -419,7 +551,7 @@ class BookInfoComposeActivity :
             } catch (e: Exception) {
                 toastOnUi(e.localizedMessage)
             } finally {
-                waitDialog.dismiss()
+                waitState.dismiss()
             }
         }
     }
@@ -459,8 +591,10 @@ class BookInfoComposeActivity :
     }
 
     private fun openChapterList() {
-        viewModel.getBook()?.let {
-            tocActivityResult.launch(it.bookUrl)
+        viewModel.getBook()?.let { book ->
+            viewModel.prepareOpenChapterList {
+                tocActivityResult.launch(book.bookUrl)
+            }
         }
     }
 
@@ -586,12 +720,9 @@ class BookInfoComposeActivity :
 
     private fun upWaitDialogStatus(isShow: Boolean) {
         if (isShow) {
-            waitDialog.run {
-                setText("Loading.....")
-                show()
-            }
+            waitState.show("Loading.....")
         } else {
-            waitDialog.dismiss()
+            waitState.dismiss()
         }
     }
 

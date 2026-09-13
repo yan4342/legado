@@ -8,6 +8,7 @@ import io.legado.app.constant.BookType
 import io.legado.app.R
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.domain.model.BookShelfState
@@ -37,9 +38,23 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import java.lang.ref.WeakReference
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModel(application: Application) : AndroidViewModel(application) {
+
+    companion object {
+        @Volatile
+        private var activeInstance: WeakReference<SearchViewModel>? = null
+
+        fun pauseActiveSearch() {
+            activeInstance?.get()?.onIntent(SearchIntent.PauseEngine)
+        }
+
+        fun resumeActiveSearch() {
+            activeInstance?.get()?.onIntent(SearchIntent.ResumeEngine)
+        }
+    }
 
     val searchLayoutMode = MutableStateFlow(0)
 
@@ -75,8 +90,10 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private var wasSearching = false
 
     init {
+        activeInstance = WeakReference(this)
         searchModel = SearchModel(viewModelScope, object : SearchModel.CallBack {
             override fun getSearchScope(): SearchScope = searchScope
+            override fun getSourceTypes(): Set<Int> = _uiState.value.selectedSourceTypes
             override fun onSearchStart() {
                 _uiState.update { it.copy(isSearching = true) }
             }
@@ -157,7 +174,6 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 viewModelScope.launch { appDb.searchKeywordDao.deleteAll() }
             }
             is SearchIntent.SetScopeSheetVisible -> _uiState.update { it.copy(showScopeSheet = intent.visible) }
-            is SearchIntent.SetSettingsSheetVisible -> _uiState.update { it.copy(showSettingsSheet = intent.visible) }
             is SearchIntent.ToggleSourceType -> {
                 _uiState.update { state ->
                     val current = state.selectedSourceTypes
@@ -176,8 +192,10 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             SearchIntent.DismissEmptyScopeAction -> _uiState.update { it.copy(emptyScopeAction = null) }
             SearchIntent.OpenSourceManage -> _effects.tryEmit(SearchEffect.OpenSourceManage)
             is SearchIntent.ApplyScopeUpdate -> {
+                val oldRaw = searchScope.toString()
                 searchScope.update(intent.scopeRaw)
-                syncScopeState(restartSearch = true)
+                syncScopeState(restartSearch = false)
+                applyScopeChange(oldRaw)
             }
             is SearchIntent.ToggleScopeItem -> {
                 if (searchScope.displayNames.contains(intent.itemName)) {
@@ -240,6 +258,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     override fun onCleared() {
+        if (activeInstance?.get() === this) {
+            activeInstance = null
+        }
         searchModel.close()
         super.onCleared()
     }
@@ -262,7 +283,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             if (!hasActiveSearch) {
                 updateQuery(initKey, showSuggestions = true)
             }
-        } else {
+        } else if (_uiState.value.committedQuery.isEmpty()) {
             stopSearch()
             updateQuery("", showSuggestions = true)
             _uiState.update {
@@ -404,13 +425,73 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * 搜索范围变更的增量应用，避免每次改动都整场重启：
+     * - 纯新增书源：保留现有结果，只搜索新增书源（[SearchModel.extendSearch]）
+     * - 纯移除书源：保留仍有效的搜索结果，剔除来源全部被移除的条目（[SearchModel.pruneResults]）
+     * - 有增有减、或原搜索仍在进行：整场重启（最可靠）
+     */
+    private fun applyScopeChange(oldRaw: String) {
+        val state = _uiState.value
+        val keyword = state.committedQuery
+        if (keyword.isBlank() || state.showSuggestions || state.isManualStop) return
+        val newRaw = searchScope.toString()
+        if (newRaw == oldRaw) return
+        val sourceTypes = state.selectedSourceTypes
+
+        // 范围 diff 涉及数据库查询，放 IO 线程；期间状态可能变化，回来后再校验
+        viewModelScope.launch(Dispatchers.IO) {
+            val oldUrls = SearchScope(oldRaw).getBookSourceParts(sourceTypes).map { it.bookSourceUrl }.toSet()
+            val fullParts = searchScope.getBookSourceParts(sourceTypes)
+            val newUrls = fullParts.map { it.bookSourceUrl }.toSet()
+            val added = newUrls - oldUrls
+            val removed = oldUrls - newUrls
+            withContext(Dispatchers.Main) {
+                applyScopeChangeResult(keyword, fullParts, newUrls, added, removed)
+            }
+        }
+    }
+
+    private fun applyScopeChangeResult(
+        keyword: String,
+        fullParts: List<BookSourcePart>,
+        newUrls: Set<String>,
+        added: Set<String>,
+        removed: Set<String>,
+    ) {
+        val state = _uiState.value
+        // IO 计算期间搜索可能被重置，重新校验
+        if (state.committedQuery != keyword || state.isManualStop || state.showSuggestions) return
+        when {
+            added.isEmpty() && removed.isEmpty() -> return
+            state.isSearching -> restartCommittedSearchIfNeeded()
+            added.isNotEmpty() && removed.isNotEmpty() -> restartCommittedSearchIfNeeded()
+            removed.isNotEmpty() -> {
+                // 纯移除：裁剪内存结果与书源列表
+                searchModel.pruneResults(fullParts)
+                _uiState.update { s ->
+                    s.copy(results = s.results.filter { item ->
+                        item.book.origins.isEmpty() || item.book.origins.any { it in newUrls }
+                    })
+                }
+            }
+            else -> {
+                // 纯新增：保留现有结果，只搜新增书源
+                val addedParts = fullParts.filter { it.bookSourceUrl in added }
+                if (!searchModel.extendSearch(keyword, fullParts, addedParts)) {
+                    restartCommittedSearchIfNeeded()
+                }
+            }
+        }
+    }
+
     private fun mergeResults(existing: List<SearchResultItemUi>, newBooks: List<SearchBook>): List<SearchResultItemUi> {
         val map = LinkedHashMap<String, SearchBook>()
         existing.forEach { map[it.book.bookUrl] = it.book }
         newBooks.forEach { newBook ->
             val existingBook = map[newBook.bookUrl]
             if (existingBook != null) {
-                newBook.origins.forEach { existingBook.addOrigin(it) }
+                mergeSearchBookDetails(existingBook, newBook)
             } else {
                 map[newBook.bookUrl] = newBook
             }
@@ -420,6 +501,25 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         val sorted = map.values.sortedWithSearchPriority(keyword, matchMode)
         return sorted.map { book ->
             SearchResultItemUi(book = book, shelfState = resolveShelfState(book))
+        }
+    }
+
+    private fun mergeSearchBookDetails(target: SearchBook, incoming: SearchBook) {
+        incoming.origins.forEach { target.addOrigin(it) }
+        if (target.kind.isNullOrBlank() && !incoming.kind.isNullOrBlank()) {
+            target.kind = incoming.kind
+        }
+        if (target.wordCount.isNullOrBlank() && !incoming.wordCount.isNullOrBlank()) {
+            target.wordCount = incoming.wordCount
+        }
+        if (target.intro.isNullOrBlank() && !incoming.intro.isNullOrBlank()) {
+            target.intro = incoming.intro
+        }
+        if (target.latestChapterTitle.isNullOrBlank() && !incoming.latestChapterTitle.isNullOrBlank()) {
+            target.latestChapterTitle = incoming.latestChapterTitle
+        }
+        if (target.coverUrl.isNullOrBlank() && !incoming.coverUrl.isNullOrBlank()) {
+            target.coverUrl = incoming.coverUrl
         }
     }
 

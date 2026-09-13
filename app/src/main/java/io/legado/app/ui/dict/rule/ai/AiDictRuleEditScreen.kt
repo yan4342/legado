@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.legado.app.R
 import io.legado.app.data.entities.AiDictRule
+import io.legado.app.ui.dict.DictPromptPresets
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
 
@@ -237,30 +238,24 @@ fun AiDictRuleEditScreen(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    AssistChip(
-                        onClick = { 
-                            systemPrompt = "你是一个词典助手。请用Markdown格式回复：**加粗**标注关键词、空行分隔段落。不使用代码块或表格。"
-                            userPromptTemplate = "请给出拼音并简要解释词语: {{word}}" },
-                        label = { Text("简要") },
-                    )
-                    AssistChip(
-                        onClick = { 
-                            systemPrompt = "你是一个词典助手。请用Markdown格式回复：**加粗**标注关键词、空行分隔段落。不使用代码块或表格。"
-                            userPromptTemplate = "请详细解释'{{word}}'的含义，包括读音、词源、用法示例和同义词。" },
-                        label = { Text("详细") },
-                    )
-                    AssistChip(
-                        onClick = {
-                            systemPrompt = "你是一个词典助手。请用Markdown格式回复：**加粗**标注关键词、空行分隔段落。不使用代码块或表格。" 
-                            userPromptTemplate = "请将'{{word}}'翻译并给出释义。" },
-                        label = { Text("翻译") },
-                    )
+                    DictPromptPresets.filter { it.key != "default" }.forEach { preset ->
+                        AssistChip(
+                            onClick = {
+                                systemPrompt = preset.systemPrompt.orEmpty()
+                                userPromptTemplate = preset.userPromptTemplate.orEmpty()
+                            },
+                            label = { Text(preset.displayName) },
+                        )
+                    }
                 }
 
                 OutlinedTextField(
                     value = userPromptTemplate,
                     onValueChange = { userPromptTemplate = it },
                     label = { Text(stringResource(R.string.user_prompt_template)) },
+                    supportingText = {
+                        Text("可用变量: {{word}} {{bookName}} {{chapterIndex}} {{chapterTitle}} {{earlierMentions}} {{bookMentions}}")
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
                     maxLines = 4,
@@ -506,7 +501,13 @@ private fun buildRequestBodyPreview(
         messages.add(mapOf("role" to "system", "content" to systemPrompt))
     }
     val userContent = if (userPromptTemplate.isNotBlank()) {
-        userPromptTemplate.replace("{{word}}", "示例词语")
+        userPromptTemplate
+            .replace("{{word}}", "示例词语")
+            .replace("{{bookName}}", "示例书名")
+            .replace("{{chapterIndex}}", "1")
+            .replace("{{chapterTitle}}", "示例章节")
+            .replace("{{earlierMentions}}", "- 第1章《示例章节}: ...前文片段...")
+            .replace("{{bookMentions}}", "- 【前文】第1章《示例章节}: ...前文片段...\n- 【后文】第3章《示例章节}: ...后文片段...")
     } else {
         "请解释词语: {{word}}"
     }

@@ -18,7 +18,7 @@ class TocActivityResult : ActivityResultContract<String, Triple<Int, Int, Boolea
                 return Triple(
                     it.getIntExtra("index", 0),
                     it.getIntExtra("chapterPos", 0),
-                    it.getBooleanExtra("chapterChanged", false)
+                    it.getBooleanExtra("readerLaunched", false)
                 )
             }
         }

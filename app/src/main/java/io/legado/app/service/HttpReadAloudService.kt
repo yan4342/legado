@@ -30,21 +30,30 @@ import io.legado.app.R
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.data.entities.HttpTTS
+import io.legado.app.domain.model.readaloud.ReadAloudPlaybackCue
+import io.legado.app.domain.model.readaloud.ReadAloudVoice
+import io.legado.app.domain.model.readaloud.SpeechEngineRoute
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.exoplayer.InputStreamDataSource
 import io.legado.app.help.http.okHttpClient
+import io.legado.app.help.readaloud.playback.HttpTtsStreamFetcher
+import io.legado.app.help.readaloud.playback.ReadAloudCueSynthesizer
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.ui.book.read.page.entities.TextChapter
 import io.legado.app.utils.FileUtils
+import io.legado.app.utils.GSON
 import io.legado.app.utils.MD5Utils
+import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.servicePendingIntent
 import io.legado.app.utils.toastOnUi
+import io.legado.app.lib.dialogs.SelectItem
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -58,8 +67,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import okhttp3.Response
+import org.koin.android.ext.android.inject
 import org.mozilla.javascript.WrappedException
 import splitties.init.appCtx
 import java.io.File
@@ -74,6 +86,15 @@ import kotlin.time.Duration.Companion.seconds
 @SuppressLint("UnsafeOptInUsageError")
 class HttpReadAloudService : BaseReadAloudService(),
     Player.Listener {
+
+    override val useSpeechPlaybackQueue: Boolean = true
+
+    private val cueSynthesizer: ReadAloudCueSynthesizer by inject()
+    private val httpFetcher = HttpTtsStreamFetcher()
+    private val synthSemaphore by lazy {
+        Semaphore(AppConfig.ttsPreSynthesisConcurrency.coerceIn(1, 8))
+    }
+
     private val exoPlayer: ExoPlayer by lazy {
         ExoPlayer.Builder(this).setLoadControl(
             DefaultLoadControl.Builder().setBufferDurationsMs(
@@ -109,6 +130,9 @@ class HttpReadAloudService : BaseReadAloudService(),
     private val downloadTaskActiveLock = Mutex()
     private val loadingState = MutableStateFlow(false)
 
+    protected override val currentSpeechRate: Float
+        get() = speechRate / 10f
+
     override fun onCreate() {
         super.onCreate()
         exoPlayer.addListener(this)
@@ -133,10 +157,11 @@ class HttpReadAloudService : BaseReadAloudService(),
             ReadBook.readAloud()
         } else {
             super.play()
-            if (AppConfig.streamReadAloudAudio) {
-                downloadAndPlayAudiosStream()
-            } else {
+            // Multi-engine cue playback always uses file synthesis (ExoPlayer playlist).
+            if (hasSpeechPlaybackQueue || !AppConfig.streamReadAloudAudio) {
                 downloadAndPlayAudios()
+            } else {
+                downloadAndPlayAudiosStream()
             }
         }
     }
@@ -147,6 +172,16 @@ class HttpReadAloudService : BaseReadAloudService(),
     }
 
     private fun updateNextPos() {
+        if (hasSpeechPlaybackQueue) {
+            val current = playbackCursor ?: io.legado.app.domain.model.readaloud.ReadAloudPlaybackCursor(
+                nowSpeak,
+                paragraphStartPos,
+            )
+            playbackQueue.next(current)?.let { next ->
+                moveToPlaybackCursor(next)
+            } ?: nextChapter()
+            return
+        }
         readAloudNumber += contentList[nowSpeak].length + 1 - paragraphStartPos
         paragraphStartPos = 0
         if (nowSpeak < contentList.lastIndex) {
@@ -156,51 +191,192 @@ class HttpReadAloudService : BaseReadAloudService(),
         }
     }
 
+    private fun defaultSpeechRoute(): SpeechEngineRoute {
+        val http = ReadAloud.httpTTS
+        if (http != null) {
+            return SpeechEngineRoute(
+                engineType = ReadAloudVoice.ENGINE_HTTP,
+                engineId = http.id.toString(),
+            )
+        }
+        val enginePackage = runCatching {
+            GSON.fromJsonObject<SelectItem<String>>(ReadAloud.ttsEngine).getOrNull()?.value.orEmpty()
+        }.getOrDefault("")
+        return SpeechEngineRoute(
+            engineType = ReadAloudVoice.ENGINE_SYSTEM,
+            engineId = if (enginePackage.isBlank()) "" else "system:$enginePackage",
+            speakerId = "",
+        )
+    }
+
     private fun downloadAndPlayAudios() {
         exoPlayer.clearMediaItems()
         downloadTask?.cancel()
         downloadTask = execute {
             downloadTaskActiveLock.withLock {
                 ensureActive()
-                val httpTts = ReadAloud.httpTTS ?: throw NoStackTraceException("tts is null")
-                contentList.forEachIndexed { index, content ->
-                    ensureActive()
-                    if (index < nowSpeak) return@forEachIndexed
-                    var text = content
-                    if (paragraphStartPos > 0 && index == nowSpeak) {
-                        text = text.substring(paragraphStartPos)
-                    }
-                    val fileName = md5SpeakFileName(text)
-                    val speakText = text.replace(AppPattern.notReadAloudRegex, "")
-                    if (speakText.isEmpty()) {
-                        AppLog.put("阅读段落内容为空，使用无声音频代替。\n朗读文本：$text")
-                        createSilentSound(fileName)
-                    } else if (!hasSpeakFile(fileName)) {
-                        runCatching {
-                            val inputStream = getSpeakStream(httpTts, speakText)
-                            if (inputStream != null) {
-                                createSpeakFile(fileName, inputStream)
-                            } else {
-                                createSilentSound(fileName)
-                            }
-                        }.onFailure {
-                            when (it) {
-                                is CancellationException -> Unit
-                                else -> pauseReadAloud()
-                            }
-                            return@execute
-                        }
-                    }
-                    val file = getSpeakFileAsMd5(fileName)
-                    val mediaItem = MediaItem.fromUri(Uri.fromFile(file))
-                    launch(Main) {
-                        exoPlayer.addMediaItem(mediaItem)
-                    }
+                if (hasSpeechPlaybackQueue) {
+                    downloadAndPlayCueAudios()
+                } else {
+                    downloadAndPlayLegacyHttpAudios()
                 }
-                preDownloadAudios(httpTts)
             }
         }.onError {
             AppLog.put("朗读下载出错\n${it.localizedMessage}", it, true)
+        }
+    }
+
+    private suspend fun CoroutineScope.downloadAndPlayCueAudios() {
+        val route = defaultSpeechRoute()
+        val cues = playbackQueue.cues
+        for (index in nowSpeak until cues.size) {
+            ensureActive()
+            val cue = cues[index]
+            var text = cue.text
+            if (paragraphStartPos > 0 && index == nowSpeak) {
+                text = text.substring(paragraphStartPos.coerceAtMost(text.length))
+            }
+            val fileName = md5SpeakFileName(text, cue = cue)
+            val speakText = text.replace(AppPattern.notReadAloudRegex, "")
+            if (speakText.isEmpty()) {
+                createSilentSound(fileName)
+            } else if (!hasSpeakFile(fileName)) {
+                synthSemaphore.withPermit {
+                    ensureActive()
+                    val file = getSpeakFileAsMd5(fileName)
+                    val ok = cueSynthesizer.synthesizeToFile(
+                        cue = cue,
+                        text = text,
+                        output = file,
+                        defaultRoute = route,
+                        speechRate = speechRate,
+                    )
+                    if (!ok) createSilentSound(fileName)
+                }
+            }
+            val file = getSpeakFileAsMd5(fileName)
+            val mediaItem = MediaItem.fromUri(Uri.fromFile(file))
+            launch(Main) {
+                if (AppConfig.ttsParagraphInterval > 0) {
+                    if (index == nowSpeak && exoPlayer.mediaItemCount == 0) {
+                        exoPlayer.setMediaItem(mediaItem)
+                    }
+                } else if (exoPlayer.mediaItemCount == 0) {
+                    exoPlayer.setMediaItem(mediaItem)
+                } else {
+                    exoPlayer.addMediaItem(mediaItem)
+                }
+            }
+        }
+        preDownloadCueAudios()
+    }
+
+    private suspend fun CoroutineScope.downloadAndPlayLegacyHttpAudios() {
+        val httpTts = ReadAloud.httpTTS
+        contentList.forEachIndexed { index, content ->
+            ensureActive()
+            if (index < nowSpeak) return@forEachIndexed
+            var text = content
+            if (paragraphStartPos > 0 && index == nowSpeak) {
+                text = text.substring(paragraphStartPos)
+            }
+            val fileName = md5SpeakFileName(text)
+            val speakText = text.replace(AppPattern.notReadAloudRegex, "")
+            if (speakText.isEmpty()) {
+                AppLog.put("阅读段落内容为空，使用无声音频代替。\n朗读文本：$text")
+                createSilentSound(fileName)
+            } else if (!hasSpeakFile(fileName)) {
+                runCatching {
+                    if (httpTts != null) {
+                        val inputStream = getSpeakStream(httpTts, speakText)
+                        if (inputStream != null) {
+                            createSpeakFile(fileName, inputStream)
+                        } else {
+                            createSilentSound(fileName)
+                        }
+                    } else {
+                        // Multi-speaker mode with system default engine: synthesize to file.
+                        val route = defaultSpeechRoute()
+                        val cue = ReadAloudPlaybackCue(
+                            text = text,
+                            chapterStart = 0,
+                            chapterEnd = text.length,
+                            paragraphIndex = index,
+                            voice = null,
+                            fallbackVoices = emptyList(),
+                            roleType = io.legado.app.domain.model.readaloud.SpeechRoleType.Narrator,
+                            characterId = null,
+                        )
+                        val file = getSpeakFileAsMd5(fileName)
+                        val ok = cueSynthesizer.synthesizeToFile(
+                            cue = cue,
+                            text = text,
+                            output = file,
+                            defaultRoute = route,
+                            speechRate = speechRate,
+                        )
+                        if (!ok) createSilentSound(fileName)
+                    }
+                }.onFailure {
+                    when (it) {
+                        is CancellationException -> Unit
+                        else -> pauseReadAloud()
+                    }
+                    return
+                }
+            }
+            val file = getSpeakFileAsMd5(fileName)
+            val mediaItem = MediaItem.fromUri(Uri.fromFile(file))
+            launch(Main) {
+                if (AppConfig.ttsParagraphInterval > 0) {
+                    if (index == nowSpeak && exoPlayer.mediaItemCount == 0) {
+                        exoPlayer.setMediaItem(mediaItem)
+                    }
+                } else if (exoPlayer.mediaItemCount == 0) {
+                    exoPlayer.setMediaItem(mediaItem)
+                } else {
+                    exoPlayer.addMediaItem(mediaItem)
+                }
+            }
+        }
+        if (httpTts != null) {
+            preDownloadAudios(httpTts)
+        }
+    }
+
+    private suspend fun preDownloadCueAudios() {
+        val textChapter = ReadBook.nextTextChapter ?: return
+        val bookUrl = ReadBook.book?.bookUrl.orEmpty()
+        if (bookUrl.isEmpty()) return
+        val plan = buildSpeechPlan(
+            bookUrl = bookUrl,
+            chapterIndex = ReadBook.durChapterIndex + 1,
+            textChapter = textChapter,
+        )
+        val queue = runCatching {
+            io.legado.app.domain.model.readaloud.ReadAloudPlaybackQueue.from(plan)
+        }.getOrDefault(io.legado.app.domain.model.readaloud.ReadAloudPlaybackQueue.Empty)
+        if (queue.isEmpty) return
+        val route = defaultSpeechRoute()
+        val limit = AppConfig.audioPreDownloadNum.coerceIn(1, 30)
+        queue.cues.take(limit).forEach { cue ->
+            currentCoroutineContext().ensureActive()
+            val fileName = md5SpeakFileName(cue.text, cue = cue, textChapter = textChapter)
+            val speakText = cue.text.replace(AppPattern.notReadAloudRegex, "")
+            if (speakText.isEmpty()) {
+                createSilentSound(fileName)
+            } else if (!hasSpeakFile(fileName)) {
+                synthSemaphore.withPermit {
+                    val file = getSpeakFileAsMd5(fileName)
+                    cueSynthesizer.synthesizeToFile(
+                        cue = cue,
+                        text = cue.text,
+                        output = file,
+                        defaultRoute = route,
+                        speechRate = speechRate,
+                    )
+                }
+            }
         }
     }
 
@@ -258,7 +434,15 @@ class HttpReadAloudService : BaseReadAloudService(),
                     val dataSourceFactory = createDataSourceFactory(httpTts, speakText)
                     val mediaSource = createMediaSource(dataSourceFactory, fileName)
                     launch(Main) {
-                        exoPlayer.addMediaSource(mediaSource)
+                        if (AppConfig.ttsParagraphInterval > 0) {
+                            if (index == nowSpeak && exoPlayer.mediaItemCount == 0) {
+                                exoPlayer.setMediaSource(mediaSource)
+                            }
+                        } else if (exoPlayer.mediaItemCount == 0) {
+                            exoPlayer.setMediaSource(mediaSource)
+                        } else {
+                            exoPlayer.addMediaSource(mediaSource)
+                        }
                     }
                 }
                 preDownloadAudiosStream(httpTts, downloaderChannel)
@@ -339,84 +523,29 @@ class HttpReadAloudService : BaseReadAloudService(),
         httpTts: HttpTTS,
         speakText: String
     ): InputStream? {
-        while (true) {
-            try {
-                val analyzeUrl = AnalyzeUrl(
-                    httpTts.url,
-                    speakText = speakText,
-                    speakSpeed = speechRate,
-                    source = httpTts,
-                    readTimeout = 300 * 1000L,
-                    coroutineContext = currentCoroutineContext()
-                )
-                var response = analyzeUrl.getResponseAwait()
-                currentCoroutineContext().ensureActive()
-                val checkJs = httpTts.loginCheckJs
-                if (checkJs?.isNotBlank() == true) {
-                    response = analyzeUrl.evalJS(checkJs, response) as Response
-                }
-                response.headers["Content-Type"]?.let { contentType ->
-                    val contentType = contentType.substringBefore(";")
-                    val ct = httpTts.contentType
-                    if (contentType == "application/json" || contentType.startsWith("text/")) {
-                        throw NoStackTraceException(response.body.string())
-                    } else if (ct?.isNotBlank() == true) {
-                        if (!contentType.matches(ct.toRegex())) {
-                            throw NoStackTraceException(
-                                "TTS服务器返回错误：" + response.body.string()
-                            )
-                        }
-                    }
-                }
-                currentCoroutineContext().ensureActive()
-                response.body.byteStream().let { stream ->
-                    downloadErrorNo = 0
-                    return stream
-                }
-            } catch (e: Exception) {
-                when (e) {
-                    is CancellationException -> throw e
-                    is ScriptException, is WrappedException -> {
-                        AppLog.put("js错误\n${e.localizedMessage}", e, true)
-                        e.printOnDebug()
-                        throw e
-                    }
-
-                    is SocketTimeoutException, is ConnectException -> {
-                        downloadErrorNo++
-                        if (downloadErrorNo > 5) {
-                            val msg = "tts超时或连接错误超过5次\n${e.localizedMessage}"
-                            AppLog.put(msg, e, true)
-                            throw e
-                        }
-                    }
-
-                    else -> {
-                        downloadErrorNo++
-                        val msg = "tts下载错误\n${e.localizedMessage}"
-                        AppLog.put(msg, e)
-                        e.printOnDebug()
-                        if (downloadErrorNo > 5) {
-                            val msg1 = "TTS服务器连续5次错误，已暂停阅读。"
-                            AppLog.put(msg1, e, true)
-                            throw e
-                        } else {
-                            AppLog.put("TTS下载音频出错，使用无声音频代替。\n朗读文本：$speakText")
-                            break
-                        }
-                    }
-                }
-            }
+        return httpFetcher.fetch(
+            httpTts = httpTts,
+            speakText = speakText,
+            speechRate = speechRate,
+            onTransientError = {
+                downloadErrorNo++
+                downloadErrorNo > 5
+            },
+        ).also {
+            if (it != null) downloadErrorNo = 0
         }
-        return null
     }
 
     private fun md5SpeakFileName(
         content: String,
-        textChapter: TextChapter? = this.textChapter
+        textChapter: TextChapter? = this.textChapter,
+        cue: ReadAloudPlaybackCue? = null,
     ): String {
+        val voiceKey = cue?.voice?.let { voice ->
+            "${voice.engineType}:|:${voice.engineId}:|:${voice.speakerId}:|:${voice.id}"
+        } ?: "${ReadAloud.httpTTS?.url}"
         return MD5Utils.md5Encode16(textChapter?.title ?: "") + "_" +
-                MD5Utils.md5Encode16("${ReadAloud.httpTTS?.url}-|-$speechRate-|-$content")
+                MD5Utils.md5Encode16("$voiceKey-|-$speechRate-|-$content")
     }
 
     private fun createSilentSound(fileName: String) {
@@ -515,6 +644,7 @@ class HttpReadAloudService : BaseReadAloudService(),
         downloadTask?.cancel()
         exoPlayer.stop()
         speechRate = AppConfig.speechRatePlay + 5
+        upMediaMetadata()
         if (AppConfig.streamReadAloudAudio) {
             downloadAndPlayAudiosStream()
         } else {
@@ -543,9 +673,29 @@ class HttpReadAloudService : BaseReadAloudService(),
             Player.STATE_ENDED -> {
                 // 结束
                 playErrorNo = 0
-                updateNextPos()
-                exoPlayer.stop()
-                exoPlayer.clearMediaItems()
+                val interval = AppConfig.ttsParagraphInterval.toLong()
+                if (interval > 0) {
+                    val isLastParagraph = nowSpeak >= contentList.lastIndex
+                    updateNextPos()
+                    exoPlayer.stop()
+                    exoPlayer.clearMediaItems()
+                    if (!pause && !isLastParagraph) {
+                        execute {
+                            delay(interval)
+                            if (!pause) {
+                                launch(Main) {
+                                    if (!pause) {
+                                        play()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    updateNextPos()
+                    exoPlayer.stop()
+                    exoPlayer.clearMediaItems()
+                }
             }
         }
     }

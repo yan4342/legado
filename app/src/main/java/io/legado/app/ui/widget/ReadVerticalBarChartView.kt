@@ -30,6 +30,8 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
     private var items: List<BarItem> = emptyList()
     private var maxTime: Long = 1L
     private var selectedIndex: Int = -1
+    private var valueFormat: ChartValueFormat = ChartValueFormat.READ_TIME
+    private var customBarColor: Int? = null
 
     // Cached bar horizontal positions for hit-testing (populated in onDraw)
     private data class BarRect(val left: Float, val right: Float)
@@ -66,7 +68,7 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
             val isDark = context.isDarkTheme
             val accent = context.accentColor
             val bg = context.backgroundColor
-            barPaint.color = accent
+            barPaint.color = customBarColor ?: accent
             bgBarPaint.color = if (isDark) {
                 blendColor(bg, 0xFFFFFFFF.toInt(), 0.1f)
             } else {
@@ -78,7 +80,7 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
                 if (isDark) 0xFF8B949E.toInt() else 0xFF656D76.toInt()
             )
             gridPaint.color = if (isDark) 0x1AFFFFFF else 0x1A000000
-            valueLabelPaint.color = accent
+            valueLabelPaint.color = customBarColor ?: accent
             valueBgPaint.color = if (isDark) 0xFF30363D.toInt() else 0xFFE8E8E8.toInt()
         } catch (e: Exception) {
             barPaint.color = 0xFF1976D2.toInt()
@@ -94,6 +96,18 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
         items = barItems
         maxTime = barItems.maxOfOrNull { it.readTime }?.takeIf { it > 0 } ?: 1L
         requestLayout()
+        invalidate()
+    }
+
+    fun setValueFormat(format: ChartValueFormat) {
+        valueFormat = format
+        invalidate()
+    }
+
+    fun setBarColor(color: Int) {
+        customBarColor = color
+        barPaint.color = color
+        valueLabelPaint.color = color
         invalidate()
     }
 
@@ -121,7 +135,7 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
         if (items.isEmpty()) return
 
         // Measure y-axis label width for layout
-        val maxLabelText = formatReadTime(maxTime)
+        val maxLabelText = formatValue(maxTime)
         val labelTextWidth = labelPaint.measureText(maxLabelText)
 
         val chartLeft = paddingLeft.toFloat() + labelTextWidth + 12.dpToPx()
@@ -139,7 +153,7 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
             val timeAtLine = maxTime * (4 - i) / 4
             if (timeAtLine > 0) {
                 canvas.drawText(
-                    formatReadTime(timeAtLine),
+                    formatValue(timeAtLine),
                     chartLeft - 6.dpToPx(),
                     y + 4.dpToPx(),
                     labelPaint.apply { textAlign = Paint.Align.RIGHT }
@@ -201,7 +215,7 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
             val barHeight = if (maxTime > 0) (item.readTime.toFloat() / maxTime) * chartHeight else 0f
             val barTop = chartBottom - barHeight
 
-            val text = formatReadTime(item.readTime)
+            val text = formatValue(item.readTime)
             val textWidth = valueLabelPaint.measureText(text)
             val textHeight = valueLabelPaint.textSize
             val bgPaddingH = 6.dpToPx()
@@ -230,6 +244,21 @@ class ReadVerticalBarChartView @JvmOverloads constructor(
             end--
         }
         return if (end > 0) text.substring(0, end) + "…" else "…"
+    }
+
+    private fun formatValue(value: Long): String = when (valueFormat) {
+        ChartValueFormat.COMPACT_NUMBER -> formatCompactNumber(value)
+        ChartValueFormat.READ_TIME -> formatReadTime(value)
+    }
+
+    private fun formatCompactNumber(count: Long): String {
+        if (count <= 0) return "0"
+        val absCount = kotlin.math.abs(count)
+        return when {
+            absCount >= 1_000_000 -> String.format(java.util.Locale.getDefault(), "%.1fM", count / 1_000_000.0)
+            absCount >= 1_000 -> String.format(java.util.Locale.getDefault(), "%.1fK", count / 1_000.0)
+            else -> count.toString()
+        }
     }
 
     private fun formatReadTime(ms: Long): String {

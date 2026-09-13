@@ -25,7 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import io.legado.app.ui.common.compose.rememberLegadoBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -81,7 +81,7 @@ fun LegadoMarkdownContent(
     val ctx = LocalContext.current
     val textColor = MaterialTheme.colorScheme.onSurface
     var markdown by remember { mutableStateOf<Spanned?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberLegadoBottomSheetState(skipPartiallyExpanded = false)
     val requestDismiss = rememberDelayedDismiss(sheetState, onDismiss)
 
     val markwon = remember {
@@ -155,7 +155,7 @@ fun LegadoTextContent(
 ) {
     val ctx = LocalContext.current
     var remainingSeconds by remember { mutableStateOf(0) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberLegadoBottomSheetState(skipPartiallyExpanded = false)
     val requestDismiss = rememberDelayedDismiss(sheetState, onDismiss)
 
     // Auto-close timer
@@ -293,7 +293,7 @@ fun LegadoLogListContent(
 ) {
     var logs by remember { mutableStateOf(AppLog.logs.toList()) }
     var showDetail by remember { mutableStateOf<String?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberLegadoBottomSheetState(skipPartiallyExpanded = false)
     val requestDismiss = rememberDelayedDismiss(sheetState, onDismiss)
     val isDark = isSystemInDarkTheme()
     val primaryTextColor = if (isDark) Color(0xFFFFFFFF) else Color(0xDE000000)
@@ -415,7 +415,8 @@ fun LegadoCrashLogContent(
     crashViewModel: CrashViewModel = koinViewModel(),
 ) {
     val logs by crashViewModel.logList.collectAsState()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val initialized by crashViewModel.initialized.collectAsState()
+    val sheetState = rememberLegadoBottomSheetState(skipPartiallyExpanded = false)
     val requestDismiss = rememberDelayedDismiss(sheetState, onDismiss)
     val isDark = isSystemInDarkTheme()
     val primaryTextColor = if (isDark) Color(0xFFFFFFFF) else Color(0xDE000000)
@@ -425,7 +426,7 @@ fun LegadoCrashLogContent(
     }
 
     ModalLegadoBottomSheet(
-        show = true,
+        show = initialized,
         onDismissRequest = requestDismiss,
         sheetState = sheetState,
         title = stringResource(R.string.crash_log),

@@ -18,6 +18,7 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.compress.ZipUtils
 import io.legado.app.utils.createFolderReplace
 import io.legado.app.utils.externalCache
+import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.fromJsonObject
@@ -190,7 +191,15 @@ object ReadBookConfig {
     }
 
     //配置写入读取
-    var readBodyToLh = appCtx.getPrefBoolean(PreferKey.readBodyToLh, true)
+    //以下 SP 类设置走 AppConfigStore 快照（设置流收编后 DS 唯一读源）；
+    //写双落 DS + SP 镜像——Backup 的 config.xml 来自 SP 全量，镜像保证备份不丢 key。
+    //AppConfig 的 SP 监听器与 Restore 的回读赋值会用 SP 值回写这些 facade，充当恢复备份的 SP→DS 桥。
+    var readBodyToLh: Boolean
+        get() = AppConfigStore.getBoolean(PreferKey.readBodyToLh) ?: true
+        set(value) {
+            AppConfigStore.putBoolean(PreferKey.readBodyToLh, value)
+            appCtx.putPrefBoolean(PreferKey.readBodyToLh, value)
+        }
     var autoReadSpeed = appCtx.getPrefInt(PreferKey.autoReadSpeed, 10)
         set(value) {
             field = value
@@ -230,15 +239,31 @@ object ReadBookConfig {
     /**
      * 两端对齐
      */
-    val textFullJustify get() = appCtx.getPrefBoolean(PreferKey.textFullJustify, true)
+    val textFullJustify get() = AppConfigStore.getBoolean(PreferKey.textFullJustify) ?: true
 
     /**
      * 底部对齐
      */
-    val textBottomJustify get() = appCtx.getPrefBoolean(PreferKey.textBottomJustify, true)
-    var hideStatusBar = appCtx.getPrefBoolean(PreferKey.hideStatusBar)
-    var hideNavigationBar = appCtx.getPrefBoolean(PreferKey.hideNavigationBar)
-    var useZhLayout = appCtx.getPrefBoolean(PreferKey.useZhLayout)
+    val textBottomJustify get() = AppConfigStore.getBoolean(PreferKey.textBottomJustify) ?: true
+
+    var hideStatusBar: Boolean
+        get() = AppConfigStore.getBoolean(PreferKey.hideStatusBar) ?: false
+        set(value) {
+            AppConfigStore.putBoolean(PreferKey.hideStatusBar, value)
+            appCtx.putPrefBoolean(PreferKey.hideStatusBar, value)
+        }
+    var hideNavigationBar: Boolean
+        get() = AppConfigStore.getBoolean(PreferKey.hideNavigationBar) ?: false
+        set(value) {
+            AppConfigStore.putBoolean(PreferKey.hideNavigationBar, value)
+            appCtx.putPrefBoolean(PreferKey.hideNavigationBar, value)
+        }
+    var useZhLayout: Boolean
+        get() = AppConfigStore.getBoolean(PreferKey.useZhLayout) ?: false
+        set(value) {
+            AppConfigStore.putBoolean(PreferKey.useZhLayout, value)
+            appCtx.putPrefBoolean(PreferKey.useZhLayout, value)
+        }
 
     val config get() = if (shareLayout) shareConfig else durConfig
 
@@ -415,6 +440,24 @@ object ReadBookConfig {
         get() = config.showFooterLine
         set(value) {
             config.showFooterLine = value
+        }
+
+    /** 阅读锚点：跳转前记住原进度，悬浮胶囊可一键返回（MD3 port）。
+     *  读走 AppConfigStore 快照（设置流收编后唯一读源）；
+     *  写双落 DS + SP 镜像——Backup 的 config.xml 来自 SP 全量，镜像保证备份不丢此 key。 */
+    var readingAnchorEnabled: Boolean
+        get() = AppConfigStore.getBoolean(PreferKey.readingAnchorEnabled) ?: true
+        set(value) {
+            AppConfigStore.putBoolean(PreferKey.readingAnchorEnabled, value)
+            appCtx.putPrefBoolean(PreferKey.readingAnchorEnabled, value)
+        }
+
+    /** 朗读脱离提示：翻页脱离朗读位置时显示"回到朗读位置"胶囊（MD3 port，默认关闭） */
+    var readAloudDetachReminderEnabled: Boolean
+        get() = AppConfigStore.getBoolean(PreferKey.readAloudDetachReminderEnabled) ?: false
+        set(value) {
+            AppConfigStore.putBoolean(PreferKey.readAloudDetachReminderEnabled, value)
+            appCtx.putPrefBoolean(PreferKey.readAloudDetachReminderEnabled, value)
         }
 
     fun getExportConfig(): Config {

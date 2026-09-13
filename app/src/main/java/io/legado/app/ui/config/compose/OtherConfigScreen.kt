@@ -74,61 +74,61 @@ fun OtherConfigScreen(
         mutableStateOf(context.getPrefString(PreferKey.language, "auto") ?: "auto")
     }
     var autoRefresh by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.autoRefresh, false))
+        mutableStateOf(AppConfig.autoRefreshBook)
     }
     var defaultToRead by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.defaultToRead, false))
+        mutableStateOf(AppConfig.defaultToRead)
     }
     var showDiscovery by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.showDiscovery, true))
+        mutableStateOf(AppConfig.showDiscovery)
     }
     var showRss by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.showRss, true))
+        mutableStateOf(AppConfig.showRSS)
     }
     var defaultHomePage by remember {
-        mutableStateOf(context.getPrefString(PreferKey.defaultHomePage, "bookshelf") ?: "bookshelf")
+        mutableStateOf(AppConfig.defaultHomePage ?: "bookshelf")
     }
     var webServiceWakeLock by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.webServiceWakeLock, false))
+        mutableStateOf(AppConfig.webServiceWakeLock)
     }
     var cronet by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.cronet, false))
+        mutableStateOf(AppConfig.isCronet)
     }
     var antiAlias by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.antiAlias, false))
+        mutableStateOf(AppConfig.useAntiAlias)
     }
     var replaceEnableDefault by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.replaceEnableDefault, true))
+        mutableStateOf(AppConfig.replaceEnableDefault)
     }
     var readAloudByMediaButton by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.readAloudByMediaButton, false))
+        mutableStateOf(AppConfig.readAloudByMediaButton)
     }
     var ignoreAudioFocus by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.ignoreAudioFocus, false))
+        mutableStateOf(AppConfig.ignoreAudioFocus)
     }
     var autoClearExpired by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.autoClearExpired, true))
+        mutableStateOf(AppConfig.autoClearExpired)
     }
     var showAddToShelfAlert by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.showAddToShelfAlert, true))
+        mutableStateOf(AppConfig.showAddToShelfAlert)
     }
     var showMangaUi by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.showMangaUi, true))
+        mutableStateOf(AppConfig.showMangaUi)
     }
     var processText by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.processText, true))
+        mutableStateOf(AppConfig.processText)
     }
     var recordLog by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.recordLog, false))
+        mutableStateOf(AppConfig.recordLog)
     }
     var mediaButtonOnExit by remember {
-        mutableStateOf(context.getPrefBoolean("mediaButtonOnExit", true))
+        mutableStateOf(AppConfig.mediaButtonOnExit)
     }
     var updateToVariant by remember {
-        mutableStateOf(context.getPrefString("updateToVariant", "default_version") ?: "default_version")
+        mutableStateOf(AppConfig.updateToVariant ?: "default_version")
     }
     var recordHeapDump by remember {
-        mutableStateOf(context.getPrefBoolean("recordHeapDump", false))
+        mutableStateOf(AppConfig.recordHeapDump)
     }
 
     // Number picker display values — backed by Compose State so description text recomposes on change
@@ -212,7 +212,7 @@ fun OtherConfigScreen(
                         checked = autoRefresh,
                         onCheckedChange = { v ->
                             autoRefresh = v
-                            context.putPrefBoolean(PreferKey.autoRefresh, v)
+                            AppConfig.autoRefreshBook = v
                         }
                     )
                     SwitchSettingItem(
@@ -221,7 +221,7 @@ fun OtherConfigScreen(
                         checked = defaultToRead,
                         onCheckedChange = { v ->
                             defaultToRead = v
-                            context.putPrefBoolean(PreferKey.defaultToRead, v)
+                            AppConfig.defaultToRead = v
                         }
                     )
                     SwitchSettingItem(
@@ -229,7 +229,7 @@ fun OtherConfigScreen(
                         checked = showDiscovery,
                         onCheckedChange = { v ->
                             showDiscovery = v
-                            context.putPrefBoolean(PreferKey.showDiscovery, v)
+                            AppConfig.showDiscovery = v
                             postEvent(EventBus.NOTIFY_MAIN, true)
                         }
                     )
@@ -238,7 +238,7 @@ fun OtherConfigScreen(
                         checked = showRss,
                         onCheckedChange = { v ->
                             showRss = v
-                            context.putPrefBoolean(PreferKey.showRss, v)
+                            AppConfig.showRSS = v
                             postEvent(EventBus.NOTIFY_MAIN, true)
                         }
                     )
@@ -249,7 +249,7 @@ fun OtherConfigScreen(
                         entryValues = homePageValues,
                         onValueChange = { v ->
                             defaultHomePage = v
-                            context.putPrefString(PreferKey.defaultHomePage, v)
+                            AppConfig.defaultHomePage = v
                         }
                     )
                 }
@@ -265,7 +265,7 @@ fun OtherConfigScreen(
                         checked = webServiceWakeLock,
                         onCheckedChange = { v ->
                             webServiceWakeLock = v
-                            context.putPrefBoolean(PreferKey.webServiceWakeLock, v)
+                            AppConfig.webServiceWakeLock = v
                         }
                     )
                     SwitchSettingItem(
@@ -274,7 +274,7 @@ fun OtherConfigScreen(
                         checked = cronet,
                         onCheckedChange = { v ->
                             cronet = v
-                            context.putPrefBoolean(PreferKey.cronet, v)
+                            AppConfig.isCronet = v
                         }
                     )
                     SwitchSettingItem(
@@ -283,7 +283,7 @@ fun OtherConfigScreen(
                         checked = antiAlias,
                         onCheckedChange = { v ->
                             antiAlias = v
-                            context.putPrefBoolean(PreferKey.antiAlias, v)
+                            AppConfig.useAntiAlias = v
                         }
                     )
                     SwitchSettingItem(
@@ -292,7 +292,7 @@ fun OtherConfigScreen(
                         checked = replaceEnableDefault,
                         onCheckedChange = { v ->
                             replaceEnableDefault = v
-                            context.putPrefBoolean(PreferKey.replaceEnableDefault, v)
+                            AppConfig.replaceEnableDefault = v
                         }
                     )
                     SwitchSettingItem(
@@ -301,7 +301,7 @@ fun OtherConfigScreen(
                         checked = readAloudByMediaButton,
                         onCheckedChange = { v ->
                             readAloudByMediaButton = v
-                            context.putPrefBoolean(PreferKey.readAloudByMediaButton, v)
+                            AppConfig.readAloudByMediaButton = v
                         }
                     )
                     SwitchSettingItem(
@@ -310,7 +310,7 @@ fun OtherConfigScreen(
                         checked = ignoreAudioFocus,
                         onCheckedChange = { v ->
                             ignoreAudioFocus = v
-                            context.putPrefBoolean(PreferKey.ignoreAudioFocus, v)
+                            AppConfig.ignoreAudioFocus = v
                         }
                     )
                     SwitchSettingItem(
@@ -319,7 +319,7 @@ fun OtherConfigScreen(
                         checked = autoClearExpired,
                         onCheckedChange = { v ->
                             autoClearExpired = v
-                            context.putPrefBoolean(PreferKey.autoClearExpired, v)
+                            AppConfig.autoClearExpired = v
                         }
                     )
                     SwitchSettingItem(
@@ -328,7 +328,7 @@ fun OtherConfigScreen(
                         checked = showAddToShelfAlert,
                         onCheckedChange = { v ->
                             showAddToShelfAlert = v
-                            context.putPrefBoolean(PreferKey.showAddToShelfAlert, v)
+                            AppConfig.showAddToShelfAlert = v
                         }
                     )
                     SwitchSettingItem(
@@ -337,7 +337,7 @@ fun OtherConfigScreen(
                         checked = mediaButtonOnExit,
                         onCheckedChange = { v ->
                             mediaButtonOnExit = v
-                            context.putPrefBoolean("mediaButtonOnExit", v)
+                            AppConfig.mediaButtonOnExit = v
                         }
                     )
                     SwitchSettingItem(
@@ -346,7 +346,7 @@ fun OtherConfigScreen(
                         checked = recordHeapDump,
                         onCheckedChange = { v ->
                             recordHeapDump = v
-                            context.putPrefBoolean("recordHeapDump", v)
+                            AppConfig.recordHeapDump = v
                         }
                     )
                 }
@@ -360,7 +360,7 @@ fun OtherConfigScreen(
                         checked = showMangaUi,
                         onCheckedChange = { v ->
                             showMangaUi = v
-                            context.putPrefBoolean(PreferKey.showMangaUi, v)
+                            AppConfig.showMangaUi = v
                         }
                     )
                     ClickableSettingItem(
@@ -402,7 +402,7 @@ fun OtherConfigScreen(
                         description = stringResource(R.string.update_to_variant_summary),
                         onValueChange = { v ->
                             updateToVariant = v
-                            context.putPrefString("updateToVariant", v)
+                            AppConfig.updateToVariant = v
                         }
                     )
                     ClickableSettingItem(
@@ -447,7 +447,7 @@ fun OtherConfigScreen(
                         checked = processText,
                         onCheckedChange = { v ->
                             processText = v
-                            context.putPrefBoolean(PreferKey.processText, v)
+                            AppConfig.processText = v
                             val pm = context.packageManager
                             val cn = ComponentName(context, SharedReceiverActivity::class.java)
                             pm.setComponentEnabledSetting(cn,
@@ -462,7 +462,7 @@ fun OtherConfigScreen(
                         checked = recordLog,
                         onCheckedChange = { v ->
                             recordLog = v
-                            context.putPrefBoolean(PreferKey.recordLog, v)
+                            AppConfig.recordLog = v
                             LogUtils.upLevel()
                             LogUtils.logDeviceInfo()
                             LiveEventBus.config().enableLogger(v)

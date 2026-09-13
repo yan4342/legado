@@ -9,19 +9,45 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import io.legado.app.data.dao.AiArtifactDao
+import io.legado.app.data.dao.AiBookOutlineDao
+import io.legado.app.data.dao.AiChatDao
+import io.legado.app.data.dao.AiHtmlAppDao
+import io.legado.app.data.dao.AiCharacterCardDao
 import io.legado.app.data.dao.AiDictRuleDao
+import io.legado.app.data.dao.AiOutlineDao
+import io.legado.app.data.dao.AiPlanDao
+import io.legado.app.data.dao.AiTodoDao
+import io.legado.app.data.dao.AiMemoryTableDao
+import io.legado.app.data.dao.AiWritingPromptDao
+import io.legado.app.data.dao.AiStructuredDataSnapshotDao
+import io.legado.app.data.dao.AiWorldBookDao
+import io.legado.app.data.dao.AiWorkspaceDao
+import io.legado.app.data.dao.AiPromptPipelinePresetDao
+import io.legado.app.data.dao.AiPromptTemplateDao
+import io.legado.app.data.dao.AiWorldBookEntryDao
+import io.legado.app.data.dao.AiToolConfigDao
+import io.legado.app.data.dao.AiSkillDao
+import io.legado.app.data.dao.AiUsageRecordDao
+import io.legado.app.data.dao.AiMemoryDao
+import io.legado.app.data.dao.AiProfileDao
+import io.legado.app.data.dao.BookCharacterCastDao
 import io.legado.app.data.dao.BookChapterDao
 import io.legado.app.data.dao.BookDao
 import io.legado.app.data.dao.BookGroupDao
 import io.legado.app.data.dao.BookSourceDao
+import io.legado.app.data.dao.BookSourceVersionDao
 import io.legado.app.data.dao.BookmarkDao
 import io.legado.app.data.dao.CacheDao
+import io.legado.app.data.dao.ChapterSpeechDao
+import io.legado.app.data.dao.CloudTtsEngineDao
 import io.legado.app.data.dao.CookieDao
 import io.legado.app.data.dao.DictRuleDao
 import io.legado.app.data.dao.HttpTTSDao
 import io.legado.app.data.dao.KeyboardAssistsDao
 import io.legado.app.data.dao.DailyReadRecordDao
 import io.legado.app.data.dao.HourlyReadRecordDao
+import io.legado.app.data.dao.ReadAloudVoiceDao
 import io.legado.app.data.dao.ReadRecordDao
 import io.legado.app.data.dao.ReplaceRuleDao
 import io.legado.app.data.dao.RssArticleDao
@@ -33,20 +59,52 @@ import io.legado.app.data.dao.SearchBookDao
 import io.legado.app.data.dao.SearchKeywordDao
 import io.legado.app.data.dao.ServerDao
 import io.legado.app.data.dao.TxtTocRuleDao
+import io.legado.app.data.entities.AiArtifact
+import io.legado.app.data.entities.AiBookOutline
+import io.legado.app.data.entities.AiToolConfig
+import io.legado.app.data.entities.AiHtmlApp
+import io.legado.app.data.entities.AiSkill
+import io.legado.app.data.entities.AiCharacterCard
+import io.legado.app.data.entities.AiChatConversation
+import io.legado.app.data.entities.AiChatMessage
 import io.legado.app.data.entities.AiDictRule
+import io.legado.app.data.entities.AiMemory
+import io.legado.app.data.entities.AiMemoryTable
+import io.legado.app.data.entities.AiMemoryTableRow
+import io.legado.app.data.entities.AiOutline
+import io.legado.app.data.entities.AiPlan
+import io.legado.app.data.entities.AiTodo
+import io.legado.app.data.entities.AiPromptTemplate
+import io.legado.app.data.entities.AiPromptPipelinePreset
+import io.legado.app.data.entities.AiWorldBookEntry
+import io.legado.app.data.entities.AiModelProfile
+import io.legado.app.data.entities.AiProviderProfile
+import io.legado.app.data.entities.AiTaskPreset
+import io.legado.app.data.entities.AiUsageRecord
+import io.legado.app.data.entities.AiStructuredDataSnapshot
+import io.legado.app.data.entities.AiWritingPrompt
+import io.legado.app.data.entities.AiWorldBook
+import io.legado.app.data.entities.AiWorkspace
 import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookCharacterCast
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookVoiceBindingEntity
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.BookSourcePart
+import io.legado.app.data.entities.BookSourceVersion
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.data.entities.Cache
+import io.legado.app.data.entities.ChapterSpeechAnalysisEntity
+import io.legado.app.data.entities.ChapterSpeechSegmentEntity
+import io.legado.app.data.entities.CloudTtsEngineEntity
 import io.legado.app.data.entities.Cookie
 import io.legado.app.data.entities.DictRule
 import io.legado.app.data.entities.HttpTTS
 import io.legado.app.data.entities.KeyboardAssist
 import io.legado.app.data.entities.DailyReadRecord
 import io.legado.app.data.entities.HourlyReadRecord
+import io.legado.app.data.entities.ReadAloudVoiceEntity
 import io.legado.app.data.entities.ReadRecord
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.data.entities.RssArticle
@@ -75,14 +133,26 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 81,
+    version = 108,
     exportSchema = true,
     entities = [Book::class, BookGroup::class, BookSource::class, BookChapter::class,
         ReplaceRule::class, SearchBook::class, SearchKeyword::class, Cookie::class,
         RssSource::class, Bookmark::class, RssArticle::class, RssReadRecord::class,
         RssStar::class, TxtTocRule::class, ReadRecord::class, HttpTTS::class, Cache::class,
         RuleSub::class, DictRule::class, AiDictRule::class, KeyboardAssist::class, Server::class,
-        DailyReadRecord::class, HourlyReadRecord::class],
+        DailyReadRecord::class, HourlyReadRecord::class,
+        AiProviderProfile::class, AiModelProfile::class, AiTaskPreset::class,
+        AiArtifact::class, AiCharacterCard::class, AiChatConversation::class, AiChatMessage::class,
+        AiMemory::class, AiWritingPrompt::class, AiWorldBook::class, AiToolConfig::class,
+        AiSkill::class,
+        AiMemoryTable::class, AiMemoryTableRow::class, AiPromptTemplate::class, AiOutline::class,
+        AiPlan::class,
+        AiTodo::class,
+        AiUsageRecord::class, AiStructuredDataSnapshot::class, AiWorkspace::class,
+        AiPromptPipelinePreset::class, AiWorldBookEntry::class, BookSourceVersion::class,
+        BookCharacterCast::class, ReadAloudVoiceEntity::class, BookVoiceBindingEntity::class,
+        ChapterSpeechAnalysisEntity::class, ChapterSpeechSegmentEntity::class,
+        CloudTtsEngineEntity::class, AiBookOutline::class, AiHtmlApp::class],
     views = [BookSourcePart::class],
     autoMigrations = [
         AutoMigration(from = 43, to = 44),
@@ -119,6 +189,20 @@ val appDb by lazy {
         AutoMigration(from = 74, to = 75),
         AutoMigration(from = 75, to = 76),
         AutoMigration(from = 80, to = 81),
+        AutoMigration(from = 81, to = 82),
+        AutoMigration(from = 83, to = 84),
+        AutoMigration(from = 84, to = 85),
+        AutoMigration(from = 85, to = 86),
+        AutoMigration(from = 86, to = 87),
+        AutoMigration(from = 87, to = 88),
+        AutoMigration(from = 88, to = 89),
+        AutoMigration(from = 89, to = 90),
+        AutoMigration(from = 90, to = 91),
+        AutoMigration(from = 91, to = 92),
+        AutoMigration(from = 92, to = 93),
+        AutoMigration(from = 93, to = 94),
+        AutoMigration(from = 94, to = 95),
+        AutoMigration(from = 105, to = 106),
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -126,6 +210,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract val bookDao: BookDao
     abstract val bookGroupDao: BookGroupDao
     abstract val bookSourceDao: BookSourceDao
+    abstract val bookSourceVersionDao: BookSourceVersionDao
     abstract val bookChapterDao: BookChapterDao
     abstract val replaceRuleDao: ReplaceRuleDao
     abstract val searchBookDao: SearchBookDao
@@ -147,6 +232,31 @@ abstract class AppDatabase : RoomDatabase() {
     abstract val aiDictRuleDao: AiDictRuleDao
     abstract val keyboardAssistsDao: KeyboardAssistsDao
     abstract val serverDao: ServerDao
+    abstract val aiProfileDao: AiProfileDao
+    abstract val aiArtifactDao: AiArtifactDao
+    abstract val aiChatDao: AiChatDao
+    abstract val aiHtmlAppDao: AiHtmlAppDao
+    abstract val aiMemoryDao: AiMemoryDao
+    abstract val aiCharacterCardDao: AiCharacterCardDao
+    abstract val aiWritingPromptDao: AiWritingPromptDao
+    abstract val aiWorldBookDao: AiWorldBookDao
+    abstract val aiToolConfigDao: AiToolConfigDao
+    abstract val aiSkillDao: AiSkillDao
+    abstract val aiMemoryTableDao: AiMemoryTableDao
+    abstract val aiPromptTemplateDao: AiPromptTemplateDao
+    abstract val aiOutlineDao: AiOutlineDao
+    abstract val aiPlanDao: AiPlanDao
+    abstract val aiTodoDao: AiTodoDao
+    abstract val aiBookOutlineDao: AiBookOutlineDao
+    abstract val aiUsageRecordDao: AiUsageRecordDao
+    abstract val aiStructuredDataSnapshotDao: AiStructuredDataSnapshotDao
+    abstract val aiWorkspaceDao: AiWorkspaceDao
+    abstract val aiPromptPipelinePresetDao: AiPromptPipelinePresetDao
+    abstract val aiWorldBookEntryDao: AiWorldBookEntryDao
+    abstract val bookCharacterCastDao: BookCharacterCastDao
+    abstract val readAloudVoiceDao: ReadAloudVoiceDao
+    abstract val chapterSpeechDao: ChapterSpeechDao
+    abstract val cloudTtsEngineDao: CloudTtsEngineDao
 
     companion object {
 
@@ -249,6 +359,27 @@ abstract class AppDatabase : RoomDatabase() {
                             )
                         }
                     }
+                }
+                // Default writing prompt templates
+                AiWritingPrompt.seedDefaults(db)
+                // Ensure existing prompts and world books have enabled=1 (fixes rows where migration left NULL)
+                db.execSQL("UPDATE ai_writing_prompts SET enabled = 1 WHERE enabled IS NULL")
+                db.execSQL("UPDATE ai_world_books SET enabled = 1 WHERE enabled IS NULL")
+                io.legado.app.domain.prompt.PromptPipelineDefaults.allPresets().forEach { preset ->
+                    val blocksJson = io.legado.app.utils.PromptPipelineCodec.encodeBlocks(preset.blocks)
+                    db.execSQL(
+                        """INSERT OR IGNORE INTO ai_prompt_pipeline_presets
+                            (id, name, mode, blocksJson, isDefault, updatedAt)
+                            VALUES (?, ?, ?, ?, ?, ?)""",
+                        arrayOf<Any?>(
+                            preset.id,
+                            preset.name,
+                            preset.mode,
+                            blocksJson,
+                            if (preset.isDefault) 1 else 0,
+                            preset.updatedAt,
+                        ),
+                    )
                 }
             }
         }

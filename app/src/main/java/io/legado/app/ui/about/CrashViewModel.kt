@@ -25,6 +25,9 @@ class CrashViewModel(application: Application) : BaseViewModel(application) {
     private val _fileContent = MutableStateFlow<String?>(null)
     val fileContent: StateFlow<String?> = _fileContent.asStateFlow()
 
+    private val _initialized = MutableStateFlow(false)
+    val initialized: StateFlow<Boolean> = _initialized.asStateFlow()
+
     var currentFileName: String? = null
         private set
 
@@ -51,6 +54,8 @@ class CrashViewModel(application: Application) : BaseViewModel(application) {
             return@execute list.sortedByDescending { it.name }.distinctBy { it.name }
         }.onSuccess {
             _logList.value = it
+        }.onFinally {
+            _initialized.value = true
         }
     }
 

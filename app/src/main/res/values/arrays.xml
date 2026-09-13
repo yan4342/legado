@@ -12,6 +12,14 @@
 		<item>File</item>
 	</string-array>
 
+	<string-array name="layout_type">
+		<item>List</item>
+		<item>Single Column</item>
+		<item>Two Columns</item>
+		<item>Waterfall</item>
+		<item>Three Columns</item>
+	</string-array>
+
 	<string-array name="group_style">
 		<item>Tab</item>
 		<item>Folder</item>

@@ -20,11 +20,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import io.legado.app.ui.common.compose.rememberLegadoBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,9 +50,10 @@ import io.legado.app.ui.widget.dialog.rememberDelayedDismiss
 fun DictSheetScreen(
     word: String,
     onDismiss: () -> Unit,
+    dictSearchContext: DictSearchContext = DictSearchContext(),
     dictViewModel: DictViewModel = koinViewModel()
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberLegadoBottomSheetState(skipPartiallyExpanded = false)
     val requestDismiss = rememberDelayedDismiss(sheetState, onDismiss)
 
     var tabs by remember { mutableStateOf<List<DictTab>>(emptyList()) }
@@ -58,16 +61,57 @@ fun DictSheetScreen(
     var isLoading by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var uncachedCount by remember { mutableIntStateOf(0) }
+    var fetchingNetwork by remember { mutableStateOf(false) }
+    var streamingText by remember { mutableStateOf("") }
+    var selectedPresetKey by remember { mutableStateOf("default") }
 
-    fun doSearch(index: Int) {
-        if (index !in tabs.indices) return
+    val selectedTab: DictTab? = tabs.getOrNull(selectedIndex)
+
+    fun currentPreset(): DictPromptPreset =
+        DictPromptPresets.firstOrNull { it.key == selectedPresetKey } ?: DictPromptPresets.first()
+
+    fun doSearch(index: Int, preset: DictPromptPreset, useNetwork: Boolean = false) {
+        val tab = tabs.getOrNull(index) ?: return
         selectedIndex = index
+        selectedPresetKey = preset.key
         isLoading = true
         error = null
         result = ""
-        dictViewModel.search(tabs[index], word) { r ->
+        streamingText = ""
+        uncachedCount = 0
+        val onResult: (DictSearchResult) -> Unit = { r ->
             isLoading = false
-            result = r
+            streamingText = ""
+            result = r.text
+            uncachedCount = r.uncachedChapterCount
+        }
+        dictViewModel.search(
+            tab = tab,
+            word = word,
+            context = dictSearchContext,
+            preset = preset,
+            allowNetworkFetch = useNetwork,
+            onPartial = { partial ->
+                streamingText = partial
+            },
+            onFinally = onResult,
+        )
+    }
+
+    fun onTabSelected(index: Int) {
+        if (index == selectedIndex && !isLoading) return
+        selectedIndex = index
+        // 网页词典保持"点标签即搜"，AI 词典等待用户选择预设
+        val tab = tabs.getOrNull(index)
+        if (tab is DictTab.Web) {
+            doSearch(index, currentPreset())
+        } else {
+            isLoading = false
+            error = null
+            result = ""
+            streamingText = ""
+            uncachedCount = 0
         }
     }
 
@@ -75,7 +119,10 @@ fun DictSheetScreen(
         dictViewModel.initData { loadedTabs ->
             tabs = loadedTabs
             if (loadedTabs.isNotEmpty()) {
-                doSearch(0)
+                // 首标签若是网页词典，沿用旧行为自动搜索；AI 词典则不自动搜索
+                if (loadedTabs.first() is DictTab.Web) {
+                    doSearch(0, currentPreset())
+                }
             }
         }
     }
@@ -97,68 +144,120 @@ fun DictSheetScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
         } else {
-            // Tab row
-            LazyRow(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(tabs.size) { index ->
-                    val tab = tabs[index]
-                    FilterChip(
-                        selected = index == selectedIndex,
-                        onClick = { doSearch(index) },
-                        label = { Text(tab.name) },
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(
-                                    when (tab) {
-                                        is DictTab.Web -> R.drawable.ic_translate
-                                        is DictTab.Ai -> R.drawable.ic_web_outline
-                                    }
-                                ),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        },
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // Content area
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .padding(horizontal = 16.dp),
-            ) {
-                when {
-                    isLoading -> CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-
-                    error != null -> Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            text = error!!,
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center,
+                // Tab row
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(tabs.size) { index ->
+                        val tab = tabs[index]
+                        FilterChip(
+                            selected = index == selectedIndex,
+                            onClick = { onTabSelected(index) },
+                            label = { Text(tab.name) },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(
+                                        when (tab) {
+                                            is DictTab.Web -> R.drawable.ic_translate
+                                            is DictTab.Ai -> R.drawable.ic_web_outline
+                                        }
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            },
                         )
-                        TextButton(onClick = { doSearch(selectedIndex) }) {
-                            Text("重试")
+                    }
+                }
+
+                // AI 词典：预设选择行，点击预设才开始搜索
+                if (selectedTab is DictTab.Ai) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(DictPromptPresets) { preset ->
+                                FilterChip(
+                                    selected = selectedPresetKey == preset.key,
+                                    onClick = { doSearch(selectedIndex, preset) },
+                                    label = { Text(preset.displayName) },
+                                )
+                            }
+                        }
+                        if (!isLoading && result.isBlank() && error == null) {
+                            Text(
+                                text = "选择预设开始查询",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
+                }
 
-                    result.isNotBlank() -> {
-                        val scrollState = rememberScrollState()
-                        Column(
-                            modifier = Modifier.verticalScroll(scrollState),
+                // 未缓存网络章节提示 + 联网补搜
+                if (uncachedCount > 0 && !fetchingNetwork) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = "检测到 $uncachedCount 章未缓存",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        TextButton(
+                            onClick = { doSearch(selectedIndex, currentPreset(), useNetwork = true) },
+                            enabled = !isLoading,
                         ) {
+                            Text("联网搜索更多")
+                        }
+                    }
+                }
+
+                HorizontalDivider(
+                    color = LocalContentColor.current.copy(alpha = 0.15f),
+                )
+
+                // Content area
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .padding(bottom = 8.dp),
+                ) {
+                    val streamScrollState = rememberScrollState()
+                    when {
+                        isLoading && streamingText.isBlank() -> Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            CircularProgressIndicator()
+                            if (fetchingNetwork) {
+                                Spacer(Modifier.height(12.dp))
+                                Text(
+                                    text = "正在联网搜索未缓存章节...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+
+                        isLoading && streamingText.isNotBlank() -> Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(streamScrollState),
+                        ) {
+                            // 流式输出中：以轻量 markdown→html 方式渐进渲染
                             AndroidView(
                                 factory = { ctx ->
                                     TextView(ctx).apply {
@@ -170,15 +269,76 @@ fun DictSheetScreen(
                                 },
                                 update = { tv ->
                                     @Suppress("DEPRECATION")
-                                    tv.text = Html.fromHtml(result, 0)
+                                    tv.text = Html.fromHtml(partialToHtml(streamingText), 0)
                                 },
                             )
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                                Text(
+                                    text = "正在生成...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+
+                        error != null -> Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = error!!,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            TextButton(onClick = { doSearch(selectedIndex, currentPreset()) }) {
+                                Text("重试")
+                            }
+                        }
+
+                        result.isNotBlank() -> {
+                            val scrollState = rememberScrollState()
+                            Column(
+                                modifier = Modifier.verticalScroll(scrollState),
+                            ) {
+                                AndroidView(
+                                    factory = { ctx ->
+                                        TextView(ctx).apply {
+                                            setTextIsSelectable(true)
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                                setTextClassifier(TextClassifier.NO_OP)
+                                            }
+                                        }
+                                    },
+                                    update = { tv ->
+                                        @Suppress("DEPRECATION")
+                                        tv.text = Html.fromHtml(result, 0)
+                                    },
+                                )
+                            }
                         }
                     }
                 }
             }
         }
-
-        Spacer(Modifier.height(16.dp))
     }
+}
+
+/**
+ * 流式期间按未完成的 Markdown 渐进渲染（最终结果仍由 [AiDictRule] 统一转换）。
+ */
+private fun partialToHtml(text: String): String {
+    return text
+        .replace(Regex("\\*\\*(.+?)\\*\\*"), "<b>$1</b>")
+        .replace(Regex("\\*(.+?)\\*"), "<i>$1</i>")
+        .replace("\n\n", "<br><br>")
+        .replace("\n", "<br>")
 }

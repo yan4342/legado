@@ -352,6 +352,32 @@ object CacheBook {
                 }
                 return
             }
+            if (BookHelp.isReChaptered(chapter)) {
+                // 重新分章合并章:按映射重下缺失的原子页并重新拼接
+                Coroutine.async(scope, context, executeContext = context) {
+                    BookHelp.downloadMappedContent(bookSource, book, chapter)
+                }.onSuccess { content ->
+                    if (content == null) {
+                        onPreError(chapter, RuntimeException("正文缓存不完整"))
+                        delay(1000)
+                        onPostError(chapter, RuntimeException("正文缓存不完整"))
+                    } else {
+                        BookHelp.saveImages(bookSource, book, chapter, content, 1)
+                        onSuccess(chapter)
+                    }
+                }.onError {
+                    onPreError(chapter, it)
+                    delay(1000)
+                    onPostError(chapter, it)
+                }.onCancel {
+                    onCancel(chapterIndex)
+                }.onFinally {
+                    onFinally()
+                }.let {
+                    tasks.add(it)
+                }
+                return
+            }
             WebBook.getContent(
                 scope,
                 bookSource,
@@ -384,6 +410,17 @@ object CacheBook {
                 waitDownloadSet.remove(chapter.index)
             }
             try {
+                if (BookHelp.isReChaptered(chapter)) {
+                    val content = BookHelp.downloadMappedContent(bookSource, book, chapter)
+                    if (content == null) {
+                        onError(chapter, RuntimeException("正文缓存不完整"))
+                        return "获取正文失败\n正文缓存不完整"
+                    }
+                    onSuccess(chapter)
+                    ReadBook.downloadedChapters.add(chapter.index)
+                    ReadBook.downloadFailChapters.remove(chapter.index)
+                    return content
+                }
                 val content = WebBook.getContentAwait(bookSource, book, chapter)
                 onSuccess(chapter)
                 ReadBook.downloadedChapters.add(chapter.index)
@@ -414,6 +451,35 @@ object CacheBook {
             }
             onDownloadSet.add(chapter.index)
             waitDownloadSet.remove(chapter.index)
+            if (BookHelp.isReChaptered(chapter)) {
+                // 重新分章合并章:按映射重下缺失的原子页并重新拼接
+                Coroutine.async(scope, executeContext = IO, semaphore = semaphore) {
+                    BookHelp.downloadMappedContent(bookSource, book, chapter)
+                }.onSuccess { content ->
+                    if (content == null) {
+                        onError(chapter, RuntimeException("正文缓存不完整"))
+                        ReadBook.downloadFailChapters[chapter.index] =
+                            (ReadBook.downloadFailChapters[chapter.index] ?: 0) + 1
+                        downloadFinish(chapter, "获取正文失败\n正文缓存不完整", resetPageOffset)
+                    } else {
+                        onSuccess(chapter)
+                        ReadBook.downloadedChapters.add(chapter.index)
+                        ReadBook.downloadFailChapters.remove(chapter.index)
+                        downloadFinish(chapter, content, resetPageOffset)
+                    }
+                }.onError {
+                    onError(chapter, it)
+                    ReadBook.downloadFailChapters[chapter.index] =
+                        (ReadBook.downloadFailChapters[chapter.index] ?: 0) + 1
+                    downloadFinish(chapter, "获取正文失败\n${it.localizedMessage}", resetPageOffset)
+                }.onCancel {
+                    onCancel(chapter.index)
+                    downloadFinish(chapter, "download canceled", resetPageOffset, true)
+                }.onFinally {
+                    postEvent(EventBus.UP_DOWNLOAD, book.bookUrl)
+                }.start()
+                return
+            }
             WebBook.getContent(
                 scope,
                 bookSource,

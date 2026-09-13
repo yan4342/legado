@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
+import io.legado.app.R
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
@@ -16,6 +17,7 @@ import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.model.BookCover
+import io.legado.app.ui.ai.chat.html.AiChatHtmlThemeStore
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.LogUtils
@@ -78,6 +80,34 @@ object Backup {
             "keyboardAssists.json",
             "dictRule.json",
             "aiDictRule.json",
+            "aiChatConversation.json",
+            "aiChatMessage.json",
+            "aiCharacterCard.json",
+            "aiWritingPrompt.json",
+            "aiProviderProfile.json",
+            "aiModelProfile.json",
+            "aiTaskPreset.json",
+            "aiArtifact.json",
+            "aiMemory.json",
+            "aiWorldBook.json",
+            "aiMemoryTable.json",
+            "aiMemoryTableRow.json",
+            "aiOutline.json",
+            "aiPromptTemplate.json",
+            "aiToolConfig.json",
+            "aiSkill.json",
+            "aiUsageRecord.json",
+            "aiWorkspace.json",
+            "aiStructuredDataSnapshot.json",
+            "aiPromptPipelinePreset.json",
+            "aiWorldBookEntry.json",
+            "bookSourceVersion.json",
+            "bookCharacterCast.json",
+            "readAloudVoices.json",
+            "bookVoiceBindings.json",
+            "chapterSpeechAnalysis.json",
+            "chapterSpeechSegments.json",
+            "cloudTtsEngines.json",
             "servers.json",
             DirectLinkUpload.ruleFileName,
             ReadBookConfig.configFileName,
@@ -111,14 +141,20 @@ object Backup {
                     if (shouldBackup()) {
                         val backupZipFileName = getNowZipFileName()
                         if (!AppWebDav.hasBackUp(backupZipFileName)) {
-                            backup(context, AppConfig.backupPath)
+                            val backupPath = AppConfig.backupPath
+                            backup(
+                                context,
+                                backupPath,
+                                toLocal = !backupPath.isNullOrBlank(),
+                                toWebDav = true,
+                            )
                         } else {
                             LocalConfig.lastBackup = System.currentTimeMillis()
                         }
                     }
                 }
             }.onError {
-                AppLog.put("自动备份失败\n${it.localizedMessage}")
+                AppLog.put("自动备份失败: ${it.localizedMessage}", it)
             }
         }
     }
@@ -132,6 +168,9 @@ object Backup {
     }
 
     suspend fun backupLocalLocked(context: Context, path: String?) {
+        if (path.isNullOrBlank()) {
+            throw NoStackTraceException(appCtx.getString(R.string.select_backup_path))
+        }
         mutex.withLock {
             withContext(IO) {
                 backup(context, path, toLocal = true, toWebDav = false)
@@ -154,7 +193,6 @@ object Backup {
         toWebDav: Boolean = true
     ) {
         LogUtils.d(TAG, "开始备份 path:$path")
-        LocalConfig.lastBackup = System.currentTimeMillis()
         val aes = BackupAES()
         FileUtils.delete(backupPath)
         writeListToJson(appDb.bookDao.all, "bookshelf.json", backupPath)
@@ -174,6 +212,34 @@ object Backup {
         writeListToJson(appDb.keyboardAssistsDao.all, "keyboardAssists.json", backupPath)
         writeListToJson(appDb.dictRuleDao.all, "dictRule.json", backupPath)
         writeListToJson(appDb.aiDictRuleDao.all, "aiDictRule.json", backupPath)
+        writeListToJson(appDb.aiChatDao.getAllConversations(), "aiChatConversation.json", backupPath)
+        writeListToJson(appDb.aiChatDao.getAllMessages(), "aiChatMessage.json", backupPath)
+        writeListToJson(appDb.aiCharacterCardDao.all, "aiCharacterCard.json", backupPath)
+        writeListToJson(appDb.aiWritingPromptDao.all, "aiWritingPrompt.json", backupPath)
+        writeListToJson(appDb.aiProfileDao.getAllProviders(), "aiProviderProfile.json", backupPath)
+        writeListToJson(appDb.aiProfileDao.getAllModels(), "aiModelProfile.json", backupPath)
+        writeListToJson(appDb.aiProfileDao.getAllPresets(), "aiTaskPreset.json", backupPath)
+        writeListToJson(appDb.aiArtifactDao.all, "aiArtifact.json", backupPath)
+        writeListToJson(appDb.aiMemoryDao.all, "aiMemory.json", backupPath)
+        writeListToJson(appDb.aiWorldBookDao.all, "aiWorldBook.json", backupPath)
+        writeListToJson(appDb.aiMemoryTableDao.getAllTables(), "aiMemoryTable.json", backupPath)
+        writeListToJson(appDb.aiMemoryTableDao.getAllRows(), "aiMemoryTableRow.json", backupPath)
+        writeListToJson(appDb.aiOutlineDao.getAll(), "aiOutline.json", backupPath)
+        writeListToJson(appDb.aiPromptTemplateDao.getAll(), "aiPromptTemplate.json", backupPath)
+        writeListToJson(appDb.aiToolConfigDao.getAll(), "aiToolConfig.json", backupPath)
+        writeListToJson(appDb.aiSkillDao.getAll(), "aiSkill.json", backupPath)
+        writeListToJson(appDb.aiUsageRecordDao.all, "aiUsageRecord.json", backupPath)
+        writeListToJson(appDb.aiWorkspaceDao.getAll(), "aiWorkspace.json", backupPath)
+        writeListToJson(appDb.aiStructuredDataSnapshotDao.getAll(), "aiStructuredDataSnapshot.json", backupPath)
+        writeListToJson(appDb.aiPromptPipelinePresetDao.getAll(), "aiPromptPipelinePreset.json", backupPath)
+        writeListToJson(appDb.aiWorldBookEntryDao.getAll(), "aiWorldBookEntry.json", backupPath)
+        writeListToJson(appDb.bookSourceVersionDao.getAll(), "bookSourceVersion.json", backupPath)
+        writeListToJson(appDb.bookCharacterCastDao.getAll(), "bookCharacterCast.json", backupPath)
+        writeListToJson(appDb.readAloudVoiceDao.getAllVoices(), "readAloudVoices.json", backupPath)
+        writeListToJson(appDb.readAloudVoiceDao.getAllBindings(), "bookVoiceBindings.json", backupPath)
+        writeListToJson(appDb.chapterSpeechDao.getAllAnalyses(), "chapterSpeechAnalysis.json", backupPath)
+        writeListToJson(appDb.chapterSpeechDao.getAllSegments(), "chapterSpeechSegments.json", backupPath)
+        writeListToJson(appDb.cloudTtsEngineDao.getAll(), "cloudTtsEngines.json", backupPath)
         GSON.toJson(appDb.serverDao.all).let { json ->
             aes.runCatching {
                 encryptBase64(json)
@@ -228,8 +294,18 @@ object Backup {
             edit.commit()
         }
         currentCoroutineContext().ensureActive()
+        //备份AI聊天HTML主题（用户包目录）
+        runCatching {
+            val themesDir = File(appCtx.filesDir, AiChatHtmlThemeStore.USER_THEMES_DIR)
+            if (themesDir.isDirectory) {
+                FileUtils.copy(themesDir, File(backupPath, AiChatHtmlThemeStore.USER_THEMES_DIR))
+            }
+        }.onFailure {
+            AppLog.put("备份AI聊天HTML主题失败: ${it.localizedMessage}", it)
+        }
         val zipFileName = getNowZipFileName()
         val paths = arrayListOf(*backupFileNames)
+        paths.add(AiChatHtmlThemeStore.USER_THEMES_DIR)
         for (i in 0 until paths.size) {
             paths[i] = backupPath + File.separator + paths[i]
         }
@@ -240,30 +316,31 @@ object Backup {
         } else {
             zipFileName
         }
-        if (ZipUtils.zipFiles(paths, zipFilePath)) {
-            if (toLocal) {
-                when {
-                    path.isNullOrBlank() -> {
-                        copyBackup(context.getExternalFilesDir(null)!!, backupFileName)
-                    }
-
-                    path.isContentScheme() -> {
-                        copyBackup(context, path.toUri(), backupFileName)
-                    }
-
-                    else -> {
-                        copyBackup(File(path), backupFileName)
-                    }
+        if (!ZipUtils.zipFiles(paths, zipFilePath)) {
+            throw NoStackTraceException("压缩备份文件失败")
+        }
+        if (toLocal && !path.isNullOrBlank()) {
+            when {
+                path.isContentScheme() -> {
+                    copyBackup(context, path.toUri(), backupFileName)
                 }
-            }
-            if (toWebDav) {
-                try {
-                    AppWebDav.backUpWebDav(zipFileName)
-                } catch (e: Exception) {
-                    AppLog.put("上传备份至webdav失败\n$e", e)
+
+                else -> {
+                    copyBackup(File(path), backupFileName)
                 }
             }
         }
+        if (toWebDav) {
+            try {
+                AppWebDav.backUpWebDav(zipFileName)
+            } catch (e: Exception) {
+                AppLog.put("上传备份文件到WebDav失败: $zipFileName\n${e.localizedMessage}", e)
+                if (!toLocal) {
+                    throw e
+                }
+            }
+        }
+        LocalConfig.lastBackup = System.currentTimeMillis()
         FileUtils.delete(backupPath)
         FileUtils.delete(zipFilePath)
         currentCoroutineContext().ensureActive()
@@ -299,12 +376,16 @@ object Backup {
     @Throws(Exception::class)
     @Suppress("SameParameterValue")
     private fun copyBackup(context: Context, uri: Uri, fileName: String) {
-        val treeDoc = DocumentFile.fromTreeUri(context, uri)!!
+        val treeDoc = DocumentFile.fromTreeUri(context, uri)
+            ?: throw NoStackTraceException("无法访问备份目录，请重新选择备份路径")
+        if (!treeDoc.canWrite()) {
+            throw NoStackTraceException("备份目录没有写入权限，请重新选择备份路径")
+        }
         treeDoc.findFile(fileName)?.delete()
         val fileDoc = treeDoc.createFile("", fileName)
-            ?: throw NoStackTraceException("创建文件失败")
+            ?: throw NoStackTraceException("创建备份文件失败")
         val outputS = fileDoc.openOutputStream()
-            ?: throw NoStackTraceException("打开OutputStream失败")
+            ?: throw NoStackTraceException("打开备份文件失败")
         outputS.use {
             FileInputStream(zipFilePath).use { inputS ->
                 inputS.copyTo(outputS)
@@ -315,8 +396,20 @@ object Backup {
     @Throws(Exception::class)
     @Suppress("SameParameterValue")
     private fun copyBackup(rootFile: File, fileName: String) {
+        val dir = when {
+            rootFile.isDirectory -> rootFile
+            rootFile.isFile -> throw NoStackTraceException("备份路径不能是文件: ${rootFile.path}")
+            rootFile.mkdirs() || rootFile.isDirectory -> rootFile
+            else -> throw NoStackTraceException("无法创建备份目录: ${rootFile.path}")
+        }
+        if (!dir.canWrite()) {
+            throw NoStackTraceException("备份目录没有写入权限: ${dir.path}")
+        }
         FileInputStream(File(zipFilePath)).use { inputS ->
-            val file = FileUtils.createFileIfNotExist(rootFile, fileName)
+            val file = FileUtils.createFileIfNotExist(dir, fileName)
+            if (!file.exists()) {
+                throw NoStackTraceException("创建备份文件失败: ${file.path}")
+            }
             FileOutputStream(file).use { outputS ->
                 inputS.copyTo(outputS)
             }

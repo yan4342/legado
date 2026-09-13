@@ -12,6 +12,7 @@ object MainIntent {
     const val EXTRA_BOOK_NAME = "name"
     const val EXTRA_BOOK_AUTHOR = "author"
     const val EXTRA_BOOK_URL = "bookUrl"
+    const val EXTRA_FOCUS_CHARACTER_ID = "focusCharacterId"
     const val EXTRA_BOOK_ORIGIN = "origin"
     const val EXTRA_BOOK_COVER = "coverPath"
     const val EXTRA_READ_ALOUD = "readAloud"
@@ -61,6 +62,48 @@ object MainIntent {
     fun createBookCacheManageIntent(context: Context): Intent {
         return createLauncherIntent(context).apply {
             putExtra(EXTRA_START_ROUTE, MainRouteConst.ROUTE_BOOK_CACHE_MANAGE)
+        }
+    }
+
+    fun createBookVoiceCastingIntent(context: Context, bookUrl: String): Intent {
+        return createLauncherIntent(context).apply {
+            putExtra(EXTRA_START_ROUTE, MainRouteConst.ROUTE_BOOK_VOICE_CASTING)
+            putExtra(EXTRA_BOOK_URL, bookUrl)
+        }
+    }
+
+    fun createBookCharacterNetworkIntent(
+        context: Context,
+        bookUrl: String,
+        focusCharacterId: String? = null,
+    ): Intent {
+        return createLauncherIntent(context).apply {
+            putExtra(EXTRA_START_ROUTE, MainRouteConst.ROUTE_BOOK_CHARACTER_NETWORK)
+            putExtra(EXTRA_BOOK_URL, bookUrl)
+            focusCharacterId?.takeIf { it.isNotBlank() }?.let {
+                putExtra(EXTRA_FOCUS_CHARACTER_ID, it)
+            }
+        }
+    }
+
+    fun createBookCharacterListIntent(context: Context, bookUrl: String): Intent {
+        return Intent(context, MainActivity::class.java).apply {
+            putExtra(EXTRA_START_ROUTE, MainRouteConst.ROUTE_BOOK_CHARACTER_LIST)
+            putExtra(EXTRA_BOOK_URL, bookUrl)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+    }
+
+    fun createCloudTtsIntent(context: Context, bookUrl: String? = null): Intent {
+        return createLauncherIntent(context).apply {
+            putExtra(EXTRA_START_ROUTE, MainRouteConst.ROUTE_CLOUD_TTS)
+            bookUrl?.let { putExtra(EXTRA_BOOK_URL, it) }
+        }
+    }
+
+    fun createReadAloudPlayerIntent(context: Context): Intent {
+        return createLauncherIntent(context).apply {
+            putExtra(EXTRA_START_ROUTE, MainRouteConst.ROUTE_READ_ALOUD_PLAYER)
         }
     }
 

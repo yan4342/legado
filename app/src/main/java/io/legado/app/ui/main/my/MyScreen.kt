@@ -29,6 +29,8 @@ fun MyScreen(
     onReplaceManage: () -> Unit,
     onDictRuleManage: () -> Unit,
     onAiDictRuleManage: () -> Unit,
+    onNavigateToAiSettings: () -> Unit,
+    onNavigateToChat: () -> Unit,
     onBookmark: () -> Unit,
     onReadRecord: () -> Unit,
     onBackupRestore: () -> Unit,
@@ -77,10 +79,26 @@ fun MyScreen(
                     onClick = onDictRuleManage,
                 )
                 ClickableSettingItem(
+                    title = stringResource(R.string.ai_config),
+                    painter = painterResource(R.drawable.ic_ai_setting),
+                    onClick = onNavigateToAiSettings,
+                )
+                ClickableSettingItem(
                     title = stringResource(R.string.ai_dict_rule),
                     description = stringResource(R.string.config_ai_dict_rule),
-                    painter = painterResource(R.drawable.ic_web_outline),
+                    painter = painterResource(R.drawable.ic_ai_dictionary_rule),
                     onClick = onAiDictRuleManage,
+                )
+            }
+        }
+
+        // AI
+        item {
+            CategorySection("AI") {
+                ClickableSettingItem(
+                    title = stringResource(R.string.ai_chat),
+                    painter = painterResource(R.drawable.ic_ai_chat),
+                    onClick = onNavigateToChat,
                 )
             }
         }

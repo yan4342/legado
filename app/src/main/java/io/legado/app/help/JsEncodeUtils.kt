@@ -1,12 +1,12 @@
 package io.legado.app.help
 
 import android.util.Base64
-import cn.hutool.crypto.digest.DigestUtil
-import cn.hutool.crypto.digest.HMac
-import cn.hutool.crypto.symmetric.SymmetricCrypto
 import io.legado.app.help.crypto.AsymmetricCrypto
 import io.legado.app.help.crypto.Sign
 import io.legado.app.help.crypto.SymmetricCryptoAndroid
+import io.legado.app.help.crypto.digest
+import io.legado.app.help.crypto.hmac
+import io.legado.app.help.crypto.toHexString
 import io.legado.app.utils.MD5Utils
 
 
@@ -43,7 +43,7 @@ interface JsEncodeUtils {
         transformation: String,
         key: ByteArray?,
         iv: ByteArray?
-    ): SymmetricCrypto {
+    ): SymmetricCryptoAndroid {
         val symmetricCrypto = SymmetricCryptoAndroid(transformation, key)
         return if (iv != null && iv.isNotEmpty()) symmetricCrypto.setIv(iv) else symmetricCrypto
     }
@@ -51,14 +51,14 @@ interface JsEncodeUtils {
     fun createSymmetricCrypto(
         transformation: String,
         key: ByteArray
-    ): SymmetricCrypto {
+    ): SymmetricCryptoAndroid {
         return createSymmetricCrypto(transformation, key, null)
     }
 
     fun createSymmetricCrypto(
         transformation: String,
         key: String
-    ): SymmetricCrypto {
+    ): SymmetricCryptoAndroid {
         return createSymmetricCrypto(transformation, key, null)
     }
 
@@ -66,7 +66,7 @@ interface JsEncodeUtils {
         transformation: String,
         key: String,
         iv: String?
-    ): SymmetricCrypto {
+    ): SymmetricCryptoAndroid {
         return createSymmetricCrypto(
             transformation, key.encodeToByteArray(), iv?.encodeToByteArray()
         )
@@ -439,7 +439,7 @@ interface JsEncodeUtils {
         data: String,
         algorithm: String,
     ): String {
-        return DigestUtil.digester(algorithm).digestHex(data)
+        return digest(algorithm, data.toByteArray()).toHexString()
     }
 
     /**
@@ -453,7 +453,7 @@ interface JsEncodeUtils {
         data: String,
         algorithm: String,
     ): String {
-        return Base64.encodeToString(DigestUtil.digester(algorithm).digest(data), Base64.NO_WRAP)
+        return Base64.encodeToString(digest(algorithm, data.toByteArray()), Base64.NO_WRAP)
     }
 
     /**
@@ -470,7 +470,7 @@ interface JsEncodeUtils {
         algorithm: String,
         key: String
     ): String {
-        return HMac(algorithm, key.toByteArray()).digestHex(data)
+        return hmac(algorithm, key.toByteArray(), data.toByteArray()).toHexString()
     }
 
     /**
@@ -488,7 +488,7 @@ interface JsEncodeUtils {
         key: String
     ): String {
         return Base64.encodeToString(
-            HMac(algorithm, key.toByteArray()).digest(data),
+            hmac(algorithm, key.toByteArray(), data.toByteArray()),
             Base64.NO_WRAP
         )
     }

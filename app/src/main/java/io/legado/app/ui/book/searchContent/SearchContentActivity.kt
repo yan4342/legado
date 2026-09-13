@@ -35,6 +35,8 @@ import io.legado.app.utils.postEvent
 import io.legado.app.utils.showSoftInput
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
+import io.legado.app.utils.startActivityForBook
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -187,7 +189,7 @@ class SearchContentActivity :
 
     @SuppressLint("SetTextI18n")
     fun startContentSearch(query: String) {
-        // 按章节搜索内容
+        // 按章节搜索内容：并行扫描已缓存章节，结果严格按章序增量上屏
         if (query.isBlank()) return
         searchJob?.cancel()
         adapter.clearItems()
@@ -198,39 +200,39 @@ class SearchContentActivity :
         binding.fbStop.visible()
         searchJob = lifecycleScope.launch(IO) {
             initJob?.join()
-            kotlin.runCatching {
-                appDb.bookChapterDao.getChapterList(viewModel.bookUrl).forEach { bookChapter ->
-                    ensureActive()
-                    val searchResults = if (isLocalBook
-                        || viewModel.cacheChapterNames.contains(bookChapter.getFileName())
-                    ) {
-                        viewModel.searchChapter(query, bookChapter)
-                    } else {
-                        return@forEach
-                    }
-                    ensureActive()
-                    if (searchResults.isNotEmpty()) {
-                        viewModel.searchResultList.addAll(searchResults)
+            try {
+                kotlin.runCatching {
+                    val chapters = appDb.bookChapterDao.getChapterList(viewModel.bookUrl)
+                    viewModel.searchParallel(
+                        query = query,
+                        chapters = chapters,
+                        isCached = { bookChapter ->
+                            isLocalBook || viewModel.cacheChapterNames.contains(bookChapter.getFileName())
+                        },
+                    ) { searchResults ->
+                        ensureActive()
                         binding.tvCurrentSearchInfo.post {
                             binding.tvCurrentSearchInfo.text =
                                 this@SearchContentActivity.getString(R.string.search_content_size) + ": ${viewModel.searchResultCounts}"
                             adapter.addItems(searchResults)
                         }
                     }
-                }
-                if (viewModel.searchResultCounts == 0) {
-                    val noSearchResult =
-                        SearchResult(resultText = getString(R.string.search_content_empty))
-                    binding.tvCurrentSearchInfo.post {
-                        adapter.addItem(noSearchResult)
+                    if (viewModel.searchResultCounts == 0) {
+                        val noSearchResult =
+                            SearchResult(resultText = getString(R.string.search_content_empty))
+                        binding.tvCurrentSearchInfo.post {
+                            adapter.addItem(noSearchResult)
+                        }
                     }
+                }.onFailure { e ->
+                    if (e is CancellationException) throw e
+                    AppLog.put("全文搜索出错\n${e.localizedMessage}", e)
                 }
-            }.onFailure {
-                AppLog.put("全文搜索出错\n${it.localizedMessage}", it)
-            }
-            binding.tvCurrentSearchInfo.post {
-                binding.fbStop.invisible()
-                binding.refreshProgressBar.isAutoLoading = false
+            } finally {
+                binding.tvCurrentSearchInfo.post {
+                    binding.fbStop.invisible()
+                    binding.refreshProgressBar.isAutoLoading = false
+                }
             }
         }
     }
@@ -241,13 +243,29 @@ class SearchContentActivity :
     override fun openSearchResult(searchResult: SearchResult, index: Int) {
         searchJob?.cancel()
         postEvent(EventBus.SEARCH_RESULT, viewModel.searchResultList as List<SearchResult>)
-        val searchData = Intent()
         val key = System.currentTimeMillis()
         IntentData.put("searchResult$key", searchResult)
         IntentData.put("searchResultList$key", viewModel.searchResultList)
-        searchData.putExtra("key", key)
-        searchData.putExtra("index", index)
-        setResult(RESULT_OK, searchData)
+        val searchData = Intent().apply {
+            putExtra("key", key)
+            putExtra("index", index)
+        }
+        // Started from ReadBook for-result: return to reading UI.
+        // Standalone (e.g. AI chat tool bubble): open ReadBook and jump to the hit.
+        if (callingActivity != null) {
+            setResult(RESULT_OK, searchData)
+            finish()
+            return
+        }
+        val book = viewModel.book
+        if (book == null) {
+            finish()
+            return
+        }
+        startActivityForBook(book) {
+            putExtra("searchJumpKey", key)
+            putExtra("searchResultIndex", index)
+        }
         finish()
     }
 

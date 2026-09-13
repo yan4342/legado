@@ -18,6 +18,7 @@ import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.CancellationException
 import splitties.init.appCtx
 import java.lang.ref.WeakReference
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.regex.Pattern
 
@@ -27,17 +28,18 @@ class ContentProcessor private constructor(
 ) {
 
     companion object {
-        private val processors = hashMapOf<String, WeakReference<ContentProcessor>>()
+        private val processors = ConcurrentHashMap<String, WeakReference<ContentProcessor>>()
         private val isAndroid8 = Build.VERSION.SDK_INT in 26..27
 
         fun get(book: Book) = get(book.name, book.origin)
 
+        @Synchronized
         fun get(bookName: String, bookOrigin: String): ContentProcessor {
-            val processorWr = processors[bookName + bookOrigin]
-            var processor: ContentProcessor? = processorWr?.get()
+            val key = bookName + bookOrigin
+            var processor: ContentProcessor? = processors[key]?.get()
             if (processor == null) {
                 processor = ContentProcessor(bookName, bookOrigin)
-                processors[bookName + bookOrigin] = WeakReference(processor)
+                processors[key] = WeakReference(processor)
             }
             return processor
         }
@@ -52,7 +54,7 @@ class ContentProcessor private constructor(
 
     private val titleReplaceRules = CopyOnWriteArrayList<ReplaceRule>()
     private val contentReplaceRules = CopyOnWriteArrayList<ReplaceRule>()
-    val removeSameTitleCache = hashSetOf<String>()
+    val removeSameTitleCache = ConcurrentHashMap.newKeySet<String>()
 
     init {
         upReplaceRules()

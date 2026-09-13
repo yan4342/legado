@@ -98,6 +98,14 @@ fun BookDetailMenu(
             onClick = { dismiss(); onAction(MENU_CLEAR_CACHE) },
         )
         RoundDropdownMenuItem(
+            text = stringResource(R.string.book_voice_casting),
+            onClick = { dismiss(); onAction(MENU_VOICE_CASTING) },
+        )
+        RoundDropdownMenuItem(
+            text = stringResource(R.string.cloud_tts),
+            onClick = { dismiss(); onAction(MENU_CLOUD_TTS) },
+        )
+        RoundDropdownMenuItem(
             text = stringResource(R.string.log),
             onClick = { dismiss(); onAction(MENU_LOG) },
         )
@@ -125,3 +133,5 @@ const val MENU_UPLOAD = 13
 const val MENU_CLEAR_CACHE = 14
 const val MENU_LOG = 15
 const val MENU_DELETE = 16
+const val MENU_VOICE_CASTING = 17
+const val MENU_CLOUD_TTS = 18

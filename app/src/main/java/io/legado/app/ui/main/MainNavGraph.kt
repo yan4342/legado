@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -22,8 +23,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import android.content.Context
+import android.content.ContextWrapper
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
+import org.koin.core.parameter.parametersOf
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -43,12 +53,14 @@ import com.jaredrummler.android.colorpicker.ColorPickerDialog
 import com.jaredrummler.android.colorpicker.ColorPickerDialogListener
 import com.jaredrummler.android.colorpicker.ColorShape
 import io.legado.app.R
+import io.legado.app.base.LocalStatusBarColor
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.PreferKey
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
+import io.legado.app.help.config.AppConfigStore
 import io.legado.app.help.storage.BackupConfig
 import io.legado.app.help.storage.ImportOldData
 import io.legado.app.help.storage.Restore
@@ -56,19 +68,47 @@ import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.prefs.ColorPreference
 import io.legado.app.ui.book.info.compose.BookInfoRouteScreen
+import io.legado.app.ui.book.readaloud.cache.TtsCacheRouteScreen
+import io.legado.app.ui.book.readaloud.casting.BookVoiceCastingRouteScreen
+import io.legado.app.ui.book.readaloud.cloudtts.CloudTtsRouteScreen
+import io.legado.app.ui.book.readaloud.player.ReadAloudPlayerRouteScreen
 import io.legado.app.ui.book.search.SearchIntent
 import io.legado.app.ui.book.search.SearchScreen
 import io.legado.app.ui.book.search.SearchViewModel
+import kotlinx.coroutines.awaitCancellation
 import io.legado.app.ui.book.explore.ExploreShowIntent
 import io.legado.app.ui.book.explore.ExploreShowScreen
 import io.legado.app.ui.book.explore.ExploreShowViewModel
+import io.legado.app.ui.book.bookmark.AllBookmarkRoute
 import io.legado.app.ui.book.source.manage.BookSourceActivity
+import io.legado.app.ui.dict.rule.DictRuleRouteScreen
+import io.legado.app.ui.file.FileManageRoute
+import io.legado.app.ui.ai.chat.AiChatScreen
+import io.legado.app.ui.ai.chat.AiChatViewModel
+import io.legado.app.ui.config.ai.AiConfigScreen
+import io.legado.app.ui.config.ai.AiWebSearchConfigScreen
+import io.legado.app.ui.config.ai.AiConfigViewModel
+import io.legado.app.ui.config.ai.AiModelEditScreen
+import io.legado.app.ui.config.ai.AiProfileEditScreen
+import io.legado.app.ui.config.ai.AiAbilityManagementScreen
+import io.legado.app.ui.config.ai.AiAbilityManagementViewModel
+import io.legado.app.ui.config.ai.AiSkillsScreen
+import io.legado.app.ui.config.ai.AiSkillsViewModel
+import io.legado.app.ui.config.ai.AiSkillEditScreen
+import io.legado.app.ui.config.ai.AiSkillEditViewModel
+import io.legado.app.ui.config.ai.PromptPipelineScreen
+import io.legado.app.ui.config.ai.PromptPipelineViewModel
+import io.legado.app.ui.config.ai.PromptTemplateScreen
+import io.legado.app.ui.config.ai.PromptTemplateViewModel
+import io.legado.app.domain.gateway.AiProfileGateway
+import io.legado.app.domain.gateway.AiTextGateway
 import io.legado.app.ui.config.CheckSourceConfig
 import io.legado.app.ui.config.CoverRuleConfigDialog
 import io.legado.app.ui.config.DirectLinkUploadConfig
 import io.legado.app.ui.config.ThemeListDialog
 import io.legado.app.ui.file.HandleFileContract
-import io.legado.app.ui.widget.dialog.WaitDialog
+import io.legado.app.ui.common.compose.LegadoWaitDialog
+import io.legado.app.ui.common.compose.LegadoWaitState
 import io.legado.app.ui.main.my.AboutActions
 import io.legado.app.ui.main.my.AiDictRuleRoute
 import io.legado.app.ui.main.my.BackupConfigActions
@@ -80,6 +120,7 @@ import io.legado.app.ui.main.my.MyOtherConfigRoute
 import io.legado.app.ui.main.my.MyThemeConfigRoute
 import io.legado.app.ui.main.my.MyWelcomeConfigRoute
 import io.legado.app.ui.main.my.OtherConfigActions
+import io.legado.app.ui.main.my.AiUsageOverviewRoute
 import io.legado.app.ui.main.my.ReadRecordRoute
 import io.legado.app.ui.main.my.ReadRecordOverviewRoute
 import io.legado.app.ui.main.my.ThemeConfigActions
@@ -126,7 +167,7 @@ private fun setImageFromUri(context: android.content.Context, uri: Uri, prefKey:
             }
             file = FileUtils.createFileIfNotExist(file, prefKey, fileName)
             FileOutputStream(file).use { inputStream.copyTo(it) }
-            context.putPrefString(prefKey, file.absolutePath)
+            AppConfigStore.putString(prefKey, file.absolutePath)
             onSuccess?.invoke()
         }.onFailure {
             appCtx.toastOnUi(it.localizedMessage)
@@ -145,7 +186,7 @@ private fun setCoverFromUri(context: android.content.Context, uri: Uri, prefKey:
             }
             file = FileUtils.createFileIfNotExist(file, "covers", fileName)
             FileOutputStream(file).use { inputStream.copyTo(it) }
-            context.putPrefString(prefKey, file.absolutePath)
+            AppConfigStore.putString(prefKey, file.absolutePath)
             io.legado.app.model.BookCover.upDefaultCover()
         }.onFailure {
             appCtx.toastOnUi(it.localizedMessage)
@@ -235,16 +276,15 @@ private fun backupIgnore(context: android.content.Context) {
 
 private fun webDavRestore(
     context: android.content.Context,
-    backupWaitDialog: WaitDialog,
+    backupWaitDialog: LegadoWaitState,
     scope: kotlinx.coroutines.CoroutineScope,
     appCompatActivity: AppCompatActivity?,
 ) {
-    backupWaitDialog.setText(R.string.loading)
-    backupWaitDialog.setOnCancelListener { /* handled in launched coroutine */ }
+    backupWaitDialog.onCancel = { /* handled in launched coroutine */ }
     backupWaitDialog.show()
     scope.launch {
         val job = currentCoroutineContext()[Job]
-        backupWaitDialog.setOnCancelListener { job?.cancel() }
+        backupWaitDialog.onCancel = { job?.cancel() }
         try {
             showRestoreDialog(context, appCompatActivity, backupWaitDialog)
         } catch (e: Exception) {
@@ -259,7 +299,7 @@ private fun webDavRestore(
 private suspend fun showRestoreDialog(
     context: android.content.Context,
     appCompatActivity: AppCompatActivity?,
-    backupWaitDialog: WaitDialog,
+    backupWaitDialog: LegadoWaitState,
 ) {
     val names = withContext(Dispatchers.IO) { AppWebDav.getBackupNames() }
     if (AppWebDav.isJianGuoYun && names.size > 700) {
@@ -287,17 +327,16 @@ private suspend fun showRestoreDialog(
 private fun restoreWebDav(
     context: android.content.Context,
     name: String,
-    backupWaitDialog: WaitDialog,
+    backupWaitDialog: LegadoWaitState,
 ) {
-    backupWaitDialog.setText("恢复中…")
-    backupWaitDialog.show()
+    backupWaitDialog.show("恢复中…")
     val task = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
         AppWebDav.restoreWebDav(name)
     }
     task.invokeOnCompletion {
         appCtx.mainLooper.run { backupWaitDialog.dismiss() }
     }
-    backupWaitDialog.setOnCancelListener {
+    backupWaitDialog.onCancel = {
         task.cancel()
     }
 }
@@ -359,27 +398,28 @@ fun MainNavHost(
         }
     }
     // --- Backup/restore state (migrated from deleted MyFragment) ---
-    val backupWaitDialog = remember { WaitDialog(context) }
+    val backupWaitDialog = remember { LegadoWaitState() }
     var restoreJob by remember { mutableStateOf<Job?>(null) }
+    var backupPath by remember { mutableStateOf(AppConfig.backupPath ?: "") }
 
     val selectBackupPath = rememberLauncherForActivityResult(HandleFileContract()) { result ->
         result.uri?.let { uri ->
             val path = if (uri.isContentScheme()) uri.toString() else uri.path ?: return@rememberLauncherForActivityResult
             AppConfig.backupPath = path
+            backupPath = path
         }
     }
 
     val restoreDoc = rememberLauncherForActivityResult(HandleFileContract()) { result ->
         result.uri?.let { uri ->
-            backupWaitDialog.setText("恢复中…")
-            backupWaitDialog.show()
+            backupWaitDialog.show("恢复中…")
             val task = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
                 Restore.restore(appCtx, uri)
             }
             task.invokeOnCompletion {
                 appCtx.mainLooper.run { backupWaitDialog.dismiss() }
             }
-            backupWaitDialog.setOnCancelListener {
+            backupWaitDialog.onCancel = {
                 task.cancel()
             }
         }
@@ -391,6 +431,7 @@ fun MainNavHost(
         }
     }
     // --- End config route action state ---
+    LegadoWaitDialog(backupWaitDialog)
 
     // Helper: read markdown from assets and show sheet
     fun showMdFile(title: String, fileName: String) {
@@ -422,15 +463,41 @@ fun MainNavHost(
         MainNavigator.navigateToRoute(backStack, route)
     }
 
-    // 导出回调给 MainActivity（供 navigateToSearch 等遗留代码调用）
+    // 导出回调给 MainActivity（供 navigateToSearch / onNewIntent 等调用）
     SideEffect {
         onNavigateToRouteSetter(onNavigateToRoute)
+    }
+
+    // Cold start: honor MainIntent / deep-link startRoute extras.
+    LaunchedEffect(Unit) {
+        val start = MainNavigator.resolveStartRoute(activity?.intent)
+        if (start is MainRoute && start !is MainRouteHome) {
+            MainNavigator.navigateToRoute(backStack, start)
+        }
     }
 
     // 栈变化后重置防抖守卫，使下一次按钮返回能再次触发。
     LaunchedEffect(backStack) {
         snapshotFlow { backStack.toList() }.collect {
             MainNavigator.onBackStackChanged()
+        }
+    }
+
+    // 搜索页在返回栈中时：详情页继续搜索，进入阅读页（Activity 失焦）时暂停。
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            val hasSearch = backStack.any { it is MainRouteSearch }
+            if (hasSearch) {
+                SearchViewModel.resumeActiveSearch()
+            }
+            try {
+                awaitCancellation()
+            } finally {
+                if (hasSearch) {
+                    SearchViewModel.pauseActiveSearch()
+                }
+            }
         }
     }
 
@@ -557,19 +624,47 @@ fun MainNavHost(
                     coverPath = route.coverPath,
                     origin = route.origin,
                     onBack = onNavigateBack,
+                    onNavigateToVoiceCasting = { bookUrl ->
+                        onNavigateToRoute(MainRouteBookVoiceCasting(bookUrl))
+                    },
+                    onNavigateToCloudTts = { bookUrl ->
+                        onNavigateToRoute(MainRouteCloudTtsEngines(bookUrl))
+                    },
+                    onNavigateToCharacterNetwork = { bookUrl, focusCharacterId ->
+                        onNavigateToRoute(
+                            MainRouteBookCharacterNetwork(bookUrl, focusCharacterId),
+                        )
+                    },
+                    onNavigateToCharacterList = { bookUrl ->
+                        onNavigateToRoute(MainRouteBookCharacterList(bookUrl))
+                    },
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = LocalNavAnimatedContentScope.current,
                     sharedCoverKey = route.sharedCoverKey,
                 )
             }
 
+            entry<MainRouteAllBookmark> {
+                AllBookmarkRoute(onBack = onNavigateBack)
+            }
+
+            entry<MainRouteFileManage> {
+                FileManageRoute(onBack = onNavigateBack)
+            }
+
+            entry<MainRouteDictRule> {
+                DictRuleRouteScreen(onBackClick = onNavigateBack)
+            }
+
             entry<MainRouteReadRecord> {
                 ReadRecordRoute(
                     onBack = onNavigateBack,
                     onOverview = { backStack.add(MainRouteReadRecordOverview) },
+                    onAiOverview = { backStack.add(MainRouteAiUsageOverview) },
                     onNavigateToBook = { name, key ->
                         onNavigateToRoute(MainRouteSearch(key = name))
                     },
+                    onNavigateToAiChat = { backStack.add(MainRouteAiChat) },
                 )
             }
 
@@ -580,6 +675,10 @@ fun MainNavHost(
                         onNavigateToRoute(MainRouteSearch(key = name))
                     },
                 )
+            }
+
+            entry<MainRouteAiUsageOverview> {
+                AiUsageOverviewRoute(onBack = onNavigateBack)
             }
 
             entry<MainRouteAiDictRule> {
@@ -623,6 +722,7 @@ fun MainNavHost(
                 MyBackupConfigRoute(
                     fragment = null,
                     onBack = onNavigateBack,
+                    backupPath = backupPath,
                     actions = BackupConfigActions(
                         onBackupPath = { selectBackupPath.launch {} },
                         onRestoreIgnore = { backupIgnore(context) },
@@ -789,6 +889,199 @@ fun MainNavHost(
                 )
             }
 
+            entry<MainRouteAiChat> {
+                val context = LocalContext.current
+                // Scope the chat ViewModel to the host Activity so leaving this route does not
+                // clear it — in-flight streaming keeps running and state survives round-trips.
+                val activityOwner = remember(context) { context.findActivity() }
+                val aiChatViewModel = koinViewModel<AiChatViewModel>(
+                    viewModelStoreOwner = (activityOwner as? ViewModelStoreOwner)
+                        ?: LocalViewModelStoreOwner.current!!,
+                )
+                val lifecycleOwner = LocalLifecycleOwner.current
+                var renderTrack by remember { mutableStateOf(AppConfig.aiChatRenderTrack) }
+                DisposableEffect(lifecycleOwner) {
+                    val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            renderTrack = AppConfig.aiChatRenderTrack
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+                val useDynamic = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+                val chatColorScheme = if (useDynamic) {
+                    if (AppConfig.isNightTheme) {
+                        androidx.compose.material3.dynamicDarkColorScheme(context)
+                    } else {
+                        androidx.compose.material3.dynamicLightColorScheme(context)
+                    }
+                } else {
+                    io.legado.app.ui.common.compose.rememberLegadoColorScheme()
+                }
+                androidx.compose.material3.MaterialTheme(colorScheme = chatColorScheme) {
+                    io.legado.app.lib.theme.ProvideAiChatSemanticColors {
+                        androidx.compose.runtime.key(renderTrack) {
+                            if (renderTrack == AppConfig.AI_CHAT_RENDER_HTML) {
+                                io.legado.app.ui.ai.chat.html.AiChatHtmlScreen(
+                                    viewModel = aiChatViewModel,
+                                    onBack = onNavigateBack,
+                                    onNavigateToAiSettings = { onNavigateToRoute(MainRouteSettingsAi) },
+                                )
+                            } else {
+                                AiChatScreen(
+                                    viewModel = aiChatViewModel,
+                                    onBack = onNavigateBack,
+                                    onNavigateToAiSettings = { onNavigateToRoute(MainRouteSettingsAi) },
+                                    onNavigateToAiChatColors = { onNavigateToRoute(MainRouteSettingsAiChatColors) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            entry<MainRouteSettingsAiChatColors> {
+                val context = LocalContext.current
+                val useDynamic = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+                val chatColorScheme = if (useDynamic) {
+                    if (AppConfig.isNightTheme) {
+                        androidx.compose.material3.dynamicDarkColorScheme(context)
+                    } else {
+                        androidx.compose.material3.dynamicLightColorScheme(context)
+                    }
+                } else {
+                    io.legado.app.ui.common.compose.rememberLegadoColorScheme()
+                }
+                androidx.compose.material3.MaterialTheme(colorScheme = chatColorScheme) {
+                    io.legado.app.lib.theme.ProvideAiChatSemanticColors {
+                        io.legado.app.ui.config.ai.AiChatColorConfigScreen(
+                            onBack = onNavigateBack,
+                        )
+                    }
+                }
+            }
+
+            entry<MainRouteSettingsAi> {
+                val aiConfigViewModel = koinViewModel<AiConfigViewModel>()
+                val aiProfileGateway: AiProfileGateway = koinInject()
+                AiConfigScreen(
+                    viewModel = aiConfigViewModel,
+                    aiProfileGateway = aiProfileGateway,
+                    onBack = onNavigateBack,
+                    onNavigateToProfileEdit = { providerId: String? ->
+                        onNavigateToRoute(MainRouteSettingsAiProfileEdit(providerId))
+                    },
+                    onNavigateToModelEdit = { providerId: String, modelProfileId: String? ->
+                        onNavigateToRoute(MainRouteSettingsAiModelEdit(providerId, modelProfileId))
+                    },
+                    onNavigateToAbilityManagement = {
+                        onNavigateToRoute(MainRouteSettingsAiAbilityManagement)
+                    },
+                    onNavigateToSkills = {
+                        onNavigateToRoute(MainRouteSettingsAiSkills)
+                    },
+                    onNavigateToWebSearch = {
+                        onNavigateToRoute(MainRouteSettingsAiWebSearch)
+                    },
+                    onNavigateToPromptTemplates = {
+                        onNavigateToRoute(MainRouteSettingsAiPromptTemplates)
+                    },
+                    onNavigateToHtmlThemes = {
+                        onNavigateToRoute(MainRouteSettingsAiHtmlThemes)
+                    },
+                )
+            }
+
+            entry<MainRouteSettingsAiHtmlThemes> {
+                io.legado.app.ui.config.ai.AiHtmlThemeConfigScreen(
+                    onBack = onNavigateBack,
+                )
+            }
+
+            entry<MainRouteSettingsAiSkills> {
+                val skillsViewModel = koinViewModel<AiSkillsViewModel>()
+                AiSkillsScreen(
+                    viewModel = skillsViewModel,
+                    onBack = onNavigateBack,
+                    onNavigateToCreate = {
+                        onNavigateToRoute(MainRouteSettingsAiSkillEdit())
+                    },
+                    onNavigateToEdit = { skillId ->
+                        onNavigateToRoute(MainRouteSettingsAiSkillEdit(skillId = skillId))
+                    },
+                )
+            }
+
+            entry<MainRouteSettingsAiSkillEdit> { route ->
+                val editViewModel = koinViewModel<AiSkillEditViewModel>(
+                    key = route.skillId.ifBlank { "new" },
+                ) { parametersOf(route.skillId) }
+                AiSkillEditScreen(
+                    viewModel = editViewModel,
+                    onBack = onNavigateBack,
+                    onSaved = onNavigateBack,
+                )
+            }
+
+            entry<MainRouteSettingsAiWebSearch> {
+                AiWebSearchConfigScreen(onBack = onNavigateBack)
+            }
+
+            entry<MainRouteSettingsAiProfileEdit> { route ->
+                val aiProfileGateway: AiProfileGateway = koinInject()
+                AiProfileEditScreen(
+                    providerId = route.providerId,
+                    aiProfileGateway = aiProfileGateway,
+                    onBack = onNavigateBack,
+                    onSaved = { onNavigateBack() },
+                    onDeleted = { onNavigateBack() },
+                    onNavigateToModelEdit = { providerId: String, modelProfileId: String? ->
+                        onNavigateToRoute(MainRouteSettingsAiModelEdit(providerId, modelProfileId))
+                    },
+                )
+            }
+
+            entry<MainRouteSettingsAiModelEdit> { route ->
+                val aiProfileGateway: AiProfileGateway = koinInject()
+                val aiTextGateway: AiTextGateway = koinInject()
+                AiModelEditScreen(
+                    providerId = route.providerId,
+                    modelProfileId = route.modelProfileId,
+                    aiProfileGateway = aiProfileGateway,
+                    aiTextGateway = aiTextGateway,
+                    onBack = onNavigateBack,
+                    onSaved = { onNavigateBack() },
+                )
+            }
+
+            entry<MainRouteSettingsAiAbilityManagement> {
+                val toolViewModel = koinViewModel<AiAbilityManagementViewModel>()
+                AiAbilityManagementScreen(
+                    viewModel = toolViewModel,
+                    onBack = onNavigateBack,
+                )
+            }
+
+            entry<MainRouteSettingsAiPromptTemplates> {
+                val promptTemplateViewModel = koinViewModel<PromptTemplateViewModel>()
+                PromptTemplateScreen(
+                    viewModel = promptTemplateViewModel,
+                    onBack = onNavigateBack,
+                    onNavigateToPipeline = {
+                        onNavigateToRoute(MainRouteSettingsAiPromptPipeline)
+                    },
+                )
+            }
+
+            entry<MainRouteSettingsAiPromptPipeline> {
+                val pipelineViewModel = koinViewModel<PromptPipelineViewModel>()
+                PromptPipelineScreen(
+                    viewModel = pipelineViewModel,
+                    onBack = onNavigateBack,
+                )
+            }
+
             entry<MainRouteExploreShow> { route ->
                 val exploreViewModel = koinViewModel<ExploreShowViewModel>()
 
@@ -814,6 +1107,64 @@ fun MainNavHost(
                     },
                 )
             }
+
+            entry<MainRouteReadAloudPlayer> {
+                val bookUrl = io.legado.app.model.ReadBook.book?.bookUrl
+                ReadAloudPlayerRouteScreen(
+                    onBack = onNavigateBack,
+                    onNavigateToCasting = bookUrl?.let { url ->
+                        { onNavigateToRoute(MainRouteBookVoiceCasting(url)) }
+                    },
+                    onNavigateToCloudTts = {
+                        onNavigateToRoute(MainRouteCloudTtsEngines(bookUrl))
+                    },
+                )
+            }
+
+            entry<MainRouteBookVoiceCasting> { route ->
+                BookVoiceCastingRouteScreen(
+                    bookUrl = route.bookUrl,
+                    onBack = onNavigateBack,
+                    onManageCloudTts = {
+                        onNavigateToRoute(MainRouteCloudTtsEngines(route.bookUrl))
+                    },
+                )
+            }
+
+            entry<MainRouteBookCharacterNetwork> { route ->
+                io.legado.app.ui.book.info.network.BookCharacterNetworkRouteScreen(
+                    bookUrl = route.bookUrl,
+                    focusCharacterId = route.focusCharacterId,
+                    onBack = onNavigateBack,
+                    onNavigateToCharacterList = { bookUrl ->
+                        onNavigateToRoute(MainRouteBookCharacterList(bookUrl))
+                    },
+                )
+            }
+
+            entry<MainRouteBookCharacterList> { route ->
+                io.legado.app.ui.book.info.characters.BookCharacterListRouteScreen(
+                    bookUrl = route.bookUrl,
+                    onBack = onNavigateBack,
+                )
+            }
+
+            entry<MainRouteCloudTtsEngines> {
+                CloudTtsRouteScreen(onBack = onNavigateBack)
+            }
+
+            entry<MainRouteTtsCache> {
+                TtsCacheRouteScreen(onBackClick = onNavigateBack)
+            }
         },
     )
+}
+
+private fun Context.findActivity(): Activity? {
+    var ctx: Context? = this
+    while (ctx is ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
 }

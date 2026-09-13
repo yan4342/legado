@@ -90,13 +90,13 @@ object ThemeConfig {
     fun getBgImage(context: Context, metrics: DisplayMetrics): Bitmap? {
         val bgCfg = when (getTheme()) {
             Theme.Light -> Pair(
-                context.getPrefString(PreferKey.bgImage),
-                context.getPrefInt(PreferKey.bgImageBlurring, 0)
+                AppConfigStore.getString(PreferKey.bgImage),
+                AppConfigStore.getInt(PreferKey.bgImageBlurring) ?: 0
             )
 
             Theme.Dark -> Pair(
-                context.getPrefString(PreferKey.bgImageN),
-                context.getPrefInt(PreferKey.bgImageNBlurring, 0)
+                AppConfigStore.getString(PreferKey.bgImageN),
+                AppConfigStore.getInt(PreferKey.bgImageNBlurring) ?: 0
             )
 
             else -> null
@@ -369,13 +369,13 @@ object ThemeConfig {
     }
 
     fun clearBg() {
-        val bgImagePath = appCtx.getPrefString(PreferKey.bgImage)
+        val bgImagePath = AppConfigStore.getString(PreferKey.bgImage)
         appCtx.externalFiles.getFile(PreferKey.bgImage).listFiles()?.forEach {
             if (it.absolutePath != bgImagePath) {
                 it.delete()
             }
         }
-        val bgImageNPath = appCtx.getPrefString(PreferKey.bgImageN)
+        val bgImageNPath = AppConfigStore.getString(PreferKey.bgImageN)
         appCtx.externalFiles.getFile(PreferKey.bgImageN).listFiles()?.forEach {
             if (it.absolutePath != bgImageNPath) {
                 it.delete()

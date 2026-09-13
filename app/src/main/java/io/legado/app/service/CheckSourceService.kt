@@ -18,6 +18,7 @@ import io.legado.app.exception.ContentEmptyException
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.exception.TocEmptyException
 import io.legado.app.help.IntentData
+import io.legado.app.help.book.BookHelp
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.source.exploreKinds
 import io.legado.app.model.CheckSource
@@ -35,6 +36,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
@@ -220,13 +222,22 @@ class CheckSourceService : BaseService() {
                 return
             }
             //校验正文
-            WebBook.getContentAwait(
+            val content = WebBook.getContentAwait(
                 bookSource = source,
                 book = book,
                 bookChapter = toc.first(),
                 nextChapterUrl = nextChapterUrl,
                 needSave = false
             )
+            //漫画源：与阅读器 ReadManga 同用 BookHelp.flowImages 提取图片并探测可加载性。
+            //flowImages 为 0 时阅读器也会报"正文没有图片"，抛 ContentEmptyException 复用下方失败分组。
+            if (source.bookSourceType == BookSourceType.image && !toc.first().isVolume) {
+                val images = BookHelp.flowImages(toc.first(), content).toList()
+                if (images.isEmpty()) throw ContentEmptyException("正文没有图片")
+                if (!BookHelp.probeImageUrls(images, source).all { it.second }) {
+                    throw ContentEmptyException("图片加载失败")
+                }
+            }
         }.onFailure {
             val bookType = if (isSearchBook) "搜索" else "发现"
             when (it) {

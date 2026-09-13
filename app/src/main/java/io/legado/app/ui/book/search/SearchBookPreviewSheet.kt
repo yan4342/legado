@@ -21,7 +21,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import io.legado.app.ui.common.compose.rememberLegadoBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -64,7 +64,7 @@ fun SearchBookPreviewSheet(
     onAddToShelf: (SearchBook) -> Unit,
     onExpandToDetail: ((SearchBook) -> Unit)? = null,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberLegadoBottomSheetState(skipPartiallyExpanded = false)
     val scope = rememberCoroutineScope()
     val activityContext = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -97,6 +97,31 @@ fun SearchBookPreviewSheet(
                         origin = b.origin,
                         onBack = {
                             scope.launch { sheetState.partialExpand() }
+                        },
+                        onNavigateToVoiceCasting = { bookUrl ->
+                            activityContext.startActivity(
+                                io.legado.app.ui.main.MainIntent.createBookVoiceCastingIntent(
+                                    activityContext,
+                                    bookUrl,
+                                )
+                            )
+                        },
+                        onNavigateToCharacterNetwork = { bookUrl, focusCharacterId ->
+                            activityContext.startActivity(
+                                io.legado.app.ui.main.MainIntent.createBookCharacterNetworkIntent(
+                                    activityContext,
+                                    bookUrl,
+                                    focusCharacterId,
+                                )
+                            )
+                        },
+                        onNavigateToCharacterList = { bookUrl ->
+                            activityContext.startActivity(
+                                io.legado.app.ui.main.MainIntent.createBookCharacterListIntent(
+                                    activityContext,
+                                    bookUrl,
+                                )
+                            )
                         },
                     )
                 }

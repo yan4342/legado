@@ -19,7 +19,7 @@ import java.io.File
 object CoilInitializer : SingletonImageLoader.Factory {
 
     private const val DISK_CACHE_DIR = "coil_image_cache"
-    private const val DISK_CACHE_SIZE = 1024L * 1024 * 1024 // 1GB
+    private const val DISK_CACHE_SIZE = 256L * 1024 * 1024 // 256MB（漫画预下载图已持久化到书目录，此缓存仅兜会话内流畅度）
 
     fun init() {
         SingletonImageLoader.setSafe(this)

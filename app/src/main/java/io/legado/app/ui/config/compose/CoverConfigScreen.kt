@@ -26,6 +26,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
+import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.AppConfigStore
 import io.legado.app.model.BookCover
 import io.legado.app.ui.common.compose.SectionCard
 import io.legado.app.ui.common.compose.settingItem.ClickableSettingItem
@@ -44,10 +46,10 @@ fun CoverConfigScreen(
     val context = LocalContext.current
 
     var loadCoverOnlyWifi by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.loadCoverOnlyWifi, false))
+        mutableStateOf(AppConfig.loadCoverOnlyWifi)
     }
     var useDefaultCover by remember {
-        mutableStateOf(context.getPrefBoolean(PreferKey.useDefaultCover, false))
+        mutableStateOf(AppConfig.useDefaultCover)
     }
     var coverShowName by remember {
         mutableStateOf(context.getPrefBoolean(PreferKey.coverShowName, true))
@@ -62,10 +64,10 @@ fun CoverConfigScreen(
         mutableStateOf(context.getPrefBoolean(PreferKey.coverShowAuthorN, true))
     }
     val defaultCover = remember {
-        context.getPrefString(PreferKey.defaultCover, "") ?: ""
+        AppConfigStore.getString(PreferKey.defaultCover) ?: ""
     }
     val defaultCoverDark = remember {
-        context.getPrefString(PreferKey.defaultCoverDark, "") ?: ""
+        AppConfigStore.getString(PreferKey.defaultCoverDark) ?: ""
     }
 
     Scaffold(
@@ -99,7 +101,7 @@ fun CoverConfigScreen(
                         checked = loadCoverOnlyWifi,
                         onCheckedChange = { v ->
                             loadCoverOnlyWifi = v
-                            context.putPrefBoolean(PreferKey.loadCoverOnlyWifi, v)
+                            AppConfig.loadCoverOnlyWifi = v
                         },
                     )
                     ClickableSettingItem(
@@ -113,7 +115,7 @@ fun CoverConfigScreen(
                         checked = useDefaultCover,
                         onCheckedChange = { v ->
                             useDefaultCover = v
-                            context.putPrefBoolean(PreferKey.useDefaultCover, v)
+                            AppConfig.useDefaultCover = v
                         },
                     )
                 }

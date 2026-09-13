@@ -42,11 +42,11 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -95,15 +95,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
 import io.legado.app.data.appDb
+import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.domain.model.MatchMode
 import io.legado.app.ui.common.compose.LegadoAlertDialog
 import io.legado.app.ui.common.compose.ModalLegadoBottomSheet
+import io.legado.app.ui.common.compose.topbar.TopBarAnimatedActionButton
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collect
@@ -172,12 +175,6 @@ fun SearchScreen(
     }
 
     DisposableEffect(viewModel) {
-        onDispose { viewModel.onIntent(SearchIntent.PauseEngine) }
-    }
-
-    LaunchedEffect(viewModel) { viewModel.onIntent(SearchIntent.ResumeEngine) }
-
-    DisposableEffect(viewModel) {
         onDispose {
             val first = listState.firstVisibleItemIndex
             val offset = listState.firstVisibleItemScrollOffset
@@ -224,6 +221,8 @@ fun SearchScreen(
 
     BackHandler { onBack() }
 
+    val actionContentColor = MaterialTheme.colorScheme.onPrimary
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -234,15 +233,15 @@ fun SearchScreen(
                 },
                 actions = {
                     if (!showSuggestions) {
-                        IconButton(onClick = viewModel::toggleSearchLayout) {
-                            Icon(
-                                if (isSourceGroupedMode == 1) Icons.AutoMirrored.Filled.List else Icons.AutoMirrored.Filled.List,
-                                contentDescription = stringResource(R.string.switchLayout)
-                            )
-                        }
-                        IconButton(onClick = { viewModel.onIntent(SearchIntent.SetSettingsSheetVisible(true)) }) {
-                            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.setting))
-                        }
+                        TopBarAnimatedActionButton(
+                            checked = isSourceGroupedMode == 1,
+                            onCheckedChange = { viewModel.toggleSearchLayout() },
+                            iconChecked = Icons.Filled.GridView,
+                            iconUnchecked = Icons.AutoMirrored.Filled.List,
+                            activeText = stringResource(R.string.search_group_by_source),
+                            inactiveText = stringResource(R.string.search_list_mode),
+                            contentColor = actionContentColor,
+                        )
                     }
                     Box {
                         IconButton(onClick = { overflowMenuExpanded = true }) {
@@ -337,6 +336,15 @@ fun SearchScreen(
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Inline filter bar: source types (moved out of the settings sheet)
+            if (!showSuggestions) {
+                SearchFilterBar(
+                    selectedSourceTypes = state.selectedSourceTypes,
+                    onToggleSourceType = { viewModel.onIntent(SearchIntent.ToggleSourceType(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
 
             // Floating summary
             val showResultCount = state.committedQuery.isNotBlank() || state.isSearching
@@ -474,16 +482,6 @@ fun SearchScreen(
         onOpenDetail = { book -> previewBook = null; viewModel.onIntent(SearchIntent.OpenSearchBook(book, null)) },
         onAddToShelf = { book -> previewBook = null; viewModel.onAddToShelf(book) },
         onExpandToDetail = null,
-    )
-
-    // Settings sheet
-    SettingsSheet(
-        show = state.showSettingsSheet,
-        onDismissRequest = { viewModel.onIntent(SearchIntent.SetSettingsSheetVisible(false)) },
-        isSourceGroupedMode = isSourceGroupedMode == 1,
-        onToggleLayoutMode = { viewModel.toggleSearchLayout() },
-        selectedSourceTypes = state.selectedSourceTypes,
-        onToggleSourceType = { viewModel.onIntent(SearchIntent.ToggleSourceType(it)) },
     )
 
     // Scope sheet
@@ -639,92 +637,49 @@ private data class SourceGroup(val origin: String, val sourceName: String, val i
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsSheet(
-    show: Boolean,
-    onDismissRequest: () -> Unit,
-    isSourceGroupedMode: Boolean,
-    onToggleLayoutMode: () -> Unit,
+private fun SearchFilterBar(
     selectedSourceTypes: Set<Int>,
     onToggleSourceType: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    ModalLegadoBottomSheet(
-        show = show,
-        onDismissRequest = onDismissRequest,
-        title = stringResource(R.string.setting),
-        skipPartiallyExpanded = true,
+    LazyRow(
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(stringResource(R.string.layout_mode), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
-        ) {
-            // 选项1：列表
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { if (isSourceGroupedMode) onToggleLayoutMode() }
-                    .padding(vertical = 4.dp, horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RadioButton(selected = !isSourceGroupedMode, onClick = null) // onClick 交给外层
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.search_list_mode), style = MaterialTheme.typography.bodyLarge)
-            }
-
-            Spacer(modifier = Modifier.width(48.dp))
-            // 选项2：按书源分组
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { if (!isSourceGroupedMode) onToggleLayoutMode() }
-                    .padding(vertical = 4.dp, horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RadioButton(selected = isSourceGroupedMode, onClick = null)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.search_group_by_source), style = MaterialTheme.typography.bodyLarge)
-            }
+        // 书源类型：全部 / 小说 / 漫画 / 音频（可多选；全部 = 未选择任何类型）
+        item {
+            FilterChip(
+                selected = selectedSourceTypes.isEmpty(),
+                onClick = { selectedSourceTypes.forEach { onToggleSourceType(it) } },
+                label = { Text(stringResource(R.string.all)) },
+                shape = RoundedCornerShape(20.dp),
+            )
         }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(stringResource(R.string.search_type), style = MaterialTheme.typography.titleSmall)
-
-            Row(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { selectedSourceTypes.forEach { onToggleSourceType(it) } }.padding(vertical = 8.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(checked = selectedSourceTypes.isEmpty(), onCheckedChange = { selectedSourceTypes.forEach { onToggleSourceType(it) } })
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.all), style = MaterialTheme.typography.bodyLarge)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onToggleSourceType(0) }.padding(vertical = 8.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(checked = selectedSourceTypes.contains(0), onCheckedChange = { onToggleSourceType(0) })
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.noval), style = MaterialTheme.typography.bodyLarge)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onToggleSourceType(2) }.padding(vertical = 8.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(checked = selectedSourceTypes.contains(2), onCheckedChange = { onToggleSourceType(2) })
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.manga), style = MaterialTheme.typography.bodyLarge)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onToggleSourceType(1) }.padding(vertical = 8.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(checked = selectedSourceTypes.contains(1), onCheckedChange = { onToggleSourceType(1) })
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.audio), style = MaterialTheme.typography.bodyLarge)
-            }
-            Spacer(modifier = Modifier.height(20.dp))
+        item {
+            FilterChip(
+                selected = selectedSourceTypes.contains(0),
+                onClick = { onToggleSourceType(0) },
+                label = { Text(stringResource(R.string.noval)) },
+                shape = RoundedCornerShape(20.dp),
+            )
+        }
+        item {
+            FilterChip(
+                selected = selectedSourceTypes.contains(2),
+                onClick = { onToggleSourceType(2) },
+                label = { Text(stringResource(R.string.manga)) },
+                shape = RoundedCornerShape(20.dp),
+            )
+        }
+        item {
+            FilterChip(
+                selected = selectedSourceTypes.contains(1),
+                onClick = { onToggleSourceType(1) },
+                label = { Text(stringResource(R.string.audio)) },
+                shape = RoundedCornerShape(20.dp),
+            )
         }
     }
 }
@@ -802,16 +757,39 @@ private fun ScopeSheet(
     var selectedGroups by remember { mutableStateOf(currentDisplayNames.toSet()) }
     var selectedSourceUrl by remember { mutableStateOf<String?>(null) }
     var allGroups by remember { mutableStateOf<List<String>>(emptyList()) }
-    var allSources by remember { mutableStateOf<List<io.legado.app.data.entities.BookSourcePart>>(emptyList()) }
+    var allSources by remember { mutableStateOf<List<BookSourcePart>>(emptyList()) }
     var searchKey by remember { mutableStateOf("") }
+    // 待生效的搜索范围：分组连续点击 1.1s 内合并为一次应用，避免多次整场重启
+    var pendingScopeRaw by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(pendingScopeRaw) {
+        val raw = pendingScopeRaw ?: return@LaunchedEffect
+        delay(1100)
+        pendingScopeRaw = null
+        onApplyScope(raw)
+    }
 
     LaunchedEffect(show) {
         if (show) {
-            selectedGroups = currentDisplayNames.toSet()
             isSourceMode = false
             allGroups = withContext(Dispatchers.IO) { appDb.bookSourceDao.allEnabledGroups() }
             allSources = withContext(Dispatchers.IO) { appDb.bookSourceDao.allEnabledPart }
+            // 全部分组时默认全选，否则按当前生效范围回显
+            selectedGroups = if (isAllScope) allGroups.toSet() else currentDisplayNames.toSet()
+            val currentName = currentDisplayNames.firstOrNull()
+            selectedSourceUrl = if (currentName != null) allSources.find { it.bookSourceName == currentName }?.bookSourceUrl else null
         }
+    }
+
+    // 每个分组包含的书源数量
+    val groupCounts = remember(allSources) {
+        val counts = mutableMapOf<String, Int>()
+        allSources.forEach { source ->
+            source.bookSourceGroup?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }?.forEach { group ->
+                counts[group] = (counts[group] ?: 0) + 1
+            }
+        }
+        counts
     }
 
     val filteredSources = remember(searchKey, allSources) {
@@ -819,23 +797,54 @@ private fun ScopeSheet(
         else allSources.filter { it.bookSourceName.contains(searchKey, ignoreCase = true) || it.bookSourceUrl.contains(searchKey, ignoreCase = true) }
     }
 
+    // 分组模式：UI 立即更新，实际应用经 1.5s debounce 合并连续点击
+    val applyGroups: (Set<String>) -> Unit = { groups ->
+        selectedGroups = groups
+        pendingScopeRaw = groups.joinToString(",")
+    }
+    // 书源模式：单选，点击立即生效（顺带丢弃尚未生效的分组改动）
+    val applySource: (BookSourcePart?) -> Unit = { source ->
+        pendingScopeRaw = null
+        selectedSourceUrl = source?.bookSourceUrl
+        onApplyScope(source?.let { "${it.bookSourceName.replace(":", "")}::${it.bookSourceUrl}" } ?: "")
+    }
+
+    // 关闭时冲刷未生效的改动，避免丢失最后一次点击
+    val dismissWithFlush: () -> Unit = {
+        pendingScopeRaw?.let { onApplyScope(it) }
+        pendingScopeRaw = null
+        onDismissRequest()
+    }
+
     ModalLegadoBottomSheet(
         show = show,
-        onDismissRequest = onDismissRequest,
+        onDismissRequest = dismissWithFlush,
         title = stringResource(R.string.groups_or_source),
+        actions = {
+            Text(
+                text = if (isSourceMode) {
+                    stringResource(R.string.search_scope_selected_source, if (selectedSourceUrl != null) 1 else 0)
+                } else {
+                    stringResource(R.string.search_scope_selected_groups, selectedGroups.size)
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.padding(end = 20.dp),
+            )
+        },
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = !isSourceMode,
-                    onClick = { isSourceMode = false },
-                    label = { Text("分组") },
+                    onClick = { pendingScopeRaw = null; isSourceMode = false },
+                    label = { Text(stringResource(R.string.search_group)) },
                     shape = RoundedCornerShape(20.dp),
                 )
                 FilterChip(
                     selected = isSourceMode,
-                    onClick = { isSourceMode = true },
-                    label = { Text("书源") },
+                    onClick = { pendingScopeRaw = null; isSourceMode = true },
+                    label = { Text(stringResource(R.string.search_source)) },
                     shape = RoundedCornerShape(20.dp),
                 )
             }
@@ -863,57 +872,69 @@ private fun ScopeSheet(
                     items(filteredSources, key = { it.bookSourceUrl }) { source ->
                         Row(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable {
-                                selectedSourceUrl = if (selectedSourceUrl == source.bookSourceUrl) null else source.bookSourceUrl
+                                applySource(if (selectedSourceUrl == source.bookSourceUrl) null else source)
                             }.padding(vertical = 10.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(
                                 selected = selectedSourceUrl == source.bookSourceUrl,
-                                onClick = { selectedSourceUrl = if (selectedSourceUrl == source.bookSourceUrl) null else source.bookSourceUrl },
+                                onClick = { applySource(if (selectedSourceUrl == source.bookSourceUrl) null else source) },
                             )
                             Spacer(Modifier.width(12.dp))
-                            Text(source.bookSourceName, maxLines = 1, style = MaterialTheme.typography.bodyLarge)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(source.bookSourceName, maxLines = 1, style = MaterialTheme.typography.bodyLarge)
+                                source.bookSourceGroup?.takeIf { it.isNotBlank() }?.let {
+                                    Text(it, maxLines = 1, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
                         }
                     }
                 } else {
                     items(allGroups, key = { it }) { group ->
                         Row(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable {
-                                selectedGroups = if (selectedGroups.contains(group)) selectedGroups - group else selectedGroups + group
+                                applyGroups(if (selectedGroups.contains(group)) selectedGroups - group else selectedGroups + group)
                             }.padding(vertical = 10.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Checkbox(
                                 checked = selectedGroups.contains(group),
-                                onCheckedChange = { selectedGroups = if (selectedGroups.contains(group)) selectedGroups - group else selectedGroups + group },
+                                onCheckedChange = {
+                                    applyGroups(if (selectedGroups.contains(group)) selectedGroups - group else selectedGroups + group)
+                                },
                             )
                             Spacer(Modifier.width(12.dp))
-                            Text(group, maxLines = 1, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "$group (${groupCounts[group] ?: 0})",
+                                maxLines = 1,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f),
+                            )
                         }
                     }
                 }
             }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = {
-                    selectedGroups = allGroups.toSet()
-                    selectedSourceUrl = null
-                }) {
-                    Text(stringResource(R.string.all))
-                }
-                TextButton(onClick = {
-                    val scope = if (isSourceMode) {
-                        allSources.find { it.bookSourceUrl == selectedSourceUrl }?.let {
-                            "${it.bookSourceName}::${it.bookSourceUrl}"
-                        } ?: ""
-                    } else {
-                        selectedGroups.joinToString(",")
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (!isSourceMode) {
+                        TextButton(onClick = { applyGroups(allGroups.toSet()) }) {
+                            Text(stringResource(R.string.select_all))
+                        }
                     }
-                    onApplyScope(scope)
-                    onDismissRequest()
-                }) {
-                    Text(stringResource(R.string.ok))
+                    TextButton(onClick = { if (isSourceMode) applySource(null) else applyGroups(emptySet()) }) {
+                        Text(stringResource(R.string.clear))
+                    }
                 }
+                Text(
+                    stringResource(R.string.search_scope_tap_to_apply),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Spacer(modifier = Modifier.height(8.dp))
         }

@@ -6,11 +6,14 @@ import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.domain.usecase.ParallelChapterScanner
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.ChineseUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 
 class SearchContentViewModel(application: Application) : BaseViewModel(application) {
@@ -37,11 +40,13 @@ class SearchContentViewModel(application: Application) : BaseViewModel(applicati
 
     suspend fun searchChapter(
         query: String,
-        chapter: BookChapter
+        chapter: BookChapter,
+        useReplace: Boolean = replaceEnabled
     ): List<SearchResult> {
         val searchResultsWithinChapter: MutableList<SearchResult> = mutableListOf()
         val book = book ?: return searchResultsWithinChapter
-        val chapterContent = BookHelp.getContent(book, chapter) ?: return searchResultsWithinChapter
+        val chapterContent = withContext(Dispatchers.IO) { BookHelp.getContent(book, chapter) }
+            ?: return searchResultsWithinChapter
         coroutineContext.ensureActive()
         chapter.title = when (AppConfig.chineseConverterType) {
             1 -> ChineseUtils.t2s(chapter.title)
@@ -50,7 +55,7 @@ class SearchContentViewModel(application: Application) : BaseViewModel(applicati
         }
         coroutineContext.ensureActive()
         val mContent = contentProcessor!!.getContent(
-            book, chapter, chapterContent, useReplace = replaceEnabled
+            book, chapter, chapterContent, useReplace = useReplace
         ).toString()
         val positions = searchPosition(mContent, query)
         positions.forEachIndexed { index, position ->
@@ -67,8 +72,35 @@ class SearchContentViewModel(application: Application) : BaseViewModel(applicati
             )
             searchResultsWithinChapter.add(result)
         }
-        searchResultCounts += searchResultsWithinChapter.size
         return searchResultsWithinChapter
+    }
+
+    /**
+     * 并行搜索已缓存/本地章节，结果严格按章序逐片回调。
+     * 仅扫描 [isCached] 为 true 的章节（本地书或已缓存章节），未缓存章节直接跳过。
+     * [onChapterResults] 每收到一片（严格按章序）结果回调一次，运行在调用方协程。
+     */
+    suspend fun searchParallel(
+        query: String,
+        chapters: List<BookChapter>,
+        isCached: (BookChapter) -> Boolean,
+        onChapterResults: suspend (List<SearchResult>) -> Unit,
+    ) {
+        val cached = chapters.filter(isCached)
+        val useReplace = replaceEnabled
+        ParallelChapterScanner.scanInOrder(
+            items = cached,
+            scanChunk = { chunk ->
+                chunk.map { searchChapter(query, it, useReplace) }.flatten()
+            },
+            onChunkResult = { results ->
+                if (results.isNotEmpty()) {
+                    searchResultList.addAll(results)
+                    searchResultCounts += results.size
+                    onChapterResults(results)
+                }
+            },
+        )
     }
 
     private suspend fun searchPosition(content: String, pattern: String): List<Int> {

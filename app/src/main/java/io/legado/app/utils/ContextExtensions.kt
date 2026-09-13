@@ -176,6 +176,12 @@ fun Context.getPrefBoolean(key: String, defValue: Boolean = false) =
 fun Context.putPrefBoolean(key: String, value: Boolean = false) =
     defaultSharedPreferences.edit { putBoolean(key, value) }
 
+fun Context.getPrefFloat(key: String, defValue: Float = 0f) =
+    defaultSharedPreferences.getFloat(key, defValue)
+
+fun Context.putPrefFloat(key: String, value: Float) =
+    defaultSharedPreferences.edit { putFloat(key, value) }
+
 fun Context.getPrefInt(key: String, defValue: Int = 0) =
     defaultSharedPreferences.getInt(key, defValue)
 

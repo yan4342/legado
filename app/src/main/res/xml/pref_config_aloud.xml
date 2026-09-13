@@ -56,6 +56,25 @@
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.Preference
+            android:title="@string/tts_paragraph_interval"
+            android:summary="@string/tts_paragraph_interval_summary"
+            android:key="ttsParagraphInterval"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.Preference
+            android:title="@string/default_read_aloud_interface"
+            android:summary="@string/default_read_aloud_interface_summary"
+            android:key="readAloudDefaultInterface"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="true"
+            android:title="@string/show_read_aloud_capsule"
+            android:summary="@string/show_read_aloud_capsule_summary"
+            android:key="showReadAloudCapsule"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.Preference
             android:title="@string/speak_engine"
             android:summary="TTS"
             android:key="appTtsEngine"

@@ -77,7 +77,7 @@ class LegadoSheetDialog private constructor(
  *
  * 用法：
  * ```
- * val sheetState = rememberModalBottomSheetState(...)
+ * val sheetState = rememberLegadoBottomSheetState(...)
  * val requestDismiss = rememberDelayedDismiss(sheetState) { dismissAllowingStateLoss() }
  * ModalBottomSheet(onDismissRequest = requestDismiss, sheetState = sheetState, ...) { ... }
  * ```

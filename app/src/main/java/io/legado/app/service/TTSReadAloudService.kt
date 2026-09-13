@@ -7,6 +7,7 @@ import io.legado.app.R
 import io.legado.app.constant.AppConst
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
+import io.legado.app.domain.model.readaloud.ReadAloudPlaybackCursor
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.MediaHelp
 import io.legado.app.help.config.AppConfig
@@ -27,10 +28,16 @@ import kotlinx.coroutines.ensureActive
  */
 class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener {
 
+    override val useSpeechPlaybackQueue: Boolean = true
+
+    protected override val currentSpeechRate: Float
+        get() = if (AppConfig.ttsFlowSys) 1f else (AppConfig.ttsSpeechRate + 5) / 10f
+
     private var textToSpeech: TextToSpeech? = null
     private var ttsInitFinish = false
     private val ttsUtteranceListener = TTSUtteranceListener()
     private var speakJob: Coroutine<*>? = null
+    private var needParagraphInterval = false
     private val TAG = "TTSReadAloudService"
 
     override fun onCreate() {
@@ -93,53 +100,86 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
         }
         super.play()
         MediaHelp.playSilentSound(this@TTSReadAloudService)
+        val isDelay = needParagraphInterval
+        needParagraphInterval = false
         speakJob?.cancel()
         speakJob = execute {
-            LogUtils.d(TAG, "朗读列表大小 ${contentList.size}")
-            LogUtils.d(TAG, "朗读页数 ${textChapter?.pageSize}")
-            val tts = textToSpeech ?: throw NoStackTraceException("tts is null")
-            val contentList = contentList
-            var isAddedText = false
-            for (i in nowSpeak until contentList.size) {
+            val interval = AppConfig.ttsParagraphInterval.toLong()
+            if (hasSpeechPlaybackQueue || interval > 0) {
+                if (isDelay) {
+                    delay(interval)
+                }
                 ensureActive()
-                var text = contentList[i]
-                if (paragraphStartPos > 0 && i == nowSpeak) {
+                LogUtils.d(TAG, "朗读列表大小 ${contentList.size}")
+                val tts = textToSpeech ?: throw NoStackTraceException("tts is null")
+                var text = contentList[nowSpeak]
+                if (paragraphStartPos > 0) {
                     text = text.substring(paragraphStartPos)
                 }
                 if (text.matches(AppPattern.notReadAloudRegex)) {
-                    continue
+                    ttsUtteranceListener.onDone(AppConst.APP_TAG + nowSpeak)
+                    return@execute
                 }
+                val result = tts.runCatching {
+                    speak(text, TextToSpeech.QUEUE_FLUSH, null, AppConst.APP_TAG + nowSpeak)
+                }.getOrElse {
+                    AppLog.put("tts出错\n${it.localizedMessage}", it, true)
+                    TextToSpeech.ERROR
+                }
+                if (result == TextToSpeech.ERROR) {
+                    AppLog.put("tts出错 尝试重新初始化")
+                    clearTTS()
+                    initTts()
+                    return@execute
+                }
+                LogUtils.d(TAG, "朗读内容添加完成")
+            } else {
+                LogUtils.d(TAG, "朗读列表大小 ${contentList.size}")
+                LogUtils.d(TAG, "朗读页数 ${textChapter?.pageSize}")
+                val tts = textToSpeech ?: throw NoStackTraceException("tts is null")
+                val contentList = contentList
+                var isAddedText = false
+                for (i in nowSpeak until contentList.size) {
+                    ensureActive()
+                    var text = contentList[i]
+                    if (paragraphStartPos > 0 && i == nowSpeak) {
+                        text = text.substring(paragraphStartPos)
+                    }
+                    if (text.matches(AppPattern.notReadAloudRegex)) {
+                        continue
+                    }
+                    if (!isAddedText) {
+                        val result = tts.runCatching {
+                            speak(text, TextToSpeech.QUEUE_FLUSH, null, AppConst.APP_TAG + i)
+                        }.getOrElse {
+                            AppLog.put("tts出错\n${it.localizedMessage}", it, true)
+                            TextToSpeech.ERROR
+                        }
+                        if (result == TextToSpeech.ERROR) {
+                            AppLog.put("tts出错 尝试重新初始化")
+                            clearTTS()
+                            initTts()
+                            return@execute
+                        }
+                    } else {
+                        val result = tts.runCatching {
+                            speak(text, TextToSpeech.QUEUE_ADD, null, AppConst.APP_TAG + i)
+                        }.getOrElse {
+                            AppLog.put("tts出错\n${it.localizedMessage}", it, true)
+                            TextToSpeech.ERROR
+                        }
+                        if (result == TextToSpeech.ERROR) {
+                            AppLog.put("tts朗读出错:$text")
+                        }
+                    }
+                    isAddedText = true
+                }
+                LogUtils.d(TAG, "朗读内容添加完成")
                 if (!isAddedText) {
-                    val result = tts.runCatching {
-                        speak(text, TextToSpeech.QUEUE_FLUSH, null, AppConst.APP_TAG + i)
-                    }.getOrElse {
-                        AppLog.put("tts出错\n${it.localizedMessage}", it, true)
-                        TextToSpeech.ERROR
-                    }
-                    if (result == TextToSpeech.ERROR) {
-                        AppLog.put("tts出错 尝试重新初始化")
-                        clearTTS()
-                        initTts()
-                        return@execute
-                    }
-                } else {
-                    val result = tts.runCatching {
-                        speak(text, TextToSpeech.QUEUE_ADD, null, AppConst.APP_TAG + i)
-                    }.getOrElse {
-                        AppLog.put("tts出错\n${it.localizedMessage}", it, true)
-                        TextToSpeech.ERROR
-                    }
-                    if (result == TextToSpeech.ERROR) {
-                        AppLog.put("tts朗读出错:$text")
-                    }
+                    playStop()
+                    delay(1000)
+                    nextChapter()
                 }
-                isAddedText = true
-            }
-            LogUtils.d(TAG, "朗读内容添加完成")
-            if (!isAddedText) {
-                playStop()
-                delay(1000)
-                nextChapter()
             }
         }.onError {
             AppLog.put("tts朗读出错\n${it.localizedMessage}", it, true)
@@ -165,6 +205,7 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
             val speechRate = (AppConfig.ttsSpeechRate + 5) / 10f
             textToSpeech?.setSpeechRate(speechRate)
         }
+        upMediaMetadata()
     }
 
     /**
@@ -211,7 +252,12 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
 
         override fun onDone(s: String) {
             LogUtils.d(TAG, "onDone utteranceId:$s")
-            nextParagraph()
+            if (nextParagraph() && !pause &&
+                (hasSpeechPlaybackQueue || AppConfig.ttsParagraphInterval > 0)
+            ) {
+                needParagraphInterval = AppConfig.ttsParagraphInterval > 0
+                play()
+            }
         }
 
         override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
@@ -235,10 +281,29 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
                 TAG,
                 "onError nowSpeak:$nowSpeak pageIndex:$pageIndex utteranceId:$utteranceId errorCode:$errorCode"
             )
-            nextParagraph()
+            if (nextParagraph() && !pause &&
+                (hasSpeechPlaybackQueue || AppConfig.ttsParagraphInterval > 0)
+            ) {
+                needParagraphInterval = AppConfig.ttsParagraphInterval > 0
+                play()
+            }
         }
 
-        private fun nextParagraph() {
+        /**
+         * @return true if there is another paragraph in the current chapter to speak
+         */
+        private fun nextParagraph(): Boolean {
+            if (hasSpeechPlaybackQueue) {
+                val current = playbackCursor
+                    ?: ReadAloudPlaybackCursor(nowSpeak, paragraphStartPos)
+                val next = playbackQueue.next(current)
+                if (next != null) {
+                    moveToPlaybackCursor(next)
+                    return true
+                }
+                nextChapter()
+                return false
+            }
             //跳过全标点段落
             do {
                 readAloudNumber += contentList[nowSpeak].length + 1 - paragraphStartPos
@@ -246,15 +311,21 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
                 nowSpeak++
                 if (nowSpeak >= contentList.size) {
                     nextChapter()
-                    return
+                    return false
                 }
             } while (contentList[nowSpeak].matches(AppPattern.notReadAloudRegex))
+            return true
         }
 
         @Deprecated("Deprecated in Java")
         override fun onError(s: String) {
             LogUtils.d(TAG, "onError nowSpeak:$nowSpeak pageIndex:$pageIndex s:$s")
-            nextParagraph()
+            if (nextParagraph() && !pause &&
+                (hasSpeechPlaybackQueue || AppConfig.ttsParagraphInterval > 0)
+            ) {
+                needParagraphInterval = AppConfig.ttsParagraphInterval > 0
+                play()
+            }
         }
 
     }

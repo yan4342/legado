@@ -45,7 +45,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.preference.PreferenceManager
 import io.legado.app.R
-import io.legado.app.base.LocalStatusBarTransparent
+import io.legado.app.ui.common.compose.TransparentTopAppBarStatusBar
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.BookType
 import io.legado.app.constant.PreferKey
@@ -84,16 +84,26 @@ import io.legado.app.utils.shareWithQr
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.legado.app.ui.ai.worldbook.AiWorldBookSheet
+import io.legado.app.domain.gateway.ReadAloudCharacterGateway
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.koin.compose.koinInject
 
 /**
  * 完整功能版 — BookInfoComposeActivity 全部能力迁移。
  * UI 保持 BookDetailScreen 不变。
  */
-@OptIn(ExperimentalSharedTransitionApi::class)
+private const val GENERATE_RELATIONS = 1
+private const val GENERATE_WORLD_BOOK = 2
+private const val GENERATE_OUTLINE = 3
+
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun BookInfoRouteScreen(
     bookUrl: String?,
@@ -103,6 +113,10 @@ fun BookInfoRouteScreen(
     origin: String? = null,
     onBack: () -> Unit,
     onReadBook: (String, Boolean, Boolean) -> Unit = { _, _, _ -> },
+    onNavigateToVoiceCasting: (String) -> Unit = {},
+    onNavigateToCloudTts: (String) -> Unit = {},
+    onNavigateToCharacterNetwork: (bookUrl: String, focusCharacterId: String?) -> Unit = { _, _ -> },
+    onNavigateToCharacterList: (String) -> Unit = {},
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     sharedCoverKey: String? = null,
@@ -111,6 +125,13 @@ fun BookInfoRouteScreen(
     val activity = context as? AppCompatActivity
     val fragActivity = context as? FragmentActivity
     val vm: BookInfoViewModel = viewModel(context as androidx.lifecycle.ViewModelStoreOwner)
+    val characterGateway: ReadAloudCharacterGateway = koinInject()
+    val generateCanonicalUseCase: io.legado.app.domain.usecase.GenerateBookCanonicalUseCase = koinInject()
+    var showWorldBookSheet by remember { mutableStateOf(false) }
+    var worldBookHighlightId by remember { mutableStateOf<String?>(null) }
+    var showOutlineSheet by remember { mutableStateOf(false) }
+    var outlineSheetContent by remember { mutableStateOf("") }
+    var editingCharacterId by remember { mutableStateOf<String?>(null) }
 
     // ── Eager book from route params (cover renders from frame 1 of transition) ──
     val eagerBook = remember(bookUrl, name, author, coverPath) {
@@ -132,12 +153,17 @@ fun BookInfoRouteScreen(
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
     val tocLauncher = rememberLauncherForActivityResult(TocActivityResult()) { result ->
-        result?.let { (i, p) -> vm.getBook(false)?.let { b ->
-            fragActivity?.lifecycleScope?.launch {
-                withContext(IO) { b.durChapterIndex = i; b.durChapterPos = p; appDb.bookDao.update(b) }
-                activity?.startActivity(makeReadIntent(activity, vm, b))
+        result?.let { (i, p, readerLaunched) ->
+            // TocActivity 已在文本书详情页直达时启动阅读器,跳过重复启动
+            if (!readerLaunched) {
+                vm.getBook(false)?.let { b ->
+                    fragActivity?.lifecycleScope?.launch {
+                        withContext(IO) { b.durChapterIndex = i; b.durChapterPos = p; appDb.bookDao.update(b) }
+                        activity?.startActivity(makeReadIntent(activity, vm, b))
+                    }
+                }
             }
-        } } ?: run { if (!vm.inBookshelf) vm.delBook() }
+        } ?: run { if (!vm.inBookshelf) vm.delBook() }
     }
     val readLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         vm.upBook(Intent())
@@ -176,11 +202,7 @@ fun BookInfoRouteScreen(
     var loadingText by remember { mutableStateOf("Loading.....") }
 
     // 状态栏透明，透出底层背景图
-    val statusBarTransparent = LocalStatusBarTransparent.current
-    DisposableEffect(Unit) {
-        statusBarTransparent?.value = true
-        onDispose { statusBarTransparent?.value = false }
-    }
+    TransparentTopAppBarStatusBar()
 
     LaunchedEffect(bookUrl, name, author) {
         // Init full data from DB (eager book already rendered with cover)
@@ -247,6 +269,51 @@ fun BookInfoRouteScreen(
         val b = book!!
         var upd by remember(b) { mutableStateOf(b.canUpdate) }
         var spl by remember(b) { mutableStateOf(b.getSplitLongChapter()) }
+        // 正典内容为空时点击"关系网/世界书/大纲"→ 确认后用 AI 生成
+        var pendingGenerate by remember(b.bookUrl) { mutableStateOf<Int?>(null) }
+        val castCharacters by remember(b.bookUrl) {
+            combine(
+                characterGateway.observeCharacterCards(b.bookUrl),
+                characterGateway.observeSpeakerCharacters(b.bookUrl),
+            ) { cards, speakers ->
+                val roles = speakers.associate { it.id to it.role }
+                cards.map { card ->
+                    BookDetailCharacterUi(
+                        id = card.id,
+                        name = card.name,
+                        subtitle = card.personality.ifBlank { card.description }.take(40),
+                        dramaticRole = roles[card.id].orEmpty(),
+                        avatarPath = card.avatarPath,
+                    )
+                }
+            }
+        }.collectAsStateWithLifecycle(initialValue = emptyList())
+
+        // 正典内容一键生成(仅为空时生成):识别关系网 / 世界书 / 大纲
+        val runBookGenerate: (Int) -> Unit = { type ->
+            activity?.toastOnUi(R.string.generate_ai_running)
+            coroutineScope.launch(IO) {
+                val result = runCatching {
+                    when (type) {
+                        GENERATE_RELATIONS -> generateCanonicalUseCase.generateRelations(b.bookUrl)
+                        GENERATE_WORLD_BOOK -> generateCanonicalUseCase.generateWorldBook(b.bookUrl)
+                        GENERATE_OUTLINE -> generateCanonicalUseCase.generateOutline(b.bookUrl)
+                        else -> io.legado.app.domain.usecase.GenerateBookCanonicalUseCase.Result.Failure("未知类型")
+                    }
+                }.getOrElse {
+                    io.legado.app.domain.usecase.GenerateBookCanonicalUseCase.Result.Failure(it.message ?: "生成失败")
+                }
+                val msg = when (result) {
+                    is io.legado.app.domain.usecase.GenerateBookCanonicalUseCase.Result.Success ->
+                        activity?.getString(R.string.generate_ai_done).orEmpty()
+                    is io.legado.app.domain.usecase.GenerateBookCanonicalUseCase.Result.AlreadyExists ->
+                        activity?.getString(R.string.generate_ai_exists).orEmpty()
+                    is io.legado.app.domain.usecase.GenerateBookCanonicalUseCase.Result.Failure ->
+                        result.message
+                }
+                withContext(Dispatchers.Main) { activity?.toastOnUi(msg) }
+            }
+        }
 
         BookDetailScreen(
             book = b, latestChapterTitle = b.latestChapterTitle, totalChapterNum = b.totalChapterNum,
@@ -273,7 +340,9 @@ fun BookInfoRouteScreen(
             inBookshelf = inShelf,
             onTocClick = {
                 if (chapters.isNullOrEmpty()) activity?.toastOnUi(R.string.chapter_list_empty)
-                else vm.getBook()?.let { tocLauncher.launch(it.bookUrl) }
+                else vm.getBook()?.let { b ->
+                    vm.prepareOpenChapterList { tocLauncher.launch(b.bookUrl) }
+                }
             },
             onEditClick = { editLauncher.launch { putExtra("bookUrl", b.bookUrl) } },
             onMenuAction = { act ->
@@ -292,6 +361,8 @@ fun BookInfoRouteScreen(
                     MENU_CAN_UPDATE -> { if (vm.inBookshelf) vm.saveBook(b) }
                     MENU_SPLIT_LONG_CHAPTER -> vm.loadBookInfo(b, false)
                     MENU_CLEAR_CACHE -> vm.clearCache()
+                    MENU_VOICE_CASTING -> onNavigateToVoiceCasting(b.bookUrl)
+                    MENU_CLOUD_TTS -> onNavigateToCloudTts(b.bookUrl)
                     MENU_UPLOAD -> doUpload(b, vm, activity, coroutineScope)
                     MENU_DELETE -> {
                         deleteIsLocal = b.isLocal
@@ -338,7 +409,131 @@ fun BookInfoRouteScreen(
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope,
             sharedCoverKey = sharedCoverKey,
+            characters = castCharacters,
+            onCharacterClick = { characterId ->
+                editingCharacterId = characterId
+            },
+            onOpenVoiceCasting = { onNavigateToVoiceCasting(b.bookUrl) },
+            onOpenCharacterList = {
+                onNavigateToCharacterList(b.bookUrl)
+            },
+            onOpenNetwork = {
+                // 关系网:正典有内容 → 查看;为空 → 确认后用 AI 生成
+                coroutineScope.launch(IO) {
+                    val hasRelation = appDb.aiMemoryTableDao.getByBookUrl(b.bookUrl)
+                        .any { it.canonical && it.name.contains("关系") }
+                    withContext(Dispatchers.Main) {
+                        if (hasRelation) {
+                            val hubId = castCharacters
+                                .firstOrNull { it.dramaticRole == io.legado.app.domain.model.DramaticRole.MALE_LEAD }?.id
+                                ?: castCharacters
+                                    .firstOrNull { it.dramaticRole == io.legado.app.domain.model.DramaticRole.FEMALE_LEAD }?.id
+                            onNavigateToCharacterNetwork(b.bookUrl, hubId)
+                        } else {
+                            pendingGenerate = GENERATE_RELATIONS
+                        }
+                    }
+                }
+            },
+            onOpenWorldBook = {
+                // 世界书:正典有内容 → 查看;为空 → 确认后生成
+                coroutineScope.launch(IO) {
+                    val linked = appDb.aiWorldBookDao.all.firstOrNull {
+                        it.bookUrl == b.bookUrl && it.canonical
+                    }
+                    withContext(Dispatchers.Main) {
+                        if (linked != null) {
+                            worldBookHighlightId = linked.id
+                            showWorldBookSheet = true
+                        } else {
+                            pendingGenerate = GENERATE_WORLD_BOOK
+                        }
+                    }
+                }
+            },
+            onOpenOutline = {
+                // 大纲:正典有内容 → 查看;为空 → 确认后生成
+                coroutineScope.launch(IO) {
+                    val outline = appDb.aiBookOutlineDao.getByBookUrl(b.bookUrl)
+                    withContext(Dispatchers.Main) {
+                        if (outline != null && outline.content.isNotBlank()) {
+                            outlineSheetContent = outline.content
+                            showOutlineSheet = true
+                        } else {
+                            pendingGenerate = GENERATE_OUTLINE
+                        }
+                    }
+                }
+            },
         )
+
+        if (showWorldBookSheet) {
+            AiWorldBookSheet(
+                onDismiss = {
+                    showWorldBookSheet = false
+                    worldBookHighlightId = null
+                },
+                highlightWorldBookId = worldBookHighlightId,
+            )
+        }
+
+        if (showOutlineSheet) {
+            ModalLegadoBottomSheet(
+                show = true,
+                onDismissRequest = { showOutlineSheet = false },
+                title = stringResource(R.string.book_outline),
+            ) {
+                Text(
+                    text = outlineSheetContent,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+        }
+
+        BookDetailCharacterEditOverlay(
+            characterId = editingCharacterId,
+            bookUrl = b.bookUrl,
+            bookName = b.name,
+            bookAuthor = b.author,
+            onDismiss = { editingCharacterId = null },
+        )
+
+        // 正典内容为空时确认 AI 生成
+        pendingGenerate?.let { type ->
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { pendingGenerate = null },
+                title = { androidx.compose.material3.Text(stringResource(R.string.book_generate_confirm_title)) },
+                text = {
+                    androidx.compose.material3.Text(
+                        stringResource(
+                            when (type) {
+                                GENERATE_RELATIONS -> R.string.book_generate_relations_confirm
+                                GENERATE_WORLD_BOOK -> R.string.book_generate_world_book_confirm
+                                else -> R.string.book_generate_outline_confirm
+                            },
+                        ),
+                    )
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            pendingGenerate = null
+                            runBookGenerate(type)
+                        },
+                    ) {
+                        androidx.compose.material3.Text(stringResource(R.string.generate))
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { pendingGenerate = null }) {
+                        androidx.compose.material3.Text(
+                            androidx.compose.ui.res.stringResource(android.R.string.cancel),
+                        )
+                    }
+                },
+            )
+        }
 
         // ═══════════════════════ Compose Dialogs & Sheets ═══════════════════════
 

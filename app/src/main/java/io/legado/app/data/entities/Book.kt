@@ -105,6 +105,11 @@ data class Book(
     // 刷新书架时更新书籍信息
     @ColumnInfo(defaultValue = "1")
     var canUpdate: Boolean = true,
+    // 重新分章模式(把细分子页合并成真实章节)
+    @ColumnInfo(defaultValue = "0")
+    var reChapterEnabled: Boolean = false,
+    // 重新分章进度标记(最后一次成功分章覆盖到的章节 url,bookUrl+url 维度)
+    var reChapterMark: String? = null,
     // 手动排序
     @ColumnInfo(defaultValue = "0")
     var order: Int = 0,
@@ -353,6 +358,7 @@ data class Book(
         newBook.customIntro = customIntro
         newBook.customTag = customTag
         newBook.canUpdate = canUpdate
+        newBook.reChapterEnabled = reChapterEnabled
         newBook.readConfig = readConfig
         return newBook
     }
@@ -402,7 +408,12 @@ data class Book(
         var readSimulating: Boolean = false,
         var startDate: LocalDate? = null,
         var startChapter: Int? = null,     // 用户设置的起始章节
-        var dailyChapters: Int = 3    // 用户设置的每日更新章节数
+        var dailyChapters: Int = 3,    // 用户设置的每日更新章节数
+        // 以下字段自 legado-with-MD3 漫画阅读器移植（GSON JSON 序列化，旧数据自动用默认值）
+        val mangaColorFilter: String? = null,
+        var mangaScrollMode: Int? = null,
+        var webtoonSidePaddingDp: Int? = null,
+        var mangaBackground: String? = null
     ) : Parcelable
 
     class Converters {

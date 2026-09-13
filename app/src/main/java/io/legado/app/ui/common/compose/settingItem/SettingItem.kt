@@ -107,13 +107,6 @@ fun SettingItem(
                     }
                 }
             } else null,
-            headlineContent = {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            },
             supportingContent = if (description != null || option != null) {
                 {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -161,7 +154,13 @@ fun SettingItem(
                 }
             },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        )
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
 
         if (isExpandable) {
             AnimatedVisibility(

@@ -8,6 +8,9 @@ import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
@@ -28,6 +31,8 @@ import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.ui.common.compose.LegadoTheme
 import io.legado.app.utils.showLogSheet
 import io.legado.app.utils.startActivity
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 
 class SearchActivity : AppCompatActivity() {
 
@@ -49,6 +54,17 @@ class SearchActivity : AppCompatActivity() {
         val initKey = intent.getStringExtra("key")
         val initScope = intent.getStringExtra("searchScope")
         viewModel.onIntent(SearchIntent.Initialize(initKey, initScope))
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                viewModel.onIntent(SearchIntent.ResumeEngine)
+                try {
+                    awaitCancellation()
+                } finally {
+                    viewModel.onIntent(SearchIntent.PauseEngine)
+                }
+            }
+        }
 
         setContent {
             LegadoTheme {
@@ -93,6 +109,31 @@ class SearchActivity : AppCompatActivity() {
                                     coverPath = params.coverPath,
                                     origin = params.origin,
                                     onBack = { bookInfoOverlay = null },
+                                    onNavigateToVoiceCasting = { bookUrl ->
+                                        startActivity(
+                                            io.legado.app.ui.main.MainIntent.createBookVoiceCastingIntent(
+                                                this@SearchActivity,
+                                                bookUrl,
+                                            )
+                                        )
+                                    },
+                                    onNavigateToCharacterNetwork = { bookUrl, focusCharacterId ->
+                                        startActivity(
+                                            io.legado.app.ui.main.MainIntent.createBookCharacterNetworkIntent(
+                                                this@SearchActivity,
+                                                bookUrl,
+                                                focusCharacterId,
+                                            )
+                                        )
+                                    },
+                                    onNavigateToCharacterList = { bookUrl ->
+                                        startActivity(
+                                            io.legado.app.ui.main.MainIntent.createBookCharacterListIntent(
+                                                this@SearchActivity,
+                                                bookUrl,
+                                            )
+                                        )
+                                    },
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     animatedVisibilityScope = this@AnimatedVisibility,
                                     sharedCoverKey = params.sharedCoverKey,

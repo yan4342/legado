@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Blank AI Chat Shell</title>
+  <link id="theme-css" rel="stylesheet" href="theme.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <aside id="sidebar" class="sidebar" data-slot="sidebar" aria-label="Conversations">
+      <div class="sidebar-header">
+        <button type="button" id="btn-back" class="icon-btn" title="Back">←</button>
+        <span class="sidebar-title">Chats</span>
+        <button type="button" id="btn-settings" class="icon-btn" title="Settings">⚙</button>
+      </div>
+      <button type="button" id="btn-new-chat" class="primary-btn block">New chat</button>
+      <div class="sidebar-actions">
+        <button type="button" id="btn-theme" class="ghost-btn">Theme</button>
+        <button type="button" id="btn-open-right" class="ghost-btn">Panel</button>
+      </div>
+      <div id="conversation-list" class="conversation-list"></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar" data-slot="topbar">
+        <button type="button" id="btn-toggle-sidebar" class="icon-btn" title="Conversations">☰</button>
+        <div class="topbar-title">
+          <div id="current-title">AI Chat</div>
+          <div id="current-meta" class="muted"></div>
+        </div>
+        <button type="button" id="btn-toggle-right" class="icon-btn" title="Panel">⋮</button>
+      </header>
+
+      <!-- Custom slot example: mount via fragments/custom_banner.html -->
+      <div data-slot="custom_banner" class="custom-banner" aria-label="Custom banner">
+        Blank shell — edit index.html / app.js / fragments freely.
+      </div>
+
+      <div data-slot="message_area" class="message-area">
+        <main id="message-list" class="message-list" aria-live="polite"></main>
+      </div>
+
+      <section id="tool-panel" class="tool-panel hidden" data-slot="tool_panel" aria-label="Tool confirmation"></section>
+      <section id="interactive-panels" class="interactive-panels" data-slot="interactive_panels" aria-label="Interactive panels"></section>
+      <section id="galgame-hud" class="galgame-hud hidden" data-slot="galgame_hud" aria-label="Galgame HUD">
+        <div class="galgame-hud-bar">
+          <button type="button" id="btn-galgame-toggle" class="galgame-hud-toggle">HUD ▾</button>
+          <button type="button" id="btn-galgame-regen" class="chip-btn">Regen</button>
+          <button type="button" id="btn-galgame-recreate" class="chip-btn">Recreate</button>
+        </div>
+        <div id="galgame-hud-body" class="galgame-hud-body collapsed"></div>
+      </section>
+      <footer class="composer" data-slot="composer">
+        <section id="suggestions" class="suggestions hidden" data-slot="suggestions" aria-label="Suggestions"></section>
+        <section id="slash-menu" class="slash-menu hidden" aria-label="Slash commands"></section>
+        <section id="mention-menu" class="slash-menu hidden" aria-label="Mentions"></section>
+        <div id="attachment-chips" class="attachment-chips hidden"></div>
+        <div id="composer-toolbar" class="composer-toolbar"></div>
+        <div class="composer-input-row">
+          <textarea id="input" rows="1" placeholder="Message…" enterkeyhint="send"></textarea>
+          <div class="composer-actions">
+            <button type="button" id="btn-attach" class="ghost-btn" title="Attach">📎</button>
+            <div class="composer-more-wrap">
+              <button type="button" id="btn-composer-more" class="ghost-btn" title="More" aria-expanded="false">⋯</button>
+              <div id="composer-more-menu" class="composer-more-menu hidden" role="menu">
+                <button type="button" id="btn-context" class="ghost-btn menu-item" title="Context">Context</button>
+                <button type="button" id="btn-ai-help" class="ghost-btn menu-item hidden" title="AI help">Help</button>
+                <button type="button" id="btn-continue" class="ghost-btn menu-item hidden">Continue</button>
+              </div>
+            </div>
+            <button type="button" id="btn-send" class="primary-btn">Send</button>
+            <button type="button" id="btn-stop" class="danger-btn hidden">Stop</button>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <aside id="right-drawer" class="right-drawer" data-slot="right_drawer" aria-label="Chat panel">
+      <div id="right-drawer-body"></div>
+      <button type="button" id="btn-close-right" class="ghost-btn">Close</button>
+    </aside>
+  </div>
+
+  <dialog id="edit-dialog">
+    <form method="dialog" id="edit-form" class="edit-form">
+      <h3>Edit message</h3>
+      <textarea id="edit-text" rows="8"></textarea>
+      <div class="edit-actions">
+        <button type="submit" value="cancel" class="ghost-btn">Cancel</button>
+        <button type="submit" value="save" class="primary-btn">Save</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="theme-dialog">
+    <form method="dialog" id="theme-form" class="edit-form">
+      <h3>HTML themes</h3>
+      <div id="theme-list" class="theme-list"></div>
+      <div class="edit-actions">
+        <button type="submit" value="cancel" class="ghost-btn">Close</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="md.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

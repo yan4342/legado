@@ -231,6 +231,20 @@ fun Bitmap.resizeAndRecycle(newWidth: Int, newHeight: Int): Bitmap {
 }
 
 /**
+ * 通知栏 / MediaSession 大图：按长边缩放到 [sizePx]，双线性滤波，减轻系统硬缩放发糊。
+ */
+fun Bitmap.toNotificationLargeIcon(sizePx: Int = 256): Bitmap {
+    if (width <= 0 || height <= 0) return this
+    val longest = maxOf(width, height)
+    if (longest == sizePx) return this
+    val scale = sizePx.toFloat() / longest
+    val w = (width * scale).roundToInt().coerceAtLeast(1)
+    val h = (height * scale).roundToInt().coerceAtLeast(1)
+    if (w == width && h == height) return this
+    return Bitmap.createScaledBitmap(this, w, h, true)
+}
+
+/**
  * 高斯模糊
  */
 fun Bitmap.stackBlur(radius: Int = 8): Bitmap {

@@ -39,8 +39,36 @@ import kotlinx.coroutines.flow.MutableStateFlow
 /**
  * 用于子级 Composable 设置状态栏是否透明（隐藏着色覆盖层）。
  * 默认为 false，即显示着色覆盖层。
+ *
+ * 请优先使用 [TransparentTopAppBarStatusBar]；直接写 `value` 在多层页面切换时可能互相覆盖。
  */
 val LocalStatusBarTransparent = compositionLocalOf<MutableStateFlow<Boolean>?> { null }
+
+/**
+ * 引用计数式状态栏透明请求，避免子页面 onDispose 把仍在前台的页面状态冲掉。
+ */
+class StatusBarTransparentHandle(
+    private val state: MutableStateFlow<Boolean>,
+) {
+    private var requestCount = 0
+
+    val hasRequests: Boolean
+        get() = requestCount > 0
+
+    fun push() {
+        requestCount++
+        state.value = requestCount > 0
+    }
+
+    fun pop() {
+        if (requestCount > 0) {
+            requestCount--
+        }
+        state.value = requestCount > 0
+    }
+}
+
+val LocalStatusBarTransparentHandle = compositionLocalOf<StatusBarTransparentHandle?> { null }
 
 /**
  * 用于子级 Composable 覆盖状态栏颜色。
@@ -58,6 +86,7 @@ abstract class BaseComposeActivity(
 
     private val _statusBarTransparent = MutableStateFlow(false)
     private val _statusBarColor = MutableStateFlow<Color?>(null)
+    private val statusBarTransparentHandle = StatusBarTransparentHandle(_statusBarTransparent)
 
     @Composable
     protected abstract fun Content()
@@ -79,6 +108,7 @@ abstract class BaseComposeActivity(
 
                 CompositionLocalProvider(
                     LocalStatusBarTransparent provides _statusBarTransparent,
+                    LocalStatusBarTransparentHandle provides statusBarTransparentHandle,
                     LocalStatusBarColor provides _statusBarColor,
                 ) {
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {

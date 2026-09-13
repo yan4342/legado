@@ -1,3 +1,5 @@
+import com.android.build.api.variant.FilterConfiguration.FilterType
+
 plugins {
 //    id "com.android.application"
 //    id 'org.jetbrains.kotlin.android'
@@ -129,6 +131,16 @@ android {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
     }
+    splits {
+        abi {
+            enable true
+            reset()
+            // 真机仅需 ARM；x86/x86_64 仅模拟器/极少数 Intel 设备，正式版可不打包
+            include 'arm64-v8a'//, 'armeabi-v7a' , 'x86_64', 'x86'
+            universalApk false
+        }
+    }
+
     packaging {
         resources.excludes.add('META-INF/*')
     }
@@ -154,7 +166,9 @@ room {
 androidComponents {
     onVariants(selector().all()) { variant ->
         variant.outputs.forEach { output ->
-            output.outputFileName.set("${name}_${variant.flavorName}_${variant.buildType}_${version}.apk")
+            def abiFilter = output.filters.find { it.filterType == FilterType.ABI }?.identifier
+            def abiSuffix = abiFilter != null ? "_${abiFilter}" : ""
+            output.outputFileName.set("${name}_${variant.flavorName}_${variant.buildType}${abiSuffix}_${version}.apk")
         }
     }
 }
@@ -224,6 +238,8 @@ dependencies {
 
     //room sql语句不高亮解决方法https://issuetracker.google.com/issues/234612964#comment6
     implementation(libs.room.runtime)
+    // 漫画阅读器设置后端：DataStore（AppConfigStore）
+    implementation(libs.androidx.datastore.preferences)
     // room-ktx 已合并到 room-runtime（Room 2.7.0+），保留空依赖无影响
     //implementation(libs.room.ktx)
     //kapt("androidx.room:room-compiler:$room_version")
@@ -251,6 +267,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.okhttp)
     implementation(libs.coil.svg)
+    implementation(libs.telephoto.zoomable.image.coil3)
     // 显式添加 coil-core 确保 Compose Preview 可找到 coil3.size.Dimension
     // debugImplementation(libs.coil.core)
 
@@ -280,10 +297,6 @@ dependencies {
     //转换繁体
     implementation(libs.quick.chinese.transfer.core)
 
-    //加解密类库,有些书源使用
-    //noinspection GradleDependency,GradlePackageUpdate
-    implementation(libs.hutool.crypto)
-
     //firebase, 崩溃统计和性能统计
     implementation platform(libs.firebase.bom)
     implementation libs.firebase.analytics
@@ -309,8 +322,28 @@ dependencies {
     implementation libs.androidx.navigation3.runtime
     implementation libs.androidx.navigation3.ui
     implementation libs.kotlinx.serialization.json
-    implementation libs.reorderable
-    debugImplementation libs.compose.ui.tooling
+    implementation(libs.reorderable)
+    debugImplementation(libs.compose.ui.tooling)
+
+    // Additional Compose dependencies
+    implementation(libs.kotlinx.collections.immutable)
+    implementation(libs.haze.core)
+    implementation(libs.haze.materials)
+    implementation(libs.timber)
+    implementation(libs.material.kolor)
+    implementation(libs.commons.text)
+    implementation(libs.intellij.markdown)
+    implementation(libs.coil.gif)
+    implementation(libs.androidx.compose.adaptive)
+    implementation(libs.androidx.compose.adaptive.layout)
+    implementation(libs.androidx.compose.adaptive.navigation)
+    implementation(libs.androidx.constraintlayout.compose)
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.startup.runtime)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.compose.material)
+    implementation(libs.compose.materialIcons)
+    implementation(libs.androidx.compose.ui.viewbinding)
 
     //LeakCanary, 内存泄露检测
     //debugImplementation('com.squareup.leakcanary:leakcanary-android:2.7')

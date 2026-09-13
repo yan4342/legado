@@ -220,25 +220,27 @@ fun TxtRuleScreen(
                                 Icon(Icons.Default.Check, contentDescription = "Select all", tint = onSurfaceColor)
                             }
                         }
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = onSurfaceColor)
-                        }
-                        RoundDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) { dismiss ->
-                            RoundDropdownMenuItem(text = stringResource(R.string.import_local), onClick = {
-                                dismiss(); filePicker.launch(arrayOf("application/json", "text/*"))
-                            })
-                            RoundDropdownMenuItem(text = stringResource(R.string.import_on_line), onClick = {
-                                dismiss(); showUrlInput = true
-                            })
-                            RoundDropdownMenuItem(text = stringResource(R.string.import_by_qr_code), onClick = {
-                                dismiss(); qrLauncher.launch(null)
-                            })
-                            RoundDropdownMenuItem(text = stringResource(R.string.import_default_rule), onClick = {
-                                dismiss(); onIntent(TxtTocRuleIntent.ImportDefault)
-                            })
-                            RoundDropdownMenuItem(text = stringResource(R.string.help), onClick = {
-                                dismiss(); (context as? AppCompatActivity)?.showHelp("txtTocRuleHelp")
-                            })
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = onSurfaceColor)
+                            }
+                            RoundDropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) { dismiss ->
+                                RoundDropdownMenuItem(text = stringResource(R.string.import_local), onClick = {
+                                    dismiss(); filePicker.launch(arrayOf("application/json", "text/*"))
+                                })
+                                RoundDropdownMenuItem(text = stringResource(R.string.import_on_line), onClick = {
+                                    dismiss(); showUrlInput = true
+                                })
+                                RoundDropdownMenuItem(text = stringResource(R.string.import_by_qr_code), onClick = {
+                                    dismiss(); qrLauncher.launch(null)
+                                })
+                                RoundDropdownMenuItem(text = stringResource(R.string.import_default_rule), onClick = {
+                                    dismiss(); onIntent(TxtTocRuleIntent.ImportDefault)
+                                })
+                                RoundDropdownMenuItem(text = stringResource(R.string.help), onClick = {
+                                    dismiss(); (context as? AppCompatActivity)?.showHelp("txtTocRuleHelp")
+                                })
+                            }
                         }
                     }
                 },
@@ -264,20 +266,25 @@ fun TxtRuleScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // 启用选择
                     TextButton(onClick = {
                         onIntent(TxtTocRuleIntent.EnableSelection)
                         onIntent(TxtTocRuleIntent.ClearSelection)
                     }) { Text(stringResource(R.string.enable_selection)) }
+                    // 禁用选择
                     TextButton(onClick = {
                         onIntent(TxtTocRuleIntent.DisableSelection)
                         onIntent(TxtTocRuleIntent.ClearSelection)
                     }) { Text(stringResource(R.string.disable_selection)) }
+                    // 反转选择
                     TextButton(onClick = { onIntent(TxtTocRuleIntent.InvertSelection) }) {
                         Text(stringResource(R.string.revert_selection))
                     }
+                    // 导出选择
                     TextButton(onClick = { exportFile.launch("exportTxtTocRule.json") }) {
                         Text(stringResource(R.string.export_selection))
                     }
+                    // 删除选择
                     TextButton(onClick = {
                         onIntent(TxtTocRuleIntent.SetSelection(selectedIds))
                         onIntent(TxtTocRuleIntent.DeleteSelection)
@@ -295,15 +302,18 @@ fun TxtRuleScreen(
                 items(rules, key = { it.id }) { item ->
                     val isItemHighlighted = if (isPickMode) item.rule.rule == initialRule else selectedIds.contains(item.id)
 
+                    // 拖拽排序
                     ReorderableItem(reorderableState, key = item.id) { isDragging ->
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
                                 .combinedClickable(
                                     onClick = {
+                                        // 点击选择规则
                                         if (isPickMode) { onPickRule?.invoke(item.rule.rule); onBackClick() }
                                         else if (inSelectionMode) onIntent(TxtTocRuleIntent.ToggleSelection(item.id))
                                     },
                                     onLongClick = {
+                                        // 长按选择规则
                                         if (!isPickMode) onIntent(TxtTocRuleIntent.ToggleSelection(item.id))
                                     }
                                 ),
@@ -316,6 +326,7 @@ fun TxtRuleScreen(
                                 if (inSelectionMode) {
                                     Checkbox(checked = selectedIds.contains(item.id), onCheckedChange = { onIntent(TxtTocRuleIntent.ToggleSelection(item.id)) })
                                 }
+                                // 规则名称和示例
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(text = item.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     if (item.example.isNotBlank()) {

@@ -60,6 +60,77 @@ object MainNavigator {
                 }
             }
 
+            // Read-aloud / casting / cloud TTS: preserve drill-down parents on back.
+            MainRouteReadAloudPlayer,
+            MainRouteTtsCache -> {
+                if (
+                    currentRoute == MainRouteHome ||
+                    currentRoute is MainRouteBookInfo
+                ) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
+            is MainRouteBookVoiceCasting -> {
+                if (
+                    currentRoute == MainRouteHome ||
+                    currentRoute is MainRouteBookInfo ||
+                    currentRoute == MainRouteReadAloudPlayer
+                ) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
+            is MainRouteCloudTtsEngines -> {
+                if (
+                    currentRoute == MainRouteHome ||
+                    currentRoute is MainRouteBookInfo ||
+                    currentRoute is MainRouteBookVoiceCasting ||
+                    currentRoute == MainRouteReadAloudPlayer
+                ) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
+            is MainRouteBookCharacterNetwork -> {
+                if (
+                    currentRoute == MainRouteHome ||
+                    currentRoute is MainRouteBookInfo
+                ) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
+            is MainRouteBookCharacterList -> {
+                if (
+                    currentRoute == MainRouteHome ||
+                    currentRoute is MainRouteBookInfo ||
+                    currentRoute is MainRouteBookCharacterNetwork
+                ) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
             is MainRouteSearchContent -> {
                 backStack.add(route)
             }
@@ -86,6 +157,7 @@ object MainNavigator {
                     currentRoute == MainRouteHome ||
                     currentRoute is MainRouteSearch ||
                     currentRoute is MainRouteExploreShow ||
+                    currentRoute is MainRouteCache ||
                     currentRoute is MainRouteBookInfo
                 ) {
                     backStack.add(route)
@@ -122,6 +194,9 @@ object MainNavigator {
                 }
             }
 
+            MainRouteAllBookmark,
+            MainRouteFileManage,
+            MainRouteDictRule,
             MainRouteReadRecord -> {
                 if (currentRoute == MainRouteHome) {
                     backStack.add(route)
@@ -157,6 +232,76 @@ object MainNavigator {
             MainRouteBackupConfig,
             MainRouteThemeConfig -> {
                 if (currentRoute == MainRouteHome) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
+            MainRouteAiChat -> {
+                if (currentRoute == MainRouteHome) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
+            MainRouteSettingsAi -> {
+                if (currentRoute == MainRouteHome || currentRoute == MainRouteAiChat) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
+            MainRouteSettingsAiChatColors -> {
+                if (currentRoute == MainRouteAiChat) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(MainRouteAiChat)
+                    backStack.add(route)
+                }
+            }
+
+            MainRouteSettingsAiHtmlThemes -> {
+                if (currentRoute == MainRouteSettingsAi || currentRoute == MainRouteAiChat) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(MainRouteSettingsAi)
+                    backStack.add(route)
+                }
+            }
+
+            is MainRouteSettingsAiProfileEdit,
+            is MainRouteSettingsAiModelEdit,
+            is MainRouteSettingsAiSkillEdit,
+            MainRouteSettingsAiAbilityManagement,
+            MainRouteSettingsAiSkills,
+            MainRouteSettingsAiWebSearch,
+            MainRouteSettingsAiPromptTemplates,
+            MainRouteSettingsAiPromptPipeline -> {
+                if (currentRoute == MainRouteHome ||
+                    currentRoute == MainRouteSettingsAi ||
+                    currentRoute is MainRouteSettingsAiProfileEdit ||
+                    currentRoute is MainRouteSettingsAiModelEdit ||
+                    currentRoute is MainRouteSettingsAiSkillEdit ||
+                    currentRoute == MainRouteSettingsAiAbilityManagement ||
+                    currentRoute == MainRouteSettingsAiSkills ||
+                    currentRoute == MainRouteSettingsAiWebSearch ||
+                    currentRoute == MainRouteSettingsAiPromptTemplates ||
+                    currentRoute == MainRouteSettingsAiPromptPipeline ||
+                    currentRoute == MainRouteSettingsAiHtmlThemes
+                ) {
                     backStack.add(route)
                 } else {
                     backStack.clear()
@@ -234,6 +379,21 @@ object MainNavigator {
             )
 
             MainRouteConst.ROUTE_BOOK_CACHE_MANAGE -> MainRouteBookCacheManage
+            MainRouteConst.ROUTE_BOOK_VOICE_CASTING -> MainRouteBookVoiceCasting(
+                bookUrl = intent?.getStringExtra(MainIntent.EXTRA_BOOK_URL).orEmpty(),
+            )
+            MainRouteConst.ROUTE_BOOK_CHARACTER_NETWORK -> MainRouteBookCharacterNetwork(
+                bookUrl = intent?.getStringExtra(MainIntent.EXTRA_BOOK_URL).orEmpty(),
+                focusCharacterId = intent?.getStringExtra(MainIntent.EXTRA_FOCUS_CHARACTER_ID),
+            )
+            MainRouteConst.ROUTE_BOOK_CHARACTER_LIST -> MainRouteBookCharacterList(
+                bookUrl = intent?.getStringExtra(MainIntent.EXTRA_BOOK_URL).orEmpty(),
+            )
+            MainRouteConst.ROUTE_CLOUD_TTS -> MainRouteCloudTtsEngines(
+                bookUrl = intent?.getStringExtra(MainIntent.EXTRA_BOOK_URL),
+            )
+            MainRouteConst.ROUTE_READ_ALOUD_PLAYER -> MainRouteReadAloudPlayer
+            MainRouteConst.ROUTE_TTS_CACHE -> MainRouteTtsCache
             MainRouteConst.ROUTE_READ_BOOK -> MainRouteReadBook(
                 bookUrl = intent?.getStringExtra(MainIntent.EXTRA_BOOK_URL),
                 readAloud = intent?.getBooleanExtra(MainIntent.EXTRA_READ_ALOUD, false) == true,
@@ -271,6 +431,8 @@ object MainNavigator {
                 } ?: MainRouteHome
 
             MainRouteConst.ROUTE_ABOUT -> MainRouteAbout
+            MainRouteConst.ROUTE_AI_CHAT -> MainRouteAiChat
+            MainRouteConst.ROUTE_SETTINGS_AI -> MainRouteSettingsAi
 
             else -> MainRouteHome
         }

@@ -41,7 +41,7 @@
 
 ### `dict/` — 词典查询
 - **说明**: 划词翻译和词典查询功能
-- **主要文件**: `DictDialog`（词典弹窗）、`DictViewModel`、`rule/`（词典规则管理）
+- **主要文件**: `DictSheetScreen`（词典弹窗）、`DictViewModel`、`rule/`（词典规则管理）
 
 ### `file/` — 文件管理
 - **说明**: 文件选择和处理界面
@@ -84,7 +84,7 @@
   - `anima/` — 动画控件（`RefreshProgressBar` 刷新进度条、`RotateLoading` 旋转加载、`explosion_field/` 爆炸动画）
   - `checkbox/` — 自定义复选框（`SmoothCheckBox` 带平滑动画）
   - `code/` — 代码编辑器（`CodeView` 语法高亮，用于书源编辑）
-  - `dialog/` — 通用对话框（`TextDialog` 文本/Markdown/HTML 展示、`CodeDialog` 代码展示、`PhotoDialog` 图片展示、`TextListDialog` 列表选择、`UrlOptionDialog` URL 选项、`VariableDialog` 变量输入、`WaitDialog` 加载等待）
+  - `dialog/` — 通用对话框（`CodeDialog` 代码展示、`PhotoDialog` 图片展示、`LegadoSheetDialog` Compose 底部弹层壳、`VariableDialog` 变量输入、`WaitDialog` 加载等待）
   - `dynamiclayout/` — 状态切换布局（`DynamicFrameLayout` 支持内容/进度/错误/空状态切换）
   - `image/` — 图片控件（`CoverImageView` 书籍封面 5:7 比例、`PhotoView` 可缩放图片、`CircleImageView` 圆形图片、`FilletImageView` 圆角图片）
   - `keyboard/` — 键盘辅助（`KeyboardToolPop` 阅读页键盘工具栏、`KeyboardAssistsConfig` 快捷配置）

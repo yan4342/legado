@@ -1,7 +1,11 @@
 package io.legado.app.ui.book.read
 
 import android.annotation.SuppressLint
+import android.app.SearchManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Looper
@@ -52,9 +56,13 @@ import io.legado.app.help.book.isMobi
 import io.legado.app.help.book.removeType
 import io.legado.app.help.book.update
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.AppConfigStore
 import io.legado.app.help.config.ReadBookConfig
+import io.legado.app.help.config.ReadStyleRefreshBus
 import io.legado.app.help.config.ReadTipConfig
 import io.legado.app.help.coroutine.Coroutine
+import io.legado.app.domain.usecase.ExecuteResult
+import io.legado.app.domain.usecase.ReChapterUseCase
 import io.legado.app.help.source.getSourceType
 import io.legado.app.help.storage.Backup
 import io.legado.app.lib.dialogs.SelectItem
@@ -71,6 +79,8 @@ import io.legado.app.model.localBook.MobiFile
 import io.legado.app.receiver.NetworkChangedListener
 import io.legado.app.receiver.TimeBatteryReceiver
 import io.legado.app.service.BaseReadAloudService
+import splitties.systemservices.keyguardManager
+import splitties.systemservices.powerManager
 import io.legado.app.utils.showLogSheet
 import io.legado.app.ui.book.bookmark.BookmarkDialog
 import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
@@ -84,7 +94,25 @@ import io.legado.app.ui.book.read.config.ReadConfigIds.TIP_DIVIDER_COLOR
 import io.legado.app.lib.prefs.ColorPreference
 import io.legado.app.ui.book.read.config.compose.MoreConfigSheet
 import io.legado.app.ui.book.read.config.compose.ReadStyleSheet
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.collectLatest
+import org.koin.androidx.compose.koinViewModel
+import io.legado.app.ui.book.read.config.ReadAloudConfigDialog
 import io.legado.app.ui.book.read.config.ReadAloudDialog
+import io.legado.app.ui.book.readaloud.casting.BookVoiceCastingRouteScreen
+import io.legado.app.ui.book.readaloud.cloudtts.CloudTtsRouteScreen
+import io.legado.app.ui.book.readaloud.player.ReadAloudPlayerEffect
+import io.legado.app.ui.book.readaloud.player.ReadAloudPlayerIntent
+import io.legado.app.ui.book.readaloud.player.ReadAloudPlayerScreen
+import io.legado.app.ui.book.readaloud.player.ReadAloudPlayerViewModel
+import io.legado.app.ui.common.compose.LegadoTheme
+import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
 import io.legado.app.ui.book.read.page.ContentTextView
 import io.legado.app.ui.book.read.page.ReadView
 import io.legado.app.ui.book.read.page.entities.PageDirection
@@ -96,6 +124,7 @@ import io.legado.app.ui.book.searchContent.SearchResult
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.browser.WebViewActivity
+import io.legado.app.ui.dict.DictSearchContext
 import io.legado.app.ui.dict.createDictSheetDialog
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.login.SourceLoginActivity
@@ -103,27 +132,27 @@ import io.legado.app.ui.replace.ReplaceEditRoute
 import io.legado.app.ui.replace.ReplaceRuleActivity
 import io.legado.app.ui.widget.PopupAction
 import io.legado.app.ui.widget.dialog.PhotoDialog
-import io.legado.app.ui.widget.number.NumberPickerDialog
+import io.legado.app.ui.common.compose.M3NumberPickerDialog
 import io.legado.app.utils.ACache
 import io.legado.app.utils.Debounce
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.StartActivityContract
 import io.legado.app.ui.common.compose.RoundDropdownMenuItem
-import io.legado.app.ui.common.compose.LegadoTheme
 import io.legado.app.ui.common.compose.showComposeDropdownMenu
 import io.legado.app.ui.font.FontSelectDialog
 import io.legado.app.utils.visible
 import io.legado.app.utils.buildMainHandler
 import io.legado.app.utils.dismissDialogFragment
-import io.legado.app.utils.getPrefBoolean
-import io.legado.app.utils.getPrefString
 import io.legado.app.utils.hexString
 import io.legado.app.utils.iconItemOnLongClick
 import io.legado.app.utils.invisible
-import io.legado.app.utils.invisible
+import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.putPrefString
 import io.legado.app.utils.isAbsUrl
+import io.legado.app.utils.printOnDebug
+import io.legado.app.utils.sendToClip
+import io.legado.app.utils.share
 import io.legado.app.utils.isTrue
 import io.legado.app.utils.launch
 import io.legado.app.utils.navigationBarGravity
@@ -153,7 +182,6 @@ import kotlinx.coroutines.withContext
 class ReadBookActivity : BaseReadBookActivity(),
     View.OnTouchListener,
     ReadView.CallBack,
-    TextActionMenu.CallBack,
     ContentTextView.CallBack,
     PopupMenu.OnMenuItemClickListener,
     ReadMenu.CallBack,
@@ -192,20 +220,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             val data = it.data ?: return@registerForActivityResult
             val key = data.getLongExtra("key", System.currentTimeMillis())
             val index = data.getIntExtra("index", 0)
-            val searchResult = IntentData.get<SearchResult>("searchResult$key")
-            val searchResultList = IntentData.get<List<SearchResult>>("searchResultList$key")
-            if (searchResult != null && searchResultList != null) {
-                viewModel.searchContentQuery = searchResult.query
-                binding.searchMenu.upSearchResultList(searchResultList)
-                isShowingSearchResult = true
-                viewModel.searchResultIndex = index
-                binding.searchMenu.updateSearchResultIndex(index)
-                binding.searchMenu.selectedSearchResult?.let { currentResult ->
-                    ReadBook.saveCurrentBookProgress() //退出全文搜索恢复此时进度
-                    skipToSearch(currentResult)
-                    showActionMenu()
-                }
-            }
+            applySearchJumpFromIntentData(key, index)
         }
     private val bookInfoActivity =
         registerForActivityResult(StartActivityContract(BookInfoComposeActivity::class.java)) {
@@ -233,9 +248,6 @@ class ReadBookActivity : BaseReadBookActivity(),
             postEvent(EventBus.UP_CONFIG, arrayListOf(2, 5))
         }
     }
-    val textActionMenu: TextActionMenu by lazy {
-        TextActionMenu(this, this)
-    }
     private val popupAction: PopupAction by lazy {
         PopupAction(this)
     }
@@ -248,6 +260,40 @@ class ReadBookActivity : BaseReadBookActivity(),
             field = value && isShowingSearchResult
         }
     private val timeBatteryReceiver = TimeBatteryReceiver()
+    /**
+     * 阅读时长统计：仅"界面前台 + 亮屏 + 未锁屏"时累计。
+     * 熄屏瞬间经 SCREEN_OFF 广播结算，退后台在 onPause 结算；
+     * 另有低频定时结算兜底，即使生命周期/广播被 ROM 吞掉，误差也不超过一个周期
+     */
+    private var isResumedState = false
+    private val screenStatusReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    ReadBook.upReadTime()
+                    ReadBook.saveRead()
+                }
+                Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT ->
+                    if (canCountReadTime()) ReadBook.startCounting()
+            }
+        }
+    }
+    private val screenStatusFilter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
+        addAction(Intent.ACTION_SCREEN_ON)
+        addAction(Intent.ACTION_USER_PRESENT)
+    }
+
+    private fun canCountReadTime(): Boolean =
+        isResumedState && powerManager.isInteractive && !keyguardManager.isKeyguardLocked
+
+    private val readTimeTickRunnable = object : Runnable {
+        override fun run() {
+            if (!isResumedState) return
+            ReadBook.upReadTime()
+            if (canCountReadTime()) ReadBook.startCounting()
+            handler.postDelayed(this, READ_TIME_TICK_MS)
+        }
+    }
     private var screenTimeOut: Long = 0
     private var loadStates: Boolean = false
     override val pageFactory get() = binding.readView.pageFactory
@@ -269,6 +315,9 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     //恢复跳转前进度对话框的交互结果
     private var confirmRestoreProcess: Boolean? = null
+    /** AI / standalone SearchContent → ReadBook search jump pending until content is ready. */
+    private var pendingSearchJumpKey: Long? = null
+    private var pendingSearchJumpIndex: Int = 0
     private val networkChangedListener by lazy {
         NetworkChangedListener(this)
     }
@@ -278,13 +327,22 @@ class ReadBookActivity : BaseReadBookActivity(),
     // Compose sheet state
     private var showReadStyleSheet by mutableStateOf(false)
     private var showMoreConfigSheet by mutableStateOf(false)
+    private var showReadAloudPlayer by mutableStateOf(false)
+    private var showVoiceCastingOverlay by mutableStateOf(false)
+    private var showCloudTtsOverlay by mutableStateOf(false)
+    private var readAloudRunning by mutableStateOf(false)
+    private var readAloudPaused by mutableStateOf(true)
+    private var textActionMenuState by mutableStateOf<TextMenuState?>(null)
+    private var expandTextMenu by mutableStateOf(false)
+    private var showTextMenuConfigSheet by mutableStateOf(false)
+    private var textMenuConfigItems by mutableStateOf(emptyList<ActionMenuItem>())
 
     private fun setupComposeSheets() {
         composeSheetsView.setContent {
             LegadoTheme {
                 ReadStyleSheet(
                     show = showReadStyleSheet,
-                    onDismiss = { bottomDialog--; showReadStyleSheet = false },
+                    onDismiss = { bottomDialog--; showReadStyleSheet = false; syncComposeOverlayChrome() },
                     onFontSelect = { showDialogFragment<FontSelectDialog>() },
                     onTextColorClick = { color ->
                         ColorPreference.ColorPickerDialogCompat.newBuilder()
@@ -309,14 +367,14 @@ class ReadBookActivity : BaseReadBookActivity(),
                 )
                 MoreConfigSheet(
                     show = showMoreConfigSheet,
-                    onDismiss = { bottomDialog--; showMoreConfigSheet = false },
+                    onDismiss = { bottomDialog--; showMoreConfigSheet = false; syncComposeOverlayChrome() },
                     onOrientationChange = {
                         val items = resources.getStringArray(R.array.screen_direction_title).toList()
                         this@ReadBookActivity.selector(
                             getString(R.string.screen_direction),
                             items,
                         ) { _, i ->
-                            this@ReadBookActivity.putPrefString(PreferKey.screenOrientation, i.toString())
+                            AppConfig.screenOrientation = i.toString()
                             setOrientation()
                         }
                     },
@@ -324,19 +382,192 @@ class ReadBookActivity : BaseReadBookActivity(),
                     onClickRegionalConfig = { showClickRegionalConfig() },
                     onCustomPageKey = { showCustomPageKeyConfig() },
                     onPageTouchSlop = {
-                        NumberPickerDialog(this@ReadBookActivity)
-                            .setTitle(getString(R.string.page_touch_slop_dialog_title))
-                            .setMaxValue(9999)
-                            .setMinValue(0)
-                            .setValue(AppConfig.pageTouchSlop)
-                            .show {
-                                AppConfig.pageTouchSlop = it
-                                postEvent(EventBus.UP_CONFIG, listOf(4))
-                            }
+                        showDialogFragment(
+                            M3NumberPickerDialog.create(
+                                title = getString(R.string.page_touch_slop_dialog_title),
+                                value = AppConfig.pageTouchSlop,
+                                minValue = 0,
+                                maxValue = 9999,
+                                onConfirm = {
+                                    AppConfig.pageTouchSlop = it
+                                    postEvent(EventBus.UP_CONFIG, listOf(4))
+                                }
+                            )
+                        )
                     },
                     onRecreate = { recreate() },
                 )
+                TextActionSelectionMenu(
+                    menuState = textActionMenuState,
+                    expandTextMenu = expandTextMenu,
+                    onDismiss = {
+                        textActionMenuState = null
+                        binding.readView.cancelSelect()
+                    },
+                    onItemClick = ::onTextActionItemClick,
+                    onItemLongClick = ::onTextActionItemLongClick,
+                    onOpenManage = {
+                        textActionMenuState = null
+                        binding.readView.cancelSelect()
+                        textMenuConfigItems = buildTextActionMenuItems(this, false)
+                        showTextMenuConfigSheet = true
+                    },
+                )
+                TextMenuConfigSheet(
+                    show = showTextMenuConfigSheet,
+                    items = textMenuConfigItems,
+                    expandTextMenu = expandTextMenu,
+                    onExpandTextMenuChange = { checked ->
+                        expandTextMenu = checked
+                        AppConfigStore.putBoolean(PreferKey.expandTextMenu, checked)
+                        // SP 镜像：Backup 的 config.xml 来自 SP 全量，Phase 4 前必须保留
+                        putPrefBoolean(PreferKey.expandTextMenu, checked)
+                    },
+                    onDismissRequest = { showTextMenuConfigSheet = false },
+                    onSaved = { items -> saveTextMenuConfig(this, items) },
+                )
+                if (showReadAloudPlayer) {
+                    val playerViewModel: ReadAloudPlayerViewModel = koinViewModel()
+                    BackHandler(enabled = !showVoiceCastingOverlay && !showCloudTtsOverlay) {
+                        hideReadAloudPlayerOverlay()
+                    }
+                    LaunchedEffect(Unit) {
+                        playerViewModel.onIntent(ReadAloudPlayerIntent.Refresh)
+                        playerViewModel.effects.collectLatest { effect ->
+                            when (effect) {
+                                ReadAloudPlayerEffect.OpenToc -> {
+                                    openChapterList()
+                                }
+                                ReadAloudPlayerEffect.ReturnToClassic -> {
+                                    hideReadAloudPlayerOverlay(openClassic = true)
+                                }
+                                ReadAloudPlayerEffect.ReturnToReaderSettings -> {
+                                    showDialogFragment<ReadAloudConfigDialog>()
+                                }
+                            }
+                        }
+                    }
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.surface,
+                    ) {
+                        ReadAloudPlayerScreen(
+                            state = playerViewModel.uiState.collectAsStateWithLifecycle().value,
+                            onIntent = playerViewModel::onIntent,
+                            onBack = { hideReadAloudPlayerOverlay() },
+                            onNavigateToCasting = ReadBook.book?.bookUrl?.let { bookUrl ->
+                                {
+                                    showVoiceCastingOverlay = true
+                                    syncComposeOverlayChrome()
+                                }
+                            },
+                            onNavigateToCloudTts = {
+                                showCloudTtsOverlay = true
+                                syncComposeOverlayChrome()
+                            },
+                        )
+                    }
+                } else if (
+                    AppConfig.showReadAloudCapsule &&
+                    readAloudRunning
+                ) {
+                    ReadAloudCapsule(
+                        isPaused = readAloudPaused,
+                        bookName = ReadBook.book?.name.orEmpty(),
+                        onTogglePause = { onClickReadAloud() },
+                        onStop = {
+                            ReadAloud.stop(this@ReadBookActivity)
+                        },
+                        onOpenPlayer = { showReadAloudPlayerOverlay() },
+                    )
+                }
+                if (showVoiceCastingOverlay) {
+                    val bookUrl = ReadBook.book?.bookUrl.orEmpty()
+                    BackHandler(enabled = !showCloudTtsOverlay) {
+                        showVoiceCastingOverlay = false
+                        syncComposeOverlayChrome()
+                    }
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.surface,
+                    ) {
+                        BookVoiceCastingRouteScreen(
+                            bookUrl = bookUrl,
+                            onBack = {
+                                showVoiceCastingOverlay = false
+                                syncComposeOverlayChrome()
+                            },
+                            onManageCloudTts = {
+                                showCloudTtsOverlay = true
+                                syncComposeOverlayChrome()
+                            },
+                        )
+                    }
+                }
+                if (showCloudTtsOverlay) {
+                    BackHandler {
+                        showCloudTtsOverlay = false
+                        syncComposeOverlayChrome()
+                    }
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.surface,
+                    ) {
+                        CloudTtsRouteScreen(
+                            onBack = {
+                                showCloudTtsOverlay = false
+                                syncComposeOverlayChrome()
+                            },
+                        )
+                    }
+                }
             }
+        }
+        syncComposeOverlayChrome()
+    }
+
+    private fun syncComposeOverlayChrome() {
+        val lp = composeSheetsView.layoutParams as? FrameLayout.LayoutParams ?: return
+        val fullOverlay = showReadAloudPlayer ||
+            showReadStyleSheet ||
+            showMoreConfigSheet ||
+            showVoiceCastingOverlay ||
+            showCloudTtsOverlay
+        if (fullOverlay) {
+            lp.width = FrameLayout.LayoutParams.MATCH_PARENT
+            lp.height = FrameLayout.LayoutParams.MATCH_PARENT
+            lp.gravity = Gravity.TOP
+        } else {
+            lp.width = FrameLayout.LayoutParams.MATCH_PARENT
+            lp.height = FrameLayout.LayoutParams.WRAP_CONTENT
+            lp.gravity = Gravity.BOTTOM
+        }
+        composeSheetsView.layoutParams = lp
+        val intercept = showReadAloudPlayer || showVoiceCastingOverlay || showCloudTtsOverlay
+        composeSheetsView.isClickable = intercept
+        composeSheetsView.isFocusable = intercept
+    }
+
+    fun showReadAloudPlayerOverlay() {
+        if (showReadAloudPlayer) return
+        supportFragmentManager.fragments
+            .filterIsInstance<ReadAloudDialog>()
+            .forEach { it.dismissAllowingStateLoss() }
+        showReadAloudPlayer = true
+        bottomDialog++
+        syncComposeOverlayChrome()
+    }
+
+    private fun hideReadAloudPlayerOverlay(openClassic: Boolean = false) {
+        showCloudTtsOverlay = false
+        showVoiceCastingOverlay = false
+        if (showReadAloudPlayer) {
+            showReadAloudPlayer = false
+            bottomDialog = (bottomDialog - 1).coerceAtLeast(0)
+        }
+        syncComposeOverlayChrome()
+        if (openClassic) {
+            showDialogFragment<ReadAloudDialog>()
         }
     }
 
@@ -361,7 +592,25 @@ class ReadBookActivity : BaseReadBookActivity(),
         window.setBackgroundDrawable(null)
         upScreenTimeOut()
         ReadBook.register(this)
+        attachReadingFloatingCapsules(this)
+        capturePendingSearchJump(intent)
         onBackPressedDispatcher.addCallback(this) {
+            when {
+                showCloudTtsOverlay -> {
+                    showCloudTtsOverlay = false
+                    syncComposeOverlayChrome()
+                    return@addCallback
+                }
+                showVoiceCastingOverlay -> {
+                    showVoiceCastingOverlay = false
+                    syncComposeOverlayChrome()
+                    return@addCallback
+                }
+                showReadAloudPlayer -> {
+                    hideReadAloudPlayerOverlay()
+                    return@addCallback
+                }
+            }
             if (isShowingSearchResult) {
                 exitSearchMenu()
                 restoreLastBookProcess()
@@ -381,7 +630,9 @@ class ReadBookActivity : BaseReadBookActivity(),
                 autoPageStop()
                 return@addCallback
             }
-            if (getPrefBoolean("disableReturnKey") && !menuLayoutIsVisible) {
+            if ((AppConfigStore.getBoolean(PreferKey.disableReturnKey) ?: false)
+                && !menuLayoutIsVisible
+            ) {
                 return@addCallback
             }
             finish()
@@ -390,6 +641,8 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
+        capturePendingSearchJump(intent)
         viewModel.initData(intent)
     }
 
@@ -418,7 +671,10 @@ class ReadBookActivity : BaseReadBookActivity(),
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onResume() {
         super.onResume()
-        ReadBook.readStartTime = System.currentTimeMillis()
+        isResumedState = true
+        if (canCountReadTime()) {
+            ReadBook.startCounting()
+        }
         if (bookChanged) {
             bookChanged = false
             ReadBook.callBack = this
@@ -432,9 +688,12 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
         }
         upSystemUiVisibility()
+        registerReceiver(screenStatusReceiver, screenStatusFilter)
         registerReceiver(timeBatteryReceiver, timeBatteryReceiver.filter)
         binding.readView.upTime()
         screenOffTimerStart()
+        handler.removeCallbacks(readTimeTickRunnable)
+        handler.postDelayed(readTimeTickRunnable, READ_TIME_TICK_MS)
         // 网络监听，当从无网切换到网络环境时同步进度（注意注册的同时就会收到监听，因此界面激活时无需重复执行同步操作）
         networkChangedListener.register()
         networkChangedListener.onNetworkChanged = {
@@ -449,9 +708,12 @@ class ReadBookActivity : BaseReadBookActivity(),
         super.onPause()
         autoPageStop()
         backupJob?.cancel()
+        isResumedState = false
+        handler.removeCallbacks(readTimeTickRunnable)
         ReadBook.upReadTime()
         ReadBook.saveRead()
         ReadBook.cancelPreDownloadTask()
+        unregisterReceiver(screenStatusReceiver)
         unregisterReceiver(timeBatteryReceiver)
         upSystemUiVisibility()
         if (!BuildConfig.DEBUG && ReadBook.inBookshelf) {
@@ -544,6 +806,11 @@ class ReadBookActivity : BaseReadBookActivity(),
                     R.id.menu_reverse_content -> item.isVisible = onLine
                     R.id.menu_del_ruby_tag -> item.isChecked = book.getDelTag(Book.rubyTag)
                     R.id.menu_del_h_tag -> item.isChecked = book.getDelTag(Book.hTag)
+                    R.id.menu_re_chapter -> {
+                        item.isVisible = onLine && !ReadBook.bookSource
+                            ?.getContentRule()?.content.isNullOrEmpty()
+                        item.isChecked = book.reChapterEnabled
+                    }
                 }
             }
         }
@@ -629,6 +896,8 @@ class ReadBookActivity : BaseReadBookActivity(),
                 }
                 loadChapterList(it)
             }
+
+            R.id.menu_re_chapter -> handleReChapter()
 
             R.id.menu_enable_replace -> changeReplaceRuleState()
             R.id.menu_re_segment -> ReadBook.book?.let {
@@ -739,6 +1008,93 @@ class ReadBookActivity : BaseReadBookActivity(),
         ReadBook.clearTextChapter()
         binding.readView.upContent()
         viewModel.refreshContentAll(book)
+    }
+
+    /**
+     * 重新分章入口:未启用时确认开启并触发首批;已启用时选择"重新分章一次"或"关闭"。
+     */
+    /**
+     * 重新分章开关:直接展示操作选择,不再叠加确认对话框(选择即意图)。
+     * 未启用时可选"仅附近/全量"并开启;已启用时可选"重新分章一次/全量/关闭"。
+     */
+    private fun handleReChapter() {
+        val book = ReadBook.book ?: return
+        val source = ReadBook.bookSource ?: return
+        if (!book.reChapterEnabled) {
+            book.reChapterEnabled = true
+            if (ReadBook.inBookshelf) appDb.bookDao.update(book)
+            menu?.findItem(R.id.menu_re_chapter)?.isChecked = true
+            selector(
+                R.string.re_chapter,
+                listOf(
+                    getString(R.string.re_chapter_nearby),
+                    getString(R.string.re_chapter_full),
+                )
+            ) { _, which ->
+                when (which) {
+                    0 -> runReChapter(book, source, showFailure = false) {
+                        ReChapterUseCase(book, source).execute(book.durChapterIndex)
+                    }
+                    1 -> runReChapter(book, source, showFailure = true) {
+                        ReChapterUseCase(book, source).fullBookReChapter()
+                    }
+                }
+            }
+        } else {
+            selector(
+                R.string.re_chapter,
+                listOf<CharSequence>(
+                    getString(R.string.re_chapter_again),
+                    getString(R.string.re_chapter_full),
+                    getString(R.string.re_chapter_disable),
+                )
+            ) { _, index ->
+                when (index) {
+                    0 -> runReChapter(book, source, showFailure = true) {
+                        ReChapterUseCase(book, source).resetAndReChapter()
+                    }
+                    1 -> runReChapter(book, source, showFailure = true) {
+                        ReChapterUseCase(book, source).fullBookReChapter()
+                    }
+                    else -> lifecycleScope.launch {
+                        if (ReChapterUseCase.isRunning(book.bookUrl)) {
+                            toastOnUi(R.string.re_chapter_running)
+                            return@launch
+                        }
+                        val restored = withContext(IO) {
+                            ReChapterUseCase(book, source).disableAndRestore()
+                        }
+                        menu?.findItem(R.id.menu_re_chapter)?.isChecked = false
+                        if (restored) {
+                            toastOnUi(R.string.re_chapter_disabled_restored)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 执行重新分章批次。本地判定不足时返回 [ExecuteResult.NONE],由调用方提示失败。
+     */
+    private fun runReChapter(
+        book: Book,
+        source: BookSource,
+        showFailure: Boolean,
+        run: suspend () -> ExecuteResult,
+    ) {
+        lifecycleScope.launch {
+            if (ReChapterUseCase.isRunning(book.bookUrl)) {
+                toastOnUi(R.string.re_chapter_running)
+                return@launch
+            }
+            val result = withContext(IO) { run() }
+            when (result) {
+                ExecuteResult.MERGED -> toastOnUi(R.string.re_chapter_done)
+                ExecuteResult.NONE ->
+                    if (showFailure) toastOnUi(R.string.re_chapter_failed)
+            }
+        }
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
@@ -857,7 +1213,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             return false
         }
         when (event.action) {
-            MotionEvent.ACTION_DOWN -> textActionMenu.dismiss()
+            MotionEvent.ACTION_DOWN -> textActionMenuState = null
             MotionEvent.ACTION_MOVE -> {
                 when (v.id) {
                     R.id.cursor_left -> if (!readView.curPage.getReverseStartCursor()) {
@@ -920,7 +1276,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     override fun onCancelSelect() = binding.run {
         cursorLeft.invisible()
         cursorRight.invisible()
-        textActionMenu.dismiss()
+        textActionMenuState = null
     }
 
     override fun onLongScreenshotTouchEvent(event: MotionEvent): Boolean {
@@ -931,29 +1287,31 @@ class ReadBookActivity : BaseReadBookActivity(),
      * 显示文本操作菜单
      */
     override fun showTextActionMenu() {
-        val navigationBarHeight =
-            if (!ReadBookConfig.hideNavigationBar && navigationBarGravity == Gravity.BOTTOM)
-                binding.navigationBar.height else 0
-        textActionMenu.show(
-            binding.textMenuPosition,
-            binding.root.height + navigationBarHeight,
-            binding.textMenuPosition.x.toInt(),
-            binding.textMenuPosition.y.toInt(),
-            binding.cursorLeft.y.toInt() + binding.cursorLeft.height,
-            binding.cursorRight.x.toInt(),
-            binding.cursorRight.y.toInt() + binding.cursorRight.height
+        // 重新分章合并章才提供"从此处拆分章节"
+        val showSplitChapter = ReadBook.curTextChapter?.chapter?.let {
+            BookHelp.isReChaptered(it)
+        } == true
+        expandTextMenu = AppConfigStore.getBoolean(PreferKey.expandTextMenu) ?: false
+        textActionMenuState = TextMenuState(
+            selectedText = binding.readView.getSelectText(),
+            startX = binding.textMenuPosition.x.toInt(),
+            startTopY = binding.textMenuPosition.y.toInt(),
+            startBottomY = binding.cursorLeft.y.toInt() + binding.cursorLeft.height,
+            endX = binding.cursorRight.x.toInt(),
+            endBottomY = binding.cursorRight.y.toInt() + binding.cursorRight.height,
+            items = buildTextActionMenuItems(this, showSplitChapter),
         )
     }
 
     /**
      * 当前选择的文本
      */
-    override val selectedText: String get() = binding.readView.getSelectText()
+    val selectedText: String get() = binding.readView.getSelectText()
 
     /**
      * 文本选择菜单操作
      */
-    override fun onMenuItemSelected(itemId: Int): Boolean {
+    fun onMenuItemSelected(itemId: Int): Boolean {
         when (itemId) {
             R.id.menu_aloud -> when (AppConfig.contentSelectSpeakMod) {
                 1 -> lifecycleScope.launch {
@@ -968,7 +1326,7 @@ class ReadBookActivity : BaseReadBookActivity(),
                 if (bookmark == null) {
                     toastOnUi(R.string.create_bookmark_error)
                 } else {
-                    showDialogFragment(BookmarkDialog(bookmark))
+                    showDialogFragment(BookmarkDialog(bookmark, showDelete = true))
                 }
                 return true
             }
@@ -1001,7 +1359,18 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
 
             R.id.menu_dict -> {
-                showDialogFragment(createDictSheetDialog(selectedText))
+                val dictSearchContext = DictSearchContext(
+                    bookUrl = ReadBook.book?.bookUrl,
+                    bookName = ReadBook.book?.name,
+                    chapterIndex = ReadBook.durChapterIndex,
+                    chapterTitle = ReadBook.curTextChapter?.title,
+                )
+                showDialogFragment(createDictSheetDialog(selectedText, dictSearchContext))
+                return true
+            }
+
+            R.id.menu_split_chapter -> {
+                splitChapterHere(selectedText)
                 return true
             }
         }
@@ -1009,11 +1378,91 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     /**
+     * 在重新分章合并章内,按选中文本所在行拆分章节(修复漏拆)。
+     */
+    private fun splitChapterHere(selected: String) {
+        val book = ReadBook.book ?: return
+        val source = ReadBook.bookSource ?: return
+        val textChapter = ReadBook.curTextChapter ?: return
+        val chapter = textChapter.chapter
+        if (!BookHelp.isReChaptered(chapter)) {
+            toastOnUi(R.string.split_chapter_failed)
+            return
+        }
+        lifecycleScope.launch {
+            if (ReChapterUseCase.isRunning(book.bookUrl)) {
+                toastOnUi(R.string.re_chapter_running)
+                return@launch
+            }
+            val result = withContext(IO) {
+                ReChapterUseCase(book, source).splitChapter(chapter, selected)
+            }
+            if (result != null) {
+                toastOnUi(R.string.split_chapter_done)
+            } else {
+                toastOnUi(R.string.split_chapter_failed)
+            }
+        }
+    }
+
+    /**
      * 文本选择菜单操作完成
      */
-    override fun onMenuActionFinally() = binding.run {
-        textActionMenu.dismiss()
+    private fun onMenuActionFinally() = binding.run {
+        textActionMenuState = null
         readView.cancelSelect()
+    }
+
+    /**
+     * Compose 文字选择菜单点击分发
+     */
+    private fun onTextActionItemClick(item: ActionMenuItem) {
+        val text = textActionMenuState?.selectedText
+        val handled = onMenuItemSelected(item.id)
+        if (!handled) {
+            when (item.id) {
+                R.id.menu_copy -> text?.let { sendToClip(it) }
+                R.id.menu_share_str -> text?.let { share(it) }
+                R.id.menu_browser -> text?.let { openTextInBrowser(it) }
+                else -> {
+                    val intent = item.intent ?: return
+                    kotlin.runCatching {
+                        intent.putExtra(Intent.EXTRA_PROCESS_TEXT, text)
+                        startActivity(intent)
+                    }.onFailure { e ->
+                        AppLog.put("执行文本菜单操作出错\n$e", e, true)
+                    }
+                }
+            }
+        }
+        onMenuActionFinally()
+    }
+
+    private fun openTextInBrowser(text: String) {
+        kotlin.runCatching {
+            val intent = if (text.isAbsUrl()) {
+                Intent(Intent.ACTION_VIEW).apply { data = text.toUri() }
+            } else {
+                Intent(Intent.ACTION_WEB_SEARCH).apply { putExtra(SearchManager.QUERY, text) }
+            }
+            startActivity(intent)
+        }.onFailure {
+            it.printOnDebug()
+            toastOnUi(it.localizedMessage ?: "ERROR")
+        }
+    }
+
+    /**
+     * 长按文字选择菜单项:切换朗读模式(朗读选中内容 <-> 从选中处连续朗读)
+     */
+    private fun onTextActionItemLongClick(item: ActionMenuItem) {
+        if (AppConfig.contentSelectSpeakMod == 0) {
+            AppConfig.contentSelectSpeakMod = 1
+            toastOnUi("切换为从选择的地方开始一直朗读")
+        } else {
+            AppConfig.contentSelectSpeakMod = 0
+            toastOnUi("切换为朗读选择内容")
+        }
     }
 
     private fun speak(text: String) {
@@ -1107,6 +1556,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             ReadBook.readAloud()
         }
         loadStates = true
+        maybeApplyPendingSearchJump()
     }
 
     /**
@@ -1121,6 +1571,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             binding.readView.upContent(relativePosition, resetPageOffset)
             if (relativePosition == 0) {
                 upSeekBarProgress()
+                maybeApplyPendingSearchJump()
             }
             loadStates = false
             success?.invoke()
@@ -1230,7 +1681,15 @@ class ReadBookActivity : BaseReadBookActivity(),
      * 显示朗读菜单
      */
     override fun showReadAloudDialog() {
-        showDialogFragment<ReadAloudDialog>()
+        if (AppConfig.readAloudDefaultInterface == "player") {
+            showReadAloudPlayerOverlay()
+        } else {
+            showDialogFragment<ReadAloudDialog>()
+        }
+    }
+
+    override fun showReadAloudPlayer() {
+        showReadAloudPlayerOverlay()
     }
 
     /**
@@ -1320,6 +1779,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     override fun showReadStyle() {
         bottomDialog++
         showReadStyleSheet = true
+        syncComposeOverlayChrome()
     }
 
     /**
@@ -1328,11 +1788,13 @@ class ReadBookActivity : BaseReadBookActivity(),
     override fun showMoreSetting() {
         bottomDialog++
         showMoreConfigSheet = true
+        syncComposeOverlayChrome()
     }
 
     override fun showSearchSetting() {
         bottomDialog++
         showMoreConfigSheet = true
+        syncComposeOverlayChrome()
     }
 
     /**
@@ -1608,6 +2070,26 @@ class ReadBookActivity : BaseReadBookActivity(),
         skipToSearch(searchResult)
     }
 
+    /** 阅读样式分组刷新（分组语义同 UP_CONFIG），旧事件与新 Flow 两个来源共用 */
+    private fun upConfigGroups(groups: List<Int>) {
+        groups.forEach { value ->
+            when (value) {
+                0 -> upSystemUiVisibility()
+                1 -> binding.readView.upBg()
+                2 -> binding.readView.upStyle()
+                3 -> binding.readView.upBgAlpha()
+                4 -> binding.readView.upPageSlopSquare()
+                5 -> if (isInitFinish) ReadBook.loadContent(resetPageOffset = false)
+                6 -> binding.readView.upContent(resetPageOffset = false)
+                8 -> ChapterProvider.upStyle()
+                9 -> binding.readView.invalidateTextPage()
+                10 -> ChapterProvider.upLayout()
+                11 -> binding.readView.submitRenderTask()
+                12 -> upPageAnim()
+            }
+        }
+    }
+
     override fun onMenuShow() {
         binding.readView.autoPager.pause()
     }
@@ -1629,6 +2111,37 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
         } else {
             jumpToPosition(searchResult)
+        }
+    }
+
+    private fun capturePendingSearchJump(intent: Intent?) {
+        intent ?: return
+        val key = intent.getLongExtra("searchJumpKey", 0L)
+        if (key <= 0L) return
+        pendingSearchJumpKey = key
+        pendingSearchJumpIndex = intent.getIntExtra("searchResultIndex", 0)
+        intent.removeExtra("searchJumpKey")
+    }
+
+    private fun maybeApplyPendingSearchJump() {
+        val key = pendingSearchJumpKey ?: return
+        if (ReadBook.curTextChapter == null) return
+        pendingSearchJumpKey = null
+        applySearchJumpFromIntentData(key, pendingSearchJumpIndex)
+    }
+
+    private fun applySearchJumpFromIntentData(key: Long, index: Int) {
+        val searchResult = IntentData.get<SearchResult>("searchResult$key") ?: return
+        val searchResultList = IntentData.get<List<SearchResult>>("searchResultList$key") ?: return
+        viewModel.searchContentQuery = searchResult.query
+        binding.searchMenu.upSearchResultList(searchResultList)
+        isShowingSearchResult = true
+        viewModel.searchResultIndex = index
+        binding.searchMenu.updateSearchResultIndex(index)
+        binding.searchMenu.selectedSearchResult?.let { currentResult ->
+            ReadBook.saveCurrentBookProgress() //退出全文搜索恢复此时进度
+            skipToSearch(currentResult)
+            showActionMenu()
         }
     }
 
@@ -1668,7 +2181,7 @@ class ReadBookActivity : BaseReadBookActivity(),
                 chapterName = page.title
                 bookText = page.text.trim()
             }
-            showDialogFragment(BookmarkDialog(bookmark))
+            showDialogFragment(BookmarkDialog(bookmark, showDelete = true))
         }
     }
 
@@ -1731,7 +2244,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     override fun onDestroy() {
         super.onDestroy()
         tts?.clearTts()
-        textActionMenu.dismiss()
+        textActionMenuState = null
         popupAction.dismiss()
         binding.readView.onDestroy()
         ReadBook.upReadTime()
@@ -1755,24 +2268,25 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
         }
         observeEvent<ArrayList<Int>>(EventBus.UP_CONFIG) {
-            it.forEach { value ->
-                when (value) {
-                    0 -> upSystemUiVisibility()
-                    1 -> readView.upBg()
-                    2 -> readView.upStyle()
-                    3 -> readView.upBgAlpha()
-                    4 -> readView.upPageSlopSquare()
-                    5 -> if (isInitFinish) ReadBook.loadContent(resetPageOffset = false)
-                    6 -> readView.upContent(resetPageOffset = false)
-                    8 -> ChapterProvider.upStyle()
-                    9 -> readView.invalidateTextPage()
-                    10 -> ChapterProvider.upLayout()
-                    11 -> readView.submitRenderTask()
-                    12 -> upPageAnim()
-                }
-            }
+            upConfigGroups(it)
+        }
+        // Phase 3：新样式刷新流与旧事件并存，消费方迁完后删 UP_CONFIG
+        lifecycleScope.launch {
+            ReadStyleRefreshBus.refreshFlow.collect { upConfigGroups(it) }
         }
         observeEvent<Int>(EventBus.ALOUD_STATE) {
+            readAloudRunning = BaseReadAloudService.isRun
+            readAloudPaused = BaseReadAloudService.pause || it == Status.PAUSE || it == Status.STOP
+            if (it == Status.STOP) {
+                readAloudRunning = false
+                if (showReadAloudPlayer) {
+                    hideReadAloudPlayerOverlay()
+                } else {
+                    syncComposeOverlayChrome()
+                }
+            } else {
+                syncComposeOverlayChrome()
+            }
             if (it == Status.STOP || it == Status.PAUSE) {
                 ReadBook.curTextChapter?.let { textChapter ->
                     val page = textChapter.getPageByReadPos(ReadBook.durChapterPos)
@@ -1818,7 +2332,8 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     private fun upScreenTimeOut() {
-        val keepLightPrefer = getPrefString(PreferKey.keepLight)?.toInt() ?: 0
+        val keepLightPrefer =
+            AppConfigStore.getString(PreferKey.keepLight)?.toIntOrNull() ?: 0
         screenTimeOut = keepLightPrefer * 1000L
         screenOffTimerStart()
     }
@@ -1845,6 +2360,9 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     companion object {
         const val RESULT_DELETED = 100
+
+        /** 阅读时长定时结算周期：兜底落库，任何漏掉的事件误差上限即此值 */
+        private const val READ_TIME_TICK_MS = 300_000L
     }
 
 }

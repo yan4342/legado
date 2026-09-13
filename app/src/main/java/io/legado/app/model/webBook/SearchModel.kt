@@ -60,7 +60,7 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
                 close()
             }
             searchBooks.clear()
-            bookSourceParts = callBack.getSearchScope().getBookSourceParts()
+            bookSourceParts = callBack.getSearchScope().getBookSourceParts(callBack.getSourceTypes())
             if (bookSourceParts.isEmpty()) {
                 callBack.onSearchCancel(NoStackTraceException("启用书源为空"))
                 return
@@ -75,11 +75,15 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
     }
 
     private fun startSearch() {
+        startSearch(bookSourceParts)
+    }
+
+    private fun startSearch(parts: List<BookSourcePart>) {
         val precision = appCtx.getPrefBoolean(PreferKey.precisionSearch)
         var hasMore = false
         searchJob = scope.launch(searchPool!!) {
             flow {
-                for (bs in bookSourceParts) {
+                for (bs in parts) {
                     bs.getBookSource()?.let {
                         emit(it)
                     }
@@ -136,7 +140,7 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
                     equalData.forEach { pBook ->
                         coroutineContext.ensureActive()
                         if (pBook.name == nBook.name && pBook.author == nBook.author) {
-                            pBook.addOrigin(nBook.origin)
+                            mergeSearchBookDetails(pBook, nBook)
                             hasSame = true
                         }
                     }
@@ -148,7 +152,7 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
                     containsData.forEach { pBook ->
                         coroutineContext.ensureActive()
                         if (pBook.name == nBook.name && pBook.author == nBook.author) {
-                            pBook.addOrigin(nBook.origin)
+                            mergeSearchBookDetails(pBook, nBook)
                             hasSame = true
                         }
                     }
@@ -160,7 +164,7 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
                     otherData.forEach { pBook ->
                         coroutineContext.ensureActive()
                         if (pBook.name == nBook.name && pBook.author == nBook.author) {
-                            pBook.addOrigin(nBook.origin)
+                            mergeSearchBookDetails(pBook, nBook)
                             hasSame = true
                         }
                     }
@@ -180,12 +184,60 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
         }
     }
 
+    private fun mergeSearchBookDetails(target: SearchBook, incoming: SearchBook) {
+        target.addOrigin(incoming.origin)
+        if (target.kind.isNullOrBlank() && !incoming.kind.isNullOrBlank()) {
+            target.kind = incoming.kind
+        }
+        if (target.wordCount.isNullOrBlank() && !incoming.wordCount.isNullOrBlank()) {
+            target.wordCount = incoming.wordCount
+        }
+        if (target.intro.isNullOrBlank() && !incoming.intro.isNullOrBlank()) {
+            target.intro = incoming.intro
+        }
+        if (target.latestChapterTitle.isNullOrBlank() && !incoming.latestChapterTitle.isNullOrBlank()) {
+            target.latestChapterTitle = incoming.latestChapterTitle
+        }
+        if (target.coverUrl.isNullOrBlank() && !incoming.coverUrl.isNullOrBlank()) {
+            target.coverUrl = incoming.coverUrl
+        }
+    }
+
     fun pause() {
         workingState.value = false
     }
 
     fun resume() {
         workingState.value = true
+    }
+
+    /**
+     * 增量扩展搜索：保留已有结果，只搜索 [addedParts] 里的新增书源。
+     * 用于搜索范围纯新增（如勾选更多分组）时避免整场重启。
+     * @return true 表示已启动增量搜索；false 表示当前没有可延续的搜索上下文，调用方应回退为整场重启。
+     */
+    fun extendSearch(key: String, fullScopeParts: List<BookSourcePart>, addedParts: List<BookSourcePart>): Boolean {
+        if (addedParts.isEmpty() || key.isEmpty()) return false
+        if (mSearchId == 0L || searchPool == null) return false
+        searchKey = key
+        searchPage = 1
+        // bookSourceParts 更新为完整新范围，保证后续「加载更多」覆盖整个范围
+        bookSourceParts = fullScopeParts
+        // 本次只搜新增书源；searchBooks 不清空，与旧结果合并
+        startSearch(addedParts)
+        return true
+    }
+
+    /**
+     * 范围缩小（移除书源/分组）时裁剪内存结果：剔除所有来源都不在新范围内的书。
+     * 保留书源列表同步为 [newScopeParts]，保证后续「加载更多」不再覆盖已移除书源。
+     */
+    fun pruneResults(newScopeParts: List<BookSourcePart>) {
+        val keepUrls = newScopeParts.map { it.bookSourceUrl }.toSet()
+        val kept = searchBooks.filter { it.origins.isEmpty() || it.origins.any { origin -> origin in keepUrls } }
+        searchBooks.clear()
+        searchBooks.addAll(kept)
+        bookSourceParts = newScopeParts
     }
 
     fun cancelSearch() {
@@ -203,6 +255,7 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
 
     interface CallBack {
         fun getSearchScope(): SearchScope
+        fun getSourceTypes(): Set<Int> = emptySet()
         fun onSearchStart()
         fun onSearchSuccess(searchBooks: List<SearchBook>)
         fun onSearchFinish(isEmpty: Boolean, hasMore: Boolean)

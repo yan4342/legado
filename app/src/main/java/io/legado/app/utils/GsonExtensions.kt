@@ -67,6 +67,27 @@ inline fun <reified T> Gson.fromJsonObject(json: String?): Result<T> {
     }
 }
 
+/**
+ * R8-safe string→map for JSON objects.
+ * Do NOT use [Gson.fromJson] with [Map]::class.java — Gson cannot instantiate the Map interface
+ * under minify ("abstract classes can't be instantiated").
+ */
+fun parseJsonStringMap(json: String?): Map<String, Any?> {
+    if (json.isNullOrBlank()) return emptyMap()
+    // Prefer registered Map<String, Any?> TypeToken deserializer on GSON.
+    GSON.fromJsonObject<Map<String, Any?>>(json).getOrNull()?.let { return it }
+    val el = runCatching { com.google.gson.JsonParser.parseString(json) }.getOrNull()
+        ?: return emptyMap()
+    if (!el.isJsonObject) return emptyMap()
+    return el.asJsonObject.entrySet().associate { (k, v) ->
+        k to when {
+            v.isJsonNull -> null
+            v.isJsonPrimitive -> v.asString
+            else -> v.toString()
+        }
+    }
+}
+
 inline fun <reified T> Gson.fromJsonArray(json: String?): Result<List<T>> {
     return kotlin.runCatching {
         if (json == null) {

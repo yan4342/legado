@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import android.util.Log
 import io.legado.app.BuildConfig
 import io.legado.app.constant.AppPattern
+import io.legado.app.constant.BookSourceType
 import io.legado.app.data.entities.*
+import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.isWebFile
 import io.legado.app.help.coroutine.CompositeCoroutine
 import io.legado.app.help.source.sortUrls
@@ -14,11 +16,18 @@ import io.legado.app.utils.HtmlFormatter
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.stackTraceStr
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.toList
+import java.util.concurrent.atomic.AtomicLong
 import java.text.SimpleDateFormat
 import java.util.*
 
 object Debug {
     var callback: Callback? = null
+    private val nextSessionId = AtomicLong()
+    private var activeSession: Session? = null
     private var debugSource: String? = null
     private val tasks: CompositeCoroutine = CompositeCoroutine()
     val debugMessageMap = HashMap<String, String>()
@@ -42,17 +51,29 @@ object Debug {
             Log.d("sourceDebug", msg)
         }
         //调试信息始终要执行
-        callback?.let {
-            if ((debugSource != sourceUrl || !print)) return
-            var printMsg = msg
-            if (isHtml) {
-                printMsg = HtmlFormatter.format(msg)
-            }
+        val event = Event(
+            kind = when (state) {
+                -1 -> EventKind.Error
+                10 -> EventKind.SearchSource
+                20 -> EventKind.InfoSource
+                30 -> EventKind.TocSource
+                40 -> EventKind.ContentSource
+                1000 -> EventKind.Completed
+                else -> EventKind.Message
+            },
+            message = if (isHtml) HtmlFormatter.format(msg) else msg,
+            timestamp = System.currentTimeMillis(),
+            elapsedMillis = System.currentTimeMillis() - startTime,
+        )
+        if (debugSource == sourceUrl && print) {
+            var printMsg = event.message
             if (showTime) {
                 val time = debugTimeFormat.format(Date(System.currentTimeMillis() - startTime))
                 printMsg = "$time $printMsg"
             }
-            it.printLog(state, printMsg)
+            callback?.printLog(state, printMsg)
+            val structuredEvent = event.copy(message = printMsg)
+            activeSession?.emit(structuredEvent)
         }
         if (isChecking && sourceUrl != null && (msg).length < 30) {
             var printMsg = msg
@@ -71,17 +92,40 @@ object Debug {
 
     @Synchronized
     fun log(msg: String?) {
-        log(debugSource, msg ?: "", true)
+        log(debugSource, if (msg == null) "" else msg, true)
     }
 
     fun cancelDebug(destroy: Boolean = false) {
         tasks.clear()
+        activeSession?.close()
+        activeSession = null
 
         if (destroy) {
             debugSource = null
             callback = null
         }
     }
+
+    @Synchronized
+    private fun replaceSession(sourceUrl: String): Session {
+        tasks.clear()
+        activeSession?.close()
+        debugSource = sourceUrl
+        startTime = System.currentTimeMillis()
+        return Session(nextSessionId.incrementAndGet(), sourceUrl).also { activeSession = it }
+    }
+
+    @Synchronized
+    private fun cancel(session: Session) {
+        if (activeSession?.id != session.id) return
+        tasks.clear()
+        activeSession = null
+        debugSource = null
+        session.close()
+    }
+
+    val hasActiveSession: Boolean
+        @Synchronized get() = activeSession != null
 
     fun startChecking(source: BookSource) {
         isChecking = true
@@ -94,7 +138,8 @@ object Debug {
     }
 
     fun getRespondTime(sourceUrl: String): Long {
-        return debugTimeMap[sourceUrl] ?: CheckSource.timeout
+        val responseTime = debugTimeMap[sourceUrl]
+        return if (responseTime == null) CheckSource.timeout else responseTime
     }
 
     fun updateFinalMessage(sourceUrl: String, state: String) {
@@ -107,12 +152,63 @@ object Debug {
         }
     }
 
-    suspend fun startDebug(scope: CoroutineScope, rssSource: RssSource) {
-        cancelDebug()
-        debugSource = rssSource.sourceUrl
+    suspend fun startDebug(
+        scope: CoroutineScope,
+        rssSource: RssSource,
+        key: String? = null
+    ): Session {
+        val session = replaceSession(rssSource.sourceUrl)
         log(debugSource, "︾开始解析")
-        val sort = rssSource.sortUrls().first()
-        Rss.getArticles(scope, sort.first, sort.second, rssSource, 1)
+        when {
+            key.isNullOrBlank() -> {
+                val sort = resolveSort(rssSource, null)
+                if (sort != null) rssListDebug(scope, sort.first, sort.second, rssSource)
+            }
+
+            key.contains("::") -> {
+                val name = key.substringBefore("::")
+                val url = key.substringAfter("::")
+                log(debugSource, "⇒开始访问分类页:$url")
+                rssListDebug(scope, name, url, rssSource)
+            }
+
+            key.isAbsUrl() || key.startsWith("@js:") -> {
+                val ruleContent = rssSource.ruleContent
+                if (ruleContent.isNullOrEmpty()) {
+                    log(debugSource, "⇒内容规则为空，默认获取整个网页", state = 1000)
+                } else {
+                    val rssArticle = RssArticle().apply {
+                        origin = rssSource.sourceUrl
+                        link = key
+                    }
+                    log(debugSource, "⇒开始解析内容页:$key")
+                    rssContentDebug(scope, rssArticle, ruleContent, rssSource)
+                }
+            }
+
+            else -> {
+                val sort = resolveSort(rssSource, key)
+                if (sort != null) rssListDebug(scope, sort.first, sort.second, rssSource)
+            }
+        }
+        return session
+    }
+
+    private suspend fun resolveSort(rssSource: RssSource, sortUrl: String?): Pair<String, String>? {
+        return if (sortUrl.isNullOrBlank()) {
+            runCatching { rssSource.sortUrls().first() }.getOrElse {
+                log(debugSource, it.stackTraceStr, state = -1)
+                null
+            }
+        } else {
+            val name = runCatching { rssSource.sortUrls().first().first }.getOrNull()
+                ?: rssSource.sourceName
+            name to sortUrl
+        }
+    }
+
+    private fun rssListDebug(scope: CoroutineScope, name: String, url: String, rssSource: RssSource) {
+        Rss.getArticles(scope, name, url, rssSource, 1)
             .onSuccess {
                 if (it.first.isEmpty()) {
                     log(debugSource, "⇒列表页解析成功，为空")
@@ -155,10 +251,8 @@ object Debug {
             }
     }
 
-    fun startDebug(scope: CoroutineScope, bookSource: BookSource, key: String) {
-        cancelDebug()
-        debugSource = bookSource.bookSourceUrl
-        startTime = System.currentTimeMillis()
+    fun startDebug(scope: CoroutineScope, bookSource: BookSource, key: String): Session {
+        val session = replaceSession(bookSource.bookSourceUrl)
         when {
             key.isAbsUrl() -> {
                 val book = Book()
@@ -199,6 +293,7 @@ object Debug {
                 searchDebug(scope, bookSource, key)
             }
         }
+        return session
     }
 
     private fun exploreDebug(scope: CoroutineScope, bookSource: BookSource, url: String) {
@@ -269,10 +364,11 @@ object Debug {
                 log(debugSource, showTime = false)
                 val toc = chapters.filter { !(it.isVolume && it.url.startsWith(it.title)) }
                 if (toc.isEmpty()) {
-                    log(debugSource, "≡没有正文章节")
+                    log(debugSource, "≡没有正文章节", state = -1)
                     return@onSuccess
                 }
-                val nextChapterUrl = toc.getOrNull(1)?.url ?: toc.first().url
+                val secondChapter = toc.getOrNull(1)
+                val nextChapterUrl = if (secondChapter == null) toc.first().url else secondChapter.url
                 contentDebug(scope, bookSource, book, toc.first(), nextChapterUrl)
             }
             .onError {
@@ -297,11 +393,56 @@ object Debug {
             nextChapterUrl = nextChapterUrl,
             needSave = false
         ).onSuccess {
+            if (bookSource.bookSourceType == BookSourceType.image) {
+                val images = BookHelp.flowImages(bookChapter, it).toList()
+                log(
+                    debugSource,
+                    "≡图片数量:${images.size}" + (images.firstOrNull()?.let { s -> ", 首图:${s.take(80)}" } ?: ""),
+                )
+            }
             log(debugSource, "︽正文页解析完成", state = 1000)
         }.onError {
             log(debugSource, it.stackTraceStr, state = -1)
         }
         tasks.add(content)
+    }
+
+    enum class EventKind {
+        Message, SearchSource, InfoSource, TocSource, ContentSource, Error, Completed;
+
+        val isSourcePayload: Boolean
+            get() = this == SearchSource || this == InfoSource || this == TocSource || this == ContentSource
+        val isTerminal: Boolean get() = this == Error || this == Completed
+    }
+
+    data class Event(
+        val kind: EventKind,
+        val message: String,
+        val timestamp: Long,
+        val elapsedMillis: Long,
+    )
+
+    class Session internal constructor(
+        internal val id: Long,
+        val sourceUrl: String,
+    ) {
+        private val channel = Channel<Event>(Channel.UNLIMITED)
+        val events: Flow<Event> = channel.receiveAsFlow()
+
+        internal fun emit(event: Event) {
+            channel.trySend(event)
+            if (event.kind == EventKind.Error || event.kind == EventKind.Completed) {
+                if (activeSession?.id == id) {
+                    activeSession = null
+                    debugSource = null
+                }
+                close()
+            }
+        }
+
+        internal fun close() { channel.close() }
+
+        fun cancel() { Debug.cancel(this) }
     }
 
     interface Callback {

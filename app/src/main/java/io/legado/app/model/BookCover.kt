@@ -30,6 +30,7 @@ import io.legado.app.help.DefaultData
 import io.legado.app.help.coil.BlurTransformation
 import io.legado.app.help.coil.LegadoFetcher
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.AppConfigStore
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeUrl
@@ -38,6 +39,7 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
+import io.legado.app.utils.toNotificationLargeIcon
 import kotlinx.coroutines.currentCoroutineContext
 import splitties.init.appCtx
 
@@ -81,7 +83,7 @@ object BookCover {
             appCtx.getPrefBoolean(PreferKey.coverShowAuthor, true)
         }
         val key = if (isNightTheme) PreferKey.defaultCoverDark else PreferKey.defaultCover
-        val path = appCtx.getPrefString(key)
+        val path = AppConfigStore.getString(key)
         if (path.isNullOrBlank()) {
             defaultDrawable = appCtx.resources.getDrawable(R.drawable.image_cover_default, null)
             return
@@ -103,7 +105,7 @@ object BookCover {
         isNight: Boolean = AppConfig.isNightTheme,
     ): String? {
         val key = if (isNight) PreferKey.defaultCoverDark else PreferKey.defaultCover
-        val pathStr = appCtx.getPrefString(key)
+        val pathStr = AppConfigStore.getString(key)
         if (pathStr.isNullOrBlank()) return null
         val paths = pathStr.split(",").filter { it.isNotBlank() }
         if (paths.isEmpty()) return null
@@ -198,16 +200,46 @@ object BookCover {
 
     /**
      * 同步获取封面位图（用于通知栏等场景）
+     * @param sizePx 解码目标边长；通知栏建议 256，配合 [toNotificationLargeIcon] 双线性缩放
      */
     suspend fun executeCoverBitmap(
         context: Context,
         path: String?,
         loadOnlyWifi: Boolean = false,
         sourceOrigin: String? = null,
+        sizePx: Int? = null,
     ): Bitmap? {
-        val request = loadRequest(context, path, loadOnlyWifi, sourceOrigin)
+        val request = ImageRequest.Builder(context)
+            .data(
+                if (useDefaultCover() || path == "use_default_cover") {
+                    defaultDrawable
+                } else {
+                    path
+                }
+            )
+            .apply {
+                if (!(useDefaultCover() || path == "use_default_cover")) {
+                    extras[LegadoFetcher.loadOnlyWifiKey] = loadOnlyWifi
+                    if (sourceOrigin != null) {
+                        extras[LegadoFetcher.sourceOriginKey] = sourceOrigin
+                    }
+                    placeholder(defaultDrawable.asImage())
+                    error(defaultDrawable.asImage())
+                }
+                if (sizePx != null && sizePx > 0) {
+                    size(Size(sizePx, sizePx))
+                    scale(Scale.FIT)
+                    precision(Precision.INEXACT)
+                }
+            }
+            .build()
         val result = SingletonImageLoader.get(context).execute(request)
-        return result.image?.toBitmap()
+        val bitmap = result.image?.toBitmap() ?: return null
+        return if (sizePx != null && sizePx > 0) {
+            bitmap.toNotificationLargeIcon(sizePx)
+        } else {
+            bitmap
+        }
     }
 
     fun getCoverRule(): CoverRule {

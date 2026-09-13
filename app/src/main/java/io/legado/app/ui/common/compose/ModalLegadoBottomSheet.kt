@@ -32,16 +32,18 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -54,6 +56,100 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+
+/**
+ * 统一 BottomSheet 状态：对应旧 [rememberModalBottomSheetState] 的 skipPartiallyExpanded 语义。
+ */
+@Composable
+@ExperimentalMaterial3Api
+fun rememberLegadoBottomSheetState(
+    skipPartiallyExpanded: Boolean = false,
+    confirmValueChange: (SheetValue) -> Boolean = { true },
+): SheetState = rememberBottomSheetState(
+    initialValue = SheetValue.Hidden,
+    enabledValues = if (skipPartiallyExpanded) {
+        setOf(SheetValue.Hidden, SheetValue.Expanded)
+    } else {
+        setOf(SheetValue.Hidden, SheetValue.PartiallyExpanded, SheetValue.Expanded)
+    },
+    confirmValueChange = confirmValueChange,
+)
+
+/**
+ * 关闭二次确认：用于没有半屏态的全展开 sheet（如大纲、执行记录）。
+ *
+ * 这类 sheet 一下滑就直接从全屏到关闭、没有任何半屏过渡，最容易误触。此封装：
+ * - 通过 [SheetState.confirmValueChange] veto 对 Hidden 的收敛，**下滑时 sheet 不会
+ *   滑离/收起**（松手即弹回原位），只弹一次 [onNeedConfirm] 提示；
+ * - 提示后 [confirmDelayMillis] 内的再次下滑 / 点遮罩 / 返回才会真正调用 [onDismiss]；
+ * - 显式的"关闭/保存"按钮直接走 [onDismiss]，不受此拦截。
+ *
+ * @return (sheetState, onDismissRequest)，直接透传给 ModalBottomSheet。
+ */
+@Composable
+@ExperimentalMaterial3Api
+fun rememberSwipeToConfirmDismiss(
+    skipPartiallyExpanded: Boolean = true,
+    confirmDelayMillis: Long = 3_000L,
+    onNeedConfirm: (() -> Unit)? = null,
+    onDismiss: () -> Unit,
+): Pair<SheetState, () -> Unit> {
+    val scope = rememberCoroutineScope()
+    // justVetoed：本次下滑已被 confirmValueChange veto，onDismissRequest 若随后回落属同一手势。
+    val justVetoed = remember { mutableStateOf(false) }
+    // armed：已提示过，下一次下滑 / 点外 / 返回真正关闭。
+    val armed = remember { mutableStateOf(false) }
+    val currentOnNeedConfirm by rememberUpdatedState(onNeedConfirm)
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+
+    fun reset() {
+        justVetoed.value = false
+        armed.value = false
+    }
+
+    val sheetState = rememberLegadoBottomSheetState(
+        skipPartiallyExpanded = skipPartiallyExpanded,
+        confirmValueChange = { target ->
+            when {
+                target != SheetValue.Hidden -> true
+                armed.value -> {
+                    justVetoed.value = false
+                    true
+                }
+                else -> {
+                    armed.value = true
+                    justVetoed.value = true
+                    currentOnNeedConfirm?.invoke()
+                    scope.launch {
+                        delay(confirmDelayMillis)
+                        reset()
+                    }
+                    false
+                }
+            }
+        },
+    )
+    val onDismissRequest: () -> Unit = {
+        when {
+            justVetoed.value -> {
+                // 本次下滑已被 veto 的回落回调：不关闭，armed 已置位，下一次触发即关闭。
+                justVetoed.value = false
+            }
+            armed.value -> currentOnDismiss()
+            else -> {
+                // 点遮罩 / 返回（不经过 confirmValueChange）：第一次只提示。
+                armed.value = true
+                currentOnNeedConfirm?.invoke()
+                scope.launch { sheetState.expand() }
+                scope.launch {
+                    delay(confirmDelayMillis)
+                    reset()
+                }
+            }
+        }
+    }
+    return sheetState to onDismissRequest
+}
 
 /**
  * Material 3 ModalBottomSheet 统一封装：
@@ -87,7 +183,7 @@ fun ModalLegadoBottomSheet(
     val titleStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
 
     val resolvedSheetState = sheetState
-        ?: rememberModalBottomSheetState(skipPartiallyExpanded = skipPartiallyExpanded)
+        ?: rememberLegadoBottomSheetState(skipPartiallyExpanded = skipPartiallyExpanded)
 
     val isExpanding by remember {
         derivedStateOf { resolvedSheetState.currentValue == SheetValue.Expanded }
@@ -149,6 +245,7 @@ fun ModalLegadoBottomSheet(
             Column(
                 modifier = modifier
                     .fillMaxWidth()
+                    .legadoSheetInsets()
                     .padding(bottom = 16.dp)
             ) {
                 if (title != null) {

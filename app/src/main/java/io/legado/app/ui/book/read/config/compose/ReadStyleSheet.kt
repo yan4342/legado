@@ -20,7 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import io.legado.app.ui.common.compose.rememberLegadoBottomSheetState
 import androidx.compose.runtime.Composable
 //import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,7 +78,7 @@ fun ReadStyleSheet(
     var showTipConfig by remember { mutableStateOf(false) }
     var presetVersion by remember { mutableIntStateOf(0) }
 
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberLegadoBottomSheetState(skipPartiallyExpanded = false)
 
     //LaunchedEffect(showPaddingConfig, showTipConfig) {
     //     if (showPaddingConfig || showTipConfig) {
@@ -539,16 +539,16 @@ private fun InLinePaddingConfig() {
             },
         )
     }
-    LabeledSlider("上", ReadBookConfig.headerPaddingTop, valueRange = 0f..100f, onApply = {
+    LabeledSlider("上", ReadBookConfig.headerPaddingTop, valueRange = 0f..300f, onApply = {
         ReadBookConfig.headerPaddingTop = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
     })
-    LabeledSlider("下", ReadBookConfig.headerPaddingBottom, valueRange = 0f..100f, onApply = {
+    LabeledSlider("下", ReadBookConfig.headerPaddingBottom, valueRange = 0f..300f, onApply = {
         ReadBookConfig.headerPaddingBottom = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
     })
-    LabeledSlider("左", ReadBookConfig.headerPaddingLeft, valueRange = 0f..100f, onApply = {
+    LabeledSlider("左", ReadBookConfig.headerPaddingLeft, valueRange = 0f..300f, onApply = {
         ReadBookConfig.headerPaddingLeft = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
     })
-    LabeledSlider("右", ReadBookConfig.headerPaddingRight, valueRange = 0f..100f, onApply = {
+    LabeledSlider("右", ReadBookConfig.headerPaddingRight, valueRange = 0f..300f, onApply = {
         ReadBookConfig.headerPaddingRight = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
     })
 
@@ -573,16 +573,16 @@ private fun InLinePaddingConfig() {
             },
         )
     }
-    LabeledSlider("上", ReadBookConfig.footerPaddingTop, valueRange = 0f..100f, onApply = {
+    LabeledSlider("上", ReadBookConfig.footerPaddingTop, valueRange = 0f..300f, onApply = {
         ReadBookConfig.footerPaddingTop = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
     })
-    LabeledSlider("下", ReadBookConfig.footerPaddingBottom, valueRange = 0f..100f, onApply = {
+    LabeledSlider("下", ReadBookConfig.footerPaddingBottom, valueRange = 0f..300f, onApply = {
         ReadBookConfig.footerPaddingBottom = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
     })
-    LabeledSlider("左", ReadBookConfig.footerPaddingLeft, valueRange = 0f..100f, onApply = {
+    LabeledSlider("左", ReadBookConfig.footerPaddingLeft, valueRange = 0f..300f, onApply = {
         ReadBookConfig.footerPaddingLeft = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
     })
-    LabeledSlider("右", ReadBookConfig.footerPaddingRight, valueRange = 0f..100f, onApply = {
+    LabeledSlider("右", ReadBookConfig.footerPaddingRight, valueRange = 0f..300f, onApply = {
         ReadBookConfig.footerPaddingRight = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
     })
 

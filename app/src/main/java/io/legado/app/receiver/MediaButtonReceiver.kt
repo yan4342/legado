@@ -16,7 +16,6 @@ import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.book.audio.AudioPlayActivity
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.utils.LogUtils
-import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.postEvent
 
 
@@ -48,7 +47,7 @@ class MediaButtonReceiver : BroadcastReceiver() {
                     LogUtils.d(TAG, "Receive mediaButton event, keycode:$keycode")
                     when (keycode) {
                         KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
-                            if (context.getPrefBoolean("mediaButtonPerNext", false)) {
+                            if (AppConfig.mediaButtonPerNext) {
                                 ReadBook.moveToPrevChapter(true)
                             } else {
                                 ReadAloud.prevParagraph(context)
@@ -56,7 +55,7 @@ class MediaButtonReceiver : BroadcastReceiver() {
                         }
 
                         KeyEvent.KEYCODE_MEDIA_NEXT -> {
-                            if (context.getPrefBoolean("mediaButtonPerNext", false)) {
+                            if (AppConfig.mediaButtonPerNext) {
                                 ReadBook.moveToNextChapter(true)
                             } else {
                                 ReadAloud.nextParagraph(context)

@@ -33,7 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import io.legado.app.ui.common.compose.rememberLegadoBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -153,7 +153,7 @@ fun BgTextConfigSheet(
 
     val isImageBook = ReadBook.book?.isImage == true
 
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberLegadoBottomSheetState(skipPartiallyExpanded = true)
 
     ModalLegadoBottomSheet(
         show = show,

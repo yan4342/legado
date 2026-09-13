@@ -9,8 +9,9 @@ import io.legado.app.help.CrashHandler
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.update.AppUpdate
+import io.legado.app.ui.common.compose.LegadoWaitDialog
+import io.legado.app.ui.common.compose.LegadoWaitState
 import io.legado.app.ui.config.compose.ConfigComposeFragment
-import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.compress.ZipUtils
 import io.legado.app.utils.createFileIfNotExist
@@ -33,7 +34,7 @@ import java.io.File
 
 class AboutComposeFragment : ConfigComposeFragment() {
 
-    private val waitDialog by lazy { WaitDialog(requireContext()) }
+    private val waitState = LegadoWaitState()
 
     @Composable
     override fun ConfigContent() {
@@ -62,6 +63,7 @@ class AboutComposeFragment : ConfigComposeFragment() {
             onLicenseClick = { showMdFile(getString(R.string.license), "LICENSE.md") },
             onDisclaimerClick = { showMdFile(getString(R.string.disclaimer), "disclaimer.md") },
         )
+        LegadoWaitDialog(waitState)
     }
 
     private fun openUrl(stringId: Int) {
@@ -74,7 +76,7 @@ class AboutComposeFragment : ConfigComposeFragment() {
     }
 
     private fun checkUpdate() {
-        waitDialog.show()
+        waitState.show()
         AppUpdate.gitHubUpdate?.run {
             check(lifecycleScope)
                 .onSuccess {
@@ -82,7 +84,7 @@ class AboutComposeFragment : ConfigComposeFragment() {
                 }.onError {
                     appCtx.toastOnUi("${getString(R.string.check_update)}\n${it.localizedMessage}")
                 }.onFinally {
-                    waitDialog.dismiss()
+                    waitState.dismiss()
                 }
         }
     }

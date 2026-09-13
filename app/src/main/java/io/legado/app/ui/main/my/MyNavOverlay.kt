@@ -12,7 +12,11 @@ import androidx.fragment.app.Fragment
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.data.appDb
+import io.legado.app.data.repository.AiUsageRepository
+import io.legado.app.ui.book.readRecord.AiUsageOverviewScreen
+import io.legado.app.ui.book.readRecord.AiUsageOverviewState
 import io.legado.app.ui.book.readRecord.ReadPeriod
 import io.legado.app.ui.book.readRecord.ReadRecordOverviewScreen
 import io.legado.app.ui.book.readRecord.ReadRecordOverviewState
@@ -44,10 +48,12 @@ import java.util.Locale
 internal fun ReadRecordRoute(
     onBack: () -> Unit,
     onOverview: () -> Unit,
+    onAiOverview: () -> Unit,
     onNavigateToBook: (String, String) -> Unit,
+    onNavigateToAiChat: () -> Unit,
 ) {
     val context = LocalContext.current
-    val viewModel = remember { ReadRecordViewModel() }
+    val viewModel: ReadRecordViewModel = viewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     ReadRecordScreen(
         state = state,
@@ -59,6 +65,8 @@ internal fun ReadRecordRoute(
             (context as? MainActivity)?.navigateToSearch(key = bookName)
         },
         onOverviewClick = onOverview,
+        onAiOverviewClick = onAiOverview,
+        onNavigateToAiChat = onNavigateToAiChat,
     )
 }
 
@@ -209,5 +217,142 @@ internal fun ReadRecordOverviewRoute(
         onNextDate = { nextDate() },
         onBack = onBack,
         onBookClick = onBookClick,
+    )
+}
+
+/** AI 使用总览路由内容。 */
+@Composable
+internal fun AiUsageOverviewRoute(onBack: () -> Unit) {
+    var state by remember { mutableStateOf(AiUsageOverviewState()) }
+    val scope = rememberCoroutineScope()
+    val repository = remember { AiUsageRepository() }
+
+    fun load(period: ReadPeriod, refDate: LocalDate) {
+        scope.launch {
+            state = state.copy(period = period, referenceDate = refDate)
+            val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val refInstant = refDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
+            val endDate = fmt.format(Date.from(refInstant))
+
+            val (statsStartDate, statsEndDate) = when (period) {
+                ReadPeriod.DAY -> endDate to endDate
+                ReadPeriod.WEEK -> {
+                    val weekStart = refDate.with(java.time.DayOfWeek.MONDAY)
+                    val weekEnd = refDate.with(java.time.DayOfWeek.SUNDAY)
+                    fmt.format(Date.from(weekStart.atStartOfDay(ZoneId.systemDefault()).toInstant())) to
+                        fmt.format(Date.from(weekEnd.atStartOfDay(ZoneId.systemDefault()).toInstant()))
+                }
+                ReadPeriod.MONTH -> {
+                    val monthStart = refDate.withDayOfMonth(1)
+                    val monthEnd = refDate.withDayOfMonth(refDate.lengthOfMonth())
+                    fmt.format(Date.from(monthStart.atStartOfDay(ZoneId.systemDefault()).toInstant())) to
+                        fmt.format(Date.from(monthEnd.atStartOfDay(ZoneId.systemDefault()).toInstant()))
+                }
+                ReadPeriod.YEAR -> "${refDate.year}-01-01" to "${refDate.year}-12-31"
+            }
+
+            val (heatmapStartDate, heatmapEndDate) = when (period) {
+                ReadPeriod.DAY -> {
+                    val cal = Calendar.getInstance()
+                    cal.time = Date.from(refInstant)
+                    cal.add(Calendar.DAY_OF_YEAR, -30)
+                    fmt.format(cal.time) to endDate
+                }
+                else -> statsStartDate to statsEndDate
+            }
+
+            val rangeSummary = withContext(IO) { repository.sumByDateRange(statsStartDate, statsEndDate) }
+            val statsDailyRecords = withContext(IO) { repository.sumDailyByDateRange(statsStartDate, statsEndDate) }
+            val heatmapRecords = withContext(IO) { repository.sumDailyByDateRange(heatmapStartDate, heatmapEndDate) }
+            val usageDays = when (period) {
+                ReadPeriod.DAY -> if (rangeSummary.totalTokens > 0) 1 else 0
+                else -> statsDailyRecords.count { it.totalTokens > 0 }
+            }
+            val todayTokens = when (period) {
+                ReadPeriod.DAY -> rangeSummary.totalTokens
+                else -> withContext(IO) { repository.todaySummary().totalTokens }
+            }
+
+            val dailyBarItems = when (period) {
+                ReadPeriod.DAY -> {
+                    val hourly = withContext(IO) { repository.sumHourlyByDate(endDate) }
+                    hourly.filter { it.totalTokens > 0 }.map { record ->
+                        ReadVerticalBarChartView.BarItem(record.hour.takeLast(2) + "时", record.totalTokens)
+                    }
+                }
+                ReadPeriod.WEEK -> {
+                    val weekStart = refDate.with(java.time.DayOfWeek.MONDAY)
+                    val weekEnd = refDate.with(java.time.DayOfWeek.SUNDAY)
+                    val wsInst = weekStart.atStartOfDay(ZoneId.systemDefault()).toInstant()
+                    val weInst = weekEnd.atStartOfDay(ZoneId.systemDefault()).toInstant()
+                    val weekRecords = withContext(IO) {
+                        repository.sumDailyByDateRange(fmt.format(Date.from(wsInst)), fmt.format(Date.from(weInst)))
+                    }
+                    val weekDayLabels = arrayOf("一", "二", "三", "四", "五", "六", "日")
+                    val weekMap = weekRecords.associateBy { LocalDate.parse(it.date).dayOfWeek.value }
+                    (1..7).map { day -> ReadVerticalBarChartView.BarItem(weekDayLabels[day - 1], weekMap[day]?.totalTokens ?: 0) }
+                }
+                ReadPeriod.MONTH -> statsDailyRecords.filter { it.totalTokens > 0 }
+                    .map { ReadVerticalBarChartView.BarItem(it.date.takeLast(2) + "日", it.totalTokens) }
+                ReadPeriod.YEAR -> {
+                    val yearRecords = withContext(IO) { repository.sumDailyByDateRange(statsStartDate, statsEndDate) }
+                    val monthMap = yearRecords.groupBy { it.date.substring(5, 7) }.mapValues { (_, records) -> records.sumOf { it.totalTokens } }
+                    (1..12).map { m -> ReadVerticalBarChartView.BarItem("${m}月", monthMap[String.format("%02d", m)] ?: 0) }
+                }
+            }
+
+            val topModels = withContext(IO) { repository.sumByModelInRange(statsStartDate, statsEndDate).take(20) }
+            val modelTotal = topModels.sumOf { it.totalTokens }.coerceAtLeast(1)
+            val topModelBarItems = topModels.map { model ->
+                val name = model.modelName.ifBlank { model.modelId }
+                val pct = model.totalTokens * 100 / modelTotal
+                ReadBarChartView.BarItem("$name ($pct%)", model.totalTokens)
+            }
+
+            state = state.copy(
+                totalTokens = rangeSummary.totalTokens,
+                promptTokens = rangeSummary.promptTokens,
+                completionTokens = rangeSummary.completionTokens,
+                cacheHitTokens = rangeSummary.cacheHitTokens,
+                generatedChars = rangeSummary.generatedChars,
+                callCount = rangeSummary.callCount,
+                usageDays = usageDays,
+                todayTokens = todayTokens,
+                dailyBarItems = dailyBarItems,
+                topModelBarItems = topModelBarItems,
+                heatmapData = heatmapRecords.associate { it.date to it.totalTokens },
+                hasEstimated = withContext(IO) { repository.hasEstimatedInRange(statsStartDate, statsEndDate) },
+            )
+        }
+    }
+
+    fun prevDate() {
+        val ref = state.referenceDate
+        load(state.period, when (state.period) {
+            ReadPeriod.DAY -> ref.minusDays(1)
+            ReadPeriod.WEEK -> ref.minusWeeks(1)
+            ReadPeriod.MONTH -> ref.minusMonths(1)
+            ReadPeriod.YEAR -> ref.minusYears(1)
+        })
+    }
+
+    fun nextDate() {
+        val ref = state.referenceDate
+        load(state.period, when (state.period) {
+            ReadPeriod.DAY -> ref.plusDays(1)
+            ReadPeriod.WEEK -> ref.plusWeeks(1)
+            ReadPeriod.MONTH -> ref.plusMonths(1)
+            ReadPeriod.YEAR -> ref.plusYears(1)
+        })
+    }
+
+    LaunchedEffect(Unit) { load(state.period, state.referenceDate) }
+
+    AiUsageOverviewScreen(
+        state = state,
+        onPeriodChange = { load(it, state.referenceDate) },
+        onPrevDate = { prevDate() },
+        onNextDate = { nextDate() },
+        onBack = onBack,
     )
 }

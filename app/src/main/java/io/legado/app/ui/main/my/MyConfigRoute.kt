@@ -79,6 +79,7 @@ fun MyBackupConfigRoute(
     fragment: Fragment? = null,
     onBack: () -> Unit,
     actions: BackupConfigActions,
+    backupPath: String = "",
 ) {
     val application = LocalContext.current.applicationContext as android.app.Application
     val viewModel: ConfigViewModel = if (fragment != null) {
@@ -91,6 +92,7 @@ fun MyBackupConfigRoute(
     BackupConfigScreen(
         onBackClick = onBack,
         viewModel = viewModel,
+        backupPath = backupPath,
         onBackupPathClick = actions.onBackupPath,
         onRestoreIgnoreClick = actions.onRestoreIgnore,
         onImportOldClick = actions.onImportOld,

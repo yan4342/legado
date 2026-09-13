@@ -19,6 +19,7 @@ import io.legado.app.exception.NoBooksDirException
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.addType
 import io.legado.app.help.book.getExportFileName
 import io.legado.app.help.book.getRemoteUrl
 import io.legado.app.help.book.isLocal
@@ -32,7 +33,6 @@ import io.legado.app.lib.webdav.ObjectNotFoundException
 import io.legado.app.model.AudioPlay
 import io.legado.app.model.BookCover
 import io.legado.app.model.ReadBook
-import io.legado.app.model.ReadManga
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.model.webBook.WebBook
@@ -426,6 +426,21 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
+    /** 打开目录前确保书籍与章节已落库（未加书架时目录仅在内存中，TocActivity 从 DB 读取）。 */
+    fun prepareOpenChapterList(onReady: () -> Unit) {
+        val book = getBook() ?: return
+        if (inBookshelf) {
+            onReady()
+            return
+        }
+        book.addType(BookType.notShelf)
+        saveBook(book) {
+            saveChapterList {
+                onReady()
+            }
+        }
+    }
+
     fun addToBookshelf(success: (() -> Unit)?) {
         execute {
             bookData.value?.let { book ->
@@ -481,9 +496,6 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
             BookHelp.clearCache(bookData.value!!)
             if (ReadBook.book?.bookUrl == bookData.value!!.bookUrl) {
                 ReadBook.clearTextChapter()
-            }
-            if (ReadManga.book?.bookUrl == bookData.value!!.bookUrl) {
-                ReadManga.clearMangaChapter()
             }
         }.onSuccess {
             context.toastOnUi(R.string.clear_cache_success)

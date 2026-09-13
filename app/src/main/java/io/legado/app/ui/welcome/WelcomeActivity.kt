@@ -5,7 +5,6 @@ import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.base.BaseActivity
-import io.legado.app.constant.PreferKey
 import io.legado.app.constant.Theme
 import io.legado.app.data.appDb
 import io.legado.app.databinding.ActivityWelcomeBinding
@@ -17,8 +16,6 @@ import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.main.MainActivity
 import io.legado.app.utils.BitmapUtils
 import io.legado.app.utils.fullScreen
-import io.legado.app.utils.getPrefBoolean
-import io.legado.app.utils.getPrefString
 import io.legado.app.utils.setStatusBarColorAuto
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -37,9 +34,13 @@ open class WelcomeActivity : BaseActivity<ActivityWelcomeBinding>() {
         binding.vwTitleLine.setBackgroundColor(accentColor)
         // 避免从桌面启动程序后，会重新实例化入口类的activity
         if (intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT != 0) {
+            // Deep-link / MainIntent while app is alive: forward extras to MainActivity.
+            if (intent.hasExtra(io.legado.app.ui.main.MainIntent.EXTRA_START_ROUTE)) {
+                startMainActivity(forwardExtras = true)
+            }
             finish()
         } else {
-            startMainActivity()
+            startMainActivity(forwardExtras = true)
         }
     }
 
@@ -50,10 +51,10 @@ open class WelcomeActivity : BaseActivity<ActivityWelcomeBinding>() {
     }
 
     override fun upBackgroundImage() {
-        if (getPrefBoolean(PreferKey.customWelcome)) {
+        if (AppConfig.customWelcome) {
             kotlin.runCatching {
                 when (ThemeConfig.getTheme()) {
-                    Theme.Dark -> getPrefString(PreferKey.welcomeImageDark)?.let { path ->
+                    Theme.Dark -> AppConfig.welcomeImageDark?.let { path ->
                         val size = windowManager.windowSize
                         lifecycleScope.launch {
                             val bitmap = withContext(IO) {
@@ -69,7 +70,7 @@ open class WelcomeActivity : BaseActivity<ActivityWelcomeBinding>() {
                         return
                     }
 
-                    else -> getPrefString(PreferKey.welcomeImage)?.let { path ->
+                    else -> AppConfig.welcomeImage?.let { path ->
                         val size = windowManager.windowSize
                         lifecycleScope.launch {
                             val bitmap = withContext(IO) {
@@ -90,9 +91,16 @@ open class WelcomeActivity : BaseActivity<ActivityWelcomeBinding>() {
         super.upBackgroundImage()
     }
 
-    private fun startMainActivity() {
-        startActivity<MainActivity>()
-        if (getPrefBoolean(PreferKey.defaultToRead)) {
+    private fun startMainActivity(forwardExtras: Boolean = false) {
+        val source = intent
+        startActivity<MainActivity> {
+            if (forwardExtras) {
+                source.extras?.let { putExtras(it) }
+                source.data?.let { data = it }
+                source.action?.let { action = it }
+            }
+        }
+        if (AppConfig.defaultToRead) {
             lifecycleScope.launch {
                 val lastBook = withContext(IO) {
                     appDb.bookDao.lastReadBook

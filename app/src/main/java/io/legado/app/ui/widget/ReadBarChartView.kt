@@ -30,12 +30,13 @@ class ReadBarChartView @JvmOverloads constructor(
 
     private var items: List<BarItem> = emptyList()
     private var maxTime: Long = 1L
+    private var valueFormat: ChartValueFormat = ChartValueFormat.READ_TIME
 
     private val barHeight = 24.dpToPx().toFloat()
     private val barGap = 10.dpToPx().toFloat()
     private val barCornerRadius = 4.dpToPx().toFloat()
-    private val labelWidth = 120.dpToPx().toFloat()
-    private val timeLabelWidth = 80.dpToPx().toFloat()
+    private var labelWidth = 120.dpToPx().toFloat()
+    private var timeLabelWidth = 80.dpToPx().toFloat()
     private val valueGap = 8.dpToPx().toFloat()
 
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -102,6 +103,23 @@ class ReadBarChartView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setValueFormat(format: ChartValueFormat) {
+        valueFormat = format
+        invalidate()
+    }
+
+    fun setLabelWidth(widthDp: Float) {
+        labelWidth = widthDp.dpToPx()
+        requestLayout()
+        invalidate()
+    }
+
+    fun setTimeLabelWidth(widthDp: Float) {
+        timeLabelWidth = widthDp.dpToPx()
+        requestLayout()
+        invalidate()
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val desiredHeight = (items.size * (barHeight + barGap) + paddingTop + paddingBottom).toInt()
         val width = resolveSize(suggestedMinimumWidth, widthMeasureSpec)
@@ -144,7 +162,7 @@ class ReadBarChartView @JvmOverloads constructor(
 
             // Draw time label (right)
             canvas.drawText(
-                formatReadTime(item.readTime),
+                formatValue(item.readTime),
                 width - paddingRight.toFloat(),
                 y + barHeight * 0.75f,
                 timePaint
@@ -173,6 +191,21 @@ class ReadBarChartView @JvmOverloads constructor(
             end--
         }
         return if (end > 0) text.substring(0, end) + "..." else "..."
+    }
+
+    private fun formatValue(value: Long): String = when (valueFormat) {
+        ChartValueFormat.COMPACT_NUMBER -> formatCompactNumber(value)
+        ChartValueFormat.READ_TIME -> formatReadTime(value)
+    }
+
+    private fun formatCompactNumber(count: Long): String {
+        if (count <= 0) return "0"
+        val absCount = kotlin.math.abs(count)
+        return when {
+            absCount >= 1_000_000 -> String.format(java.util.Locale.getDefault(), "%.1fM", count / 1_000_000.0)
+            absCount >= 1_000 -> String.format(java.util.Locale.getDefault(), "%.1fK", count / 1_000.0)
+            else -> count.toString()
+        }
     }
 
     private fun formatReadTime(ms: Long): String {

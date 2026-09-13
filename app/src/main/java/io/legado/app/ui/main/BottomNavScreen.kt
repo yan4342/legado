@@ -40,9 +40,6 @@ import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.ui.book.toc.rule.TxtTocRuleActivity
 import io.legado.app.ui.replace.ReplaceRuleActivity
-import io.legado.app.ui.dict.rule.DictRuleActivity
-import io.legado.app.ui.book.bookmark.AllBookmarkActivity
-import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.ui.main.bookshelf.compose.BookshelfTab
 import io.legado.app.ui.main.explore.ExploreScreen
 import io.legado.app.ui.main.my.MyScreen
@@ -207,14 +204,20 @@ fun BottomNavScreen(
                                 onReplaceManage = remember {
                                     { context.startActivity<ReplaceRuleActivity>() }
                                 },
-                                onDictRuleManage = remember {
-                                    { context.startActivity<DictRuleActivity>() }
+                                onDictRuleManage = remember(onNavigateToRoute) {
+                                    { onNavigateToRoute(MainRouteDictRule) }
                                 },
                                 onAiDictRuleManage = remember(onNavigateToRoute) {
                                     { onNavigateToRoute(MainRouteAiDictRule) }
                                 },
-                                onBookmark = remember {
-                                    { context.startActivity<AllBookmarkActivity>() }
+                                onNavigateToChat = remember(onNavigateToRoute) {
+                                    { onNavigateToRoute(MainRouteAiChat) }
+                                },
+                                onNavigateToAiSettings = remember(onNavigateToRoute) {
+                                    { onNavigateToRoute(MainRouteSettingsAi) }
+                                },
+                                onBookmark = remember(onNavigateToRoute) {
+                                    { onNavigateToRoute(MainRouteAllBookmark) }
                                 },
                                 onReadRecord = remember(onNavigateToRoute) {
                                     { onNavigateToRoute(MainRouteReadRecord) }
@@ -243,8 +246,8 @@ fun BottomNavScreen(
                                     }
                                 },
                                 onWebServiceLongClick = remember { {} },
-                                onFileManage = remember {
-                                    { context.startActivity<FileManageActivity>() }
+                                onFileManage = remember(onNavigateToRoute) {
+                                    { onNavigateToRoute(MainRouteFileManage) }
                                 },
                                 onAbout = remember(onNavigateToRoute) {
                                     { onNavigateToRoute(MainRouteAbout) }

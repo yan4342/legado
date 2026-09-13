@@ -7,7 +7,6 @@ import android.icu.text.Collator
 import android.icu.util.ULocale
 import android.net.Uri
 import android.text.Editable
-import cn.hutool.core.net.URLEncodeUtil
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.AppPattern.dataUriRegex
 import java.io.File
@@ -139,7 +138,31 @@ fun String.escapeRegex(): String {
     return replace(AppPattern.regexCharRegex, "\\\\$0")
 }
 
-fun String.encodeURI(): String = URLEncodeUtil.encodeQuery(this)
+fun String.encodeURI(): String {
+    val builder = StringBuilder(length)
+    for (c in this) {
+        if (c.code < 128 && encodeQuerySafeChars[c.code]) {
+            builder.append(c)
+        } else {
+            val bytes = c.toString().toByteArray(Charsets.UTF_8)
+            for (b in bytes) {
+                val v = b.toInt() and 0xFF
+                builder.append('%')
+                builder.append(ENCODE_HEX_UPPER[v ushr 4])
+                builder.append(ENCODE_HEX_UPPER[v and 0x0F])
+            }
+        }
+    }
+    return builder.toString()
+}
+
+private const val ENCODE_HEX_UPPER = "0123456789ABCDEF"
+
+private val encodeQuerySafeChars: BooleanArray = BooleanArray(128).apply {
+    for (c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-~!$&'()*+,;=:@/?") {
+        this[c.code] = true
+    }
+}
 
 fun String.normalizeFileName(): String {
     return replace(AppPattern.fileNameRegex2, "_")

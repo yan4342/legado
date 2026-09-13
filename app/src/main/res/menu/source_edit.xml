@@ -68,6 +68,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_ai_version_history"
+        android:title="@string/book_source_ai_version_history"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_help"
         android:title="@string/help"
         app:showAsAction="never" />

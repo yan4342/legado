@@ -25,6 +25,7 @@ import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.model.ImageProvider
+import io.legado.app.domain.usecase.ReChapterUseCase
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
 import io.legado.app.model.localBook.LocalBook
@@ -210,6 +211,18 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
                 return false
             }
         } else {
+            if (book.reChapterEnabled && ReadBook.chapterSize > 0) {
+                // 重新分章模式:跳过整表目录刷新,直接用现有 chapters,避免把合并章打回原子页目录
+                // 每次打开书都触发增量分章(execute 内部按 reChapterMark 跳过已分章区域)
+                ReadBook.bookSource?.let { source ->
+                    AppLog.put(
+                        "loadChapterListAwait 重新分章模式:跳过整表刷新,触发增量分章 " +
+                            "dur=${ReadBook.durChapterIndex} chapterSize=${ReadBook.chapterSize}"
+                    )
+                    ReChapterUseCase(book, source).execute(ReadBook.durChapterIndex)
+                }
+                return true
+            }
             ReadBook.bookSource?.let {
                 val oldBook = book.copy()
                 WebBook.getChapterListAwait(it, book, true)
@@ -335,6 +348,7 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun openChapter(index: Int, durChapterPos: Int = 0, success: (() -> Unit)? = null) {
+        ReadBook.saveReadingAnchorBeforeChapterJump(index, durChapterPos)
         ReadBook.openChapter(index, durChapterPos, success = success)
     }
 
@@ -361,7 +375,7 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
         execute {
             appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex)
                 ?.let { chapter ->
-                    BookHelp.delContent(book, chapter)
+                    refreshOneChapter(book, chapter)
                     ReadBook.loadContent(ReadBook.durChapterIndex, resetPageOffset = false)
                 }
         }
@@ -374,7 +388,7 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
                 ReadBook.durChapterIndex,
                 book.totalChapterNum
             ).forEach { chapter ->
-                BookHelp.delContent(book, chapter)
+                refreshOneChapter(book, chapter)
             }
             ReadBook.loadContent(false)
         }
@@ -382,9 +396,31 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
 
     fun refreshContentAll(book: Book) {
         execute {
-            BookHelp.clearCache(book)
+            if (book.isLocal) {
+                BookHelp.clearCache(book)
+            } else {
+                // 重新分章书:整删缓存会丢失原子页缓存并导致重拉退化成原子页,逐个章节刷新
+                appDb.bookChapterDao.getChapterList(book.bookUrl).forEach { chapter ->
+                    refreshOneChapter(book, chapter)
+                }
+            }
             ReadBook.loadContent(false)
         }
+    }
+
+    /**
+     * 刷新单个章节内容。重新分章合并章按映射删除全部原子页缓存并重下后拼接,
+     * 普通章节保持原有"删缓存重拉"逻辑。
+     */
+    private suspend fun refreshOneChapter(book: Book, chapter: BookChapter) {
+        if (BookHelp.isReChaptered(chapter)) {
+            val source = ReadBook.bookSource ?: appDb.bookSourceDao.getBookSource(book.origin)
+            if (source != null) {
+                ReChapterUseCase(book, source).refreshChapter(chapter)
+                return
+            }
+        }
+        BookHelp.delContent(book, chapter)
     }
 
     /**

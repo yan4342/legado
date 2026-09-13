@@ -18,19 +18,49 @@ import io.legado.app.utils.createFileIfNotExist
 import io.legado.app.utils.openOutputStream
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.writeText
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class TocViewModel(application: Application) : BaseViewModel(application) {
     var bookUrl: String = ""
     var bookData = MutableLiveData<Book>()
-    var chapterListCallBack: ChapterListCallBack? = null
-    var bookMarkCallBack: BookmarkCallBack? = null
-    var searchKey: String? = null
+
+    private val _tabIndex = MutableStateFlow(0)
+    val tabIndex: StateFlow<Int> = _tabIndex.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _bookFlow = MutableStateFlow<Book?>(null)
+    val bookFlow: StateFlow<Book?> = _bookFlow.asStateFlow()
+
+    /** 目录刷新触发器:菜单操作(reverse/useReplace等)后自增,ChapterListPage 监听此值重载 */
+    val chapterRefreshTrigger = MutableStateFlow(0)
+
+    fun triggerChapterRefresh() {
+        chapterRefreshTrigger.value++
+    }
+
+    fun selectTab(index: Int) {
+        _tabIndex.value = index
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+    }
+
+    /** 同步 bookData(LiveData)与 bookFlow(StateFlow),Compose UI 读取后者 */
+    private fun updateBook(book: Book) {
+        bookData.postValue(book)
+        _bookFlow.value = book
+    }
 
     fun initBook(bookUrl: String) {
         this.bookUrl = bookUrl
         execute {
             appDb.bookDao.getBook(bookUrl)?.let {
-                bookData.postValue(it)
+                updateBook(it)
             }
         }
     }
@@ -43,7 +73,7 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
                 appDb.bookChapterDao.insert(*it.toTypedArray())
                 appDb.bookDao.update(book)
                 ReadBook.onChapterListUpdated(book)
-                bookData.postValue(book)
+                updateBook(book)
             }
         }.onSuccess {
             complete.invoke(null)
@@ -62,22 +92,11 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
                     bookChapter.index = index
                 }
                 appDb.bookChapterDao.insert(*newToc.toTypedArray())
+                updateBook(this)
             }
         }.onSuccess {
             it?.let(success)
         }
-    }
-
-    fun startChapterListSearch(newText: String?) {
-        chapterListCallBack?.upChapterList(newText)
-    }
-
-    fun startBookmarkSearch(newText: String?) {
-        bookMarkCallBack?.upBookmark(newText)
-    }
-
-    fun upChapterListAdapter() {
-        chapterListCallBack?.upAdapter()
     }
 
     fun saveBookmark(treeUri: Uri) {
@@ -120,17 +139,5 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
         }.onSuccess {
             context.toastOnUi("导出成功")
         }
-    }
-
-    interface ChapterListCallBack {
-        fun upChapterList(searchKey: String?)
-
-        fun clearDisplayTitle()
-
-        fun upAdapter()
-    }
-
-    interface BookmarkCallBack {
-        fun upBookmark(searchKey: String?)
     }
 }

@@ -92,7 +92,7 @@ fun NumberPickerDialog(
 }
 
 @Composable
-private fun WheelNumberPicker(
+internal fun WheelNumberPicker(
     value: Int,
     onValueChange: (Int) -> Unit,
     minValue: Int,

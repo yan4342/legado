@@ -30,7 +30,6 @@ data class SearchUiState(
     val totalSources: Int = 0,
     val selectedSourceTypes: Set<Int> = emptySet(),
     val showScopeSheet: Boolean = false,
-    val showSettingsSheet: Boolean = false,
     val showClearHistoryDialog: Boolean = false,
     val showSuggestions: Boolean = true,
     val emptyScopeAction: SearchEmptyScopeAction? = null,
@@ -84,7 +83,6 @@ sealed interface SearchIntent {
     data class SetClearHistoryDialogVisible(val visible: Boolean) : SearchIntent
     data object ConfirmClearHistory : SearchIntent
     data class SetScopeSheetVisible(val visible: Boolean) : SearchIntent
-    data class SetSettingsSheetVisible(val visible: Boolean) : SearchIntent
     data class ToggleSourceType(val type: Int) : SearchIntent
     data class SetMatchMode(val mode: MatchMode) : SearchIntent
     data object ConfirmEmptyScopeAction : SearchIntent

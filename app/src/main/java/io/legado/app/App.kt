@@ -21,7 +21,6 @@ import io.legado.app.base.AppContextWrapper
 import io.legado.app.constant.AppConst.channelIdDownload
 import io.legado.app.constant.AppConst.channelIdReadAloud
 import io.legado.app.constant.AppConst.channelIdWeb
-import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
@@ -43,6 +42,7 @@ import io.legado.app.help.LifecycleHelp
 import io.legado.app.help.RuleBigDataHelp
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.AppConfigStore
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.config.ThemeConfig.applyDayNight
@@ -59,7 +59,6 @@ import io.legado.app.model.BookCover
 import io.legado.app.utils.ChineseUtils
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.defaultSharedPreferences
-import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.isDebuggable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -75,6 +74,9 @@ class App : Application() {
     private lateinit var oldConfig: Configuration
 
     override fun onCreate() {
+        // 首行初始化设置快照层：同步预加载 DataStore（触发 SP 迁移），
+        // 之后所有设置读取均为纯内存查找，须先于一切主题/配置读取
+        AppConfigStore.init(this)
         startKoin {
             androidContext(this@App)
             modules(databaseModule, appModule)
@@ -123,7 +125,7 @@ class App : Application() {
             CoilInitializer.init()
             //清除过期数据
             appDb.cacheDao.clearDeadline(System.currentTimeMillis())
-            if (getPrefBoolean(PreferKey.autoClearExpired, true)) {
+            if (AppConfig.autoClearExpired) {
                 val clearTime = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)
                 appDb.searchBookDao.clearExpired(clearTime)
             }

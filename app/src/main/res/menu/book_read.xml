@@ -138,6 +138,12 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_re_chapter"
+        android:checkable="true"
+        android:title="@string/re_chapter"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_effective_replaces"
         android:title="@string/effective_replaces"
         app:showAsAction="never" />
