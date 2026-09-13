@@ -30,7 +30,6 @@ import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.elevation
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.primaryColor
-import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.ui.widget.dialog.WaitDialog
@@ -111,7 +110,8 @@ class ChangeBookSourceDialog() : BaseDialogFragment(R.layout.dialog_book_change_
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         binding.toolBar.setBackgroundColor(primaryColor)
-        viewModel.initData(arguments, callBack?.oldBook, activity is ReadBookActivity)
+        viewModel.initData(arguments, callBack?.oldBook,
+            io.legado.app.ui.book.read.ReadBookRouteState.controllerRef != null)
         showTitle()
         initMenu()
         initRecyclerView()

@@ -53,7 +53,6 @@ import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadAloudSessionStore
 import io.legado.app.model.ReadBook
 import io.legado.app.receiver.MediaButtonReceiver
-import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.page.entities.TextChapter
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.activityPendingIntent
@@ -970,7 +969,11 @@ abstract class BaseReadAloudService : BaseService(),
             .setContentTitle(nTitle)
             .setContentText(nSubtitle)
             .setContentIntent(
-                activityPendingIntent<ReadBookActivity>("activity")
+                PendingIntent.getActivity(
+                    applicationContext, 0,
+                    io.legado.app.ui.main.MainIntent.createReadBookIntent(applicationContext),
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                )
             )
             .setVibrate(null)
             .setSound(null)

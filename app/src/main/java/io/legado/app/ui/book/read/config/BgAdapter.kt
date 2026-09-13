@@ -10,6 +10,7 @@ import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.constant.EventBus
 import io.legado.app.databinding.ItemBgImageBinding
 import io.legado.app.help.config.ReadBookConfig
+import io.legado.app.help.config.ReadStyleRefreshBus
 import io.legado.app.utils.postEvent
 import java.io.File
 
@@ -43,7 +44,7 @@ class BgAdapter(context: Context, val textColor: Int) :
             this.setOnClickListener {
                 getItemByLayoutPosition(holder.layoutPosition)?.let {
                     ReadBookConfig.durConfig.setCurBg(1, it)
-                    postEvent(EventBus.UP_CONFIG, arrayListOf(1))
+                    ReadStyleRefreshBus.refresh(1)
                 }
             }
         }

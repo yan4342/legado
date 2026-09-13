@@ -33,6 +33,26 @@ import kotlin.coroutines.resume
  */
 class MainActivity : BaseComposeActivity() {
 
+    // 阅读路由活跃时转发翻页键/音量键（原 ReadBookActivity.onKeyDown/onKeyUp）
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (event != null && io.legado.app.ui.book.read.ReadBookRouteState.controllerRef
+            ?.onKeyDown(keyCode, event) == true
+        ) {
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (event != null && io.legado.app.ui.book.read.ReadBookRouteState.controllerRef
+            ?.onKeyUp(keyCode, event) == true
+        ) {
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+
     private var exitTime: Long = 0
     private val EXIT_INTERVAL = 2000L
     private var onNavigateToRoute: ((MainRoute) -> Unit)? = null

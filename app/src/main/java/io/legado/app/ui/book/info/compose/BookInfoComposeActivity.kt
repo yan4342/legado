@@ -55,8 +55,8 @@ import io.legado.app.domain.gateway.ReadAloudCharacterGateway
 import io.legado.app.ui.book.info.BookInfoViewModel
 import io.legado.app.ui.book.info.edit.BookInfoEditActivity
 import io.legado.app.ui.book.manga.ReadMangaActivity
-import io.legado.app.ui.book.read.ReadBookActivity
-import io.legado.app.ui.book.read.ReadBookActivity.Companion.RESULT_DELETED
+import io.legado.app.ui.book.read.ReadBookRouteState
+import io.legado.app.ui.book.read.ReadBookRouteState.Companion.RESULT_DELETED
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import androidx.compose.foundation.layout.padding
@@ -579,13 +579,13 @@ class BookInfoComposeActivity :
                     .putExtra("inBookshelf", viewModel.inBookshelf)
             )
             else -> readBookResult.launch(
-                Intent(
-                    this,
-                    if (!book.isLocal && book.isImage && AppConfig.showMangaUi)
-                        ReadMangaActivity::class.java
-                    else ReadBookActivity::class.java
-                ).putExtra("bookUrl", book.bookUrl)
-                    .putExtra("inBookshelf", viewModel.inBookshelf)
+                if (!book.isLocal && book.isImage && AppConfig.showMangaUi)
+                    Intent(this, ReadMangaActivity::class.java)
+                        .putExtra("bookUrl", book.bookUrl)
+                        .putExtra("inBookshelf", viewModel.inBookshelf)
+                else io.legado.app.ui.main.MainIntent.createReadBookIntent(
+                    this, book.bookUrl, inBookshelf = viewModel.inBookshelf
+                )
             )
         }
     }

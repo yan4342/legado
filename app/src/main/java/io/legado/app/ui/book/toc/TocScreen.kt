@@ -49,7 +49,6 @@ import io.legado.app.help.book.isLocalTxt
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.bookmark.BookmarkDialog
-import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.toc.rule.TxtTocRuleActivity
 import io.legado.app.ui.common.compose.LegadoSearchBar
 import io.legado.app.ui.common.compose.RoundDropdownMenu
@@ -100,6 +99,8 @@ internal fun TocScreen(
     viewModel: TocViewModel,
     launchScope: CoroutineScope,
     onExit: (TocRouteResult) -> Unit,
+    // 阅读器打开回调：主栈 TocEntry 传路由导航；TocActivity 薄壳（漫画/听书）不传（其路径不走 openReader）
+    onOpenReader: ((String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val activity = context as? AppCompatActivity
@@ -150,6 +151,7 @@ internal fun TocScreen(
     // 退出后协程仍需完成落库与启动,不能用本组合的 rememberCoroutineScope。
     fun openReader(index: Int, pos: Int) {
         val url = bookUrl ?: return
+        val open = onOpenReader ?: return
         launchScope.launch {
             val b = withContext(Dispatchers.IO) { appDb.bookDao.getBook(url) }
             if (b != null) {
@@ -157,9 +159,7 @@ internal fun TocScreen(
                 b.durChapterPos = pos
                 withContext(Dispatchers.IO) { appDb.bookDao.update(b) }
             }
-            context.startActivity(Intent(context, ReadBookActivity::class.java).apply {
-                putExtra("bookUrl", url)
-            })
+            open(url)
         }
         onExit(TocRouteResult.Selection(url, index, pos, readerLaunched = true))
     }

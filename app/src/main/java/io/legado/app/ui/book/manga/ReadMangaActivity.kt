@@ -16,7 +16,7 @@ import io.legado.app.constant.AppConst
 import io.legado.app.receiver.NetworkChangedListener
 import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
 import io.legado.app.ui.book.info.compose.BookInfoComposeActivity
-import io.legado.app.ui.book.read.ReadBookActivity.Companion.RESULT_DELETED
+import io.legado.app.ui.book.read.ReadBookRouteState.Companion.RESULT_DELETED
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.browser.WebViewActivity
 import io.legado.app.help.book.isImage

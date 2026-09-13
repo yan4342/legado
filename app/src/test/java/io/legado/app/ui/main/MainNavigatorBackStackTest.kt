@@ -138,4 +138,55 @@ class MainNavigatorBackStackTest {
 
         assertEquals(listOf<NavKey>(MainRouteHome, info, toc), backStack)
     }
+
+    @Test
+    fun `read book pushes over home`() {
+        val backStack = mutableListOf<NavKey>(MainRouteHome)
+
+        MainNavigator.navigateToRoute(backStack, MainRouteReadBook("book-url"))
+
+        assertEquals(listOf<NavKey>(MainRouteHome, MainRouteReadBook("book-url")), backStack)
+    }
+
+    @Test
+    fun `read book pushes over book info keeping source`() {
+        val info = bookInfo()
+        val backStack = mutableListOf<NavKey>(MainRouteHome, info)
+
+        MainNavigator.navigateToRoute(backStack, MainRouteReadBook("book-url"))
+
+        assertEquals(
+            listOf<NavKey>(MainRouteHome, info, MainRouteReadBook("book-url")),
+            backStack,
+        )
+    }
+
+    @Test
+    fun `read book replaces existing reader in stack`() {
+        // 阅读器全局唯一：reader→详情→再开另一本书，旧 reader 必须移除
+        val backStack = mutableListOf<NavKey>(
+            MainRouteHome,
+            MainRouteReadBook("book-a"),
+            bookInfo(),
+        )
+
+        MainNavigator.navigateToRoute(backStack, MainRouteReadBook("book-b"))
+
+        assertEquals(
+            listOf<NavKey>(MainRouteHome, bookInfo(), MainRouteReadBook("book-b")),
+            backStack,
+        )
+    }
+
+    @Test
+    fun `read book from unrelated route resets to home plus reader`() {
+        val backStack = mutableListOf<NavKey>(MainRouteHome, MainRouteSettings)
+
+        MainNavigator.navigateToRoute(backStack, MainRouteReadBook("book-url"))
+
+        assertEquals(
+            listOf<NavKey>(MainRouteHome, MainRouteReadBook("book-url")),
+            backStack,
+        )
+    }
 }

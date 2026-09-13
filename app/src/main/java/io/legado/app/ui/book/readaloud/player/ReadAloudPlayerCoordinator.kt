@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.Observer
 import com.jeremyliao.liveeventbus.LiveEventBus
 import io.legado.app.constant.EventBus
+import io.legado.app.help.config.ReadStyleRefreshBus
 import io.legado.app.domain.gateway.ReadAloudSettingsGateway
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadAloudSessionStore
@@ -27,14 +28,18 @@ class ReadAloudPlayerCoordinator(
     private val readAloudSettingsGateway: ReadAloudSettingsGateway,
 ) {
     private val refreshRequests = MutableSharedFlow<Unit>(replay = 1)
-    private val bookChanges = callbackFlow {
-        val observer = Observer<Any> { trySend(Unit) }
-        EVENT_KEYS.forEach { LiveEventBus.get<Any>(it).observeForever(observer) }
-        trySend(Unit)
-        awaitClose {
-            EVENT_KEYS.forEach { LiveEventBus.get<Any>(it).removeObserver(observer) }
-        }
-    }
+    private val bookChanges = merge(
+        callbackFlow {
+            val observer = Observer<Any> { trySend(Unit) }
+            EVENT_KEYS.forEach { LiveEventBus.get<Any>(it).observeForever(observer) }
+            trySend(Unit)
+            awaitClose {
+                EVENT_KEYS.forEach { LiveEventBus.get<Any>(it).removeObserver(observer) }
+            }
+        },
+        // 原 UP_CONFIG 监听的替代（样式变更 → 播放条快照重算）
+        ReadStyleRefreshBus.refreshFlow.map { },
+    )
     private val bookState = merge(bookChanges, refreshRequests).map { snapshotBook() }
 
     val state: Flow<ReadAloudPlayerSourceState> = combine(
@@ -156,7 +161,6 @@ class ReadAloudPlayerCoordinator(
 
     private companion object {
         val EVENT_KEYS = listOf(
-            EventBus.UP_CONFIG,
             EventBus.UPDATE_READ_ACTION_BAR,
             EventBus.SOURCE_CHANGED,
             EventBus.ALOUD_STATE,

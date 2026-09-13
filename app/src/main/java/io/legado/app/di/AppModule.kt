@@ -151,6 +151,7 @@ import io.legado.app.domain.gateway.MangaReaderSessionFactory
 import io.legado.app.ui.book.source.manage.BookSourceViewModel
 import io.legado.app.ui.book.toc.TocViewModel
 import io.legado.app.ui.book.toc.rule.TxtTocRuleViewModel
+import io.legado.app.ui.book.read.ReadBookViewModel
 import io.legado.app.ui.config.ai.AiConfigViewModel
 import io.legado.app.ui.config.ai.AiAbilityManagementViewModel
 import io.legado.app.ui.config.ai.AiSkillsViewModel
@@ -201,6 +202,9 @@ val appModule = module {
 
     // Toc (chapter list / bookmarks, shared by TocActivity shell and main-stack TocEntry)
     viewModelOf(::TocViewModel)
+
+    // Read book (阶段 4 阅读页路由化：主栈 entry 按 bookUrl 键取用)
+    viewModelOf(::ReadBookViewModel)
 
     // Rule management pages
     viewModelOf(::TxtTocRuleViewModel)

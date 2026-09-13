@@ -17,6 +17,7 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookContent
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
+import io.legado.app.help.config.ReadStyleRefreshBus
 import io.legado.app.model.ImageProvider
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.page.entities.TextChapter
@@ -981,7 +982,7 @@ object ChapterProvider {
         viewWidth = width
         viewHeight = height
         upLayout()
-        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
+        ReadStyleRefreshBus.refresh(5)
     }
 
     /**

@@ -121,6 +121,19 @@ class JsTest {
     }
 
     @Test
+    fun hutoolDigestUtilMd5Hex() {
+        // 书源 JS 通过 Packages.cn.hutool.crypto.digest.DigestUtil 直接调用 Hutool
+        // （如七猫书源的 qmMd5），Hutool 必须保留在运行时 classpath 且能被 Rhino 反射访问。
+        val bindings = ScriptBindings()
+        @Language("js")
+        val js = """
+            String(Packages.cn.hutool.crypto.digest.DigestUtil.md5Hex("abc"))
+        """.trimIndent()
+        val result = RhinoScriptEngine.eval(js, bindings)
+        Assert.assertEquals(result, "900150983cd24fb0d6963f7d28e17f72")
+    }
+
+    @Test
     fun typeofString() {
         val bindings = ScriptBindings()
         @Language("js")

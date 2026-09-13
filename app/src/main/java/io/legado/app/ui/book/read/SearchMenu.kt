@@ -30,7 +30,9 @@ class SearchMenu @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : FrameLayout(context, attrs) {
 
-    private val callBack: CallBack get() = activity as CallBack
+    /** 阶段 4 路由化：路由形态由 ReadBookController 注入；Activity 形态回退 activity as CallBack。 */
+    var callBackOverride: CallBack? = null
+    private val callBack: CallBack get() = callBackOverride ?: activity as CallBack
     private val binding = ViewSearchMenuBinding.inflate(LayoutInflater.from(context), this, true)
 
     private val menuBottomIn: Animation = loadAnimation(context, R.anim.anim_readbook_bottom_in)

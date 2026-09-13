@@ -43,10 +43,10 @@ import io.legado.app.ui.book.import.local.ImportBookActivity
 import io.legado.app.ui.book.import.remote.RemoteBookActivity
 import io.legado.app.ui.book.manage.BookshelfManageActivity
 import io.legado.app.ui.book.manga.ReadMangaActivity
-import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.main.MainRoute
 import io.legado.app.ui.main.MainRouteBookInfo
+import io.legado.app.ui.main.MainRouteReadBook
 import io.legado.app.ui.main.MainRouteSearch
 import io.legado.app.ui.main.MainViewModel
 import io.legado.app.ui.main.bookCoverSharedElementKey
@@ -272,17 +272,17 @@ fun BookshelfTab(
             }
         },
         onBookClick = { book ->
-            // 与 startActivityForBook 相同的路由：漫画 → ReadMangaActivity，音频 → AudioPlayActivity，
-            // 其余 → ReadBookActivity（此前书架固定打开文本阅读器，漫画书会走错）
-            val cls = when {
-                book.isAudio -> AudioPlayActivity::class.java
-                !book.isLocal && book.isImage && AppConfig.showMangaUi -> ReadMangaActivity::class.java
-                else -> ReadBookActivity::class.java
+            // 漫画 → ReadMangaActivity，音频 → AudioPlayActivity（Activity 形态）；
+            // 文本阅读器 → 主栈阅读路由（阶段 4）
+            if (!book.isAudio && (book.isLocal || !book.isImage || !AppConfig.showMangaUi)) {
+                onNavigateToRoute(MainRouteReadBook(bookUrl = book.bookUrl))
+            } else {
+                val cls = if (book.isAudio) AudioPlayActivity::class.java else ReadMangaActivity::class.java
+                val intent = Intent(context, cls).apply {
+                    putExtra("bookUrl", book.bookUrl)
+                }
+                readBookLauncher.launch(intent)
             }
-            val intent = Intent(context, cls).apply {
-                putExtra("bookUrl", book.bookUrl)
-            }
-            readBookLauncher.launch(intent)
         },
         onBookLongClick = { book ->
             onNavigateToRoute(MainRouteBookInfo(

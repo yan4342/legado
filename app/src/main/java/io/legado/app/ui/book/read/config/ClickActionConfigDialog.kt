@@ -38,7 +38,7 @@ import androidx.fragment.app.DialogFragment
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.selector
-import io.legado.app.ui.book.read.ReadBookActivity
+import io.legado.app.ui.book.read.ReadBookRouteState
 import io.legado.app.ui.common.compose.LegadoTheme
 
 /** 3×3 网格下标到点击动作配置的映射，顺序：上排、中排、下排（经 AppConfig facade 写入 DS+SP） */
@@ -125,12 +125,12 @@ class ClickActionConfigDialog : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        (activity as ReadBookActivity).bottomDialog++
+        ReadBookRouteState.bumpBottomDialog(1)
     }
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
-        (activity as ReadBookActivity).bottomDialog--
+        ReadBookRouteState.bumpBottomDialog(-1)
     }
 
     private fun selectAction(success: (action: Int) -> Unit) {

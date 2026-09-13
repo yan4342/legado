@@ -42,7 +42,9 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
             style = Paint.Style.FILL
         }
     }
-    private var callBack: CallBack
+    /** 阶段 4 路由化：路由形态由 ReadBookController 注入；Activity 形态回退 activity as CallBack。 */
+    var callBackOverride: CallBack? = null
+    private val callBack: CallBack get() = callBackOverride ?: activity as CallBack
     private val visibleRect = ChapterProvider.visibleRect
     val selectStart = TextPos(0, -1, -1)
     private val selectEnd = TextPos(0, -1, -1)
@@ -66,10 +68,6 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         Paint().apply {
             isAntiAlias = AppConfig.useAntiAlias
         }
-    }
-
-    init {
-        callBack = activity as CallBack
     }
 
     /**

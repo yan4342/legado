@@ -32,6 +32,7 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.AppConfigStore
 import io.legado.app.help.config.ReadBookConfig
+import io.legado.app.help.config.ReadStyleRefreshBus
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.page.provider.ChapterProvider
 import io.legado.app.ui.common.compose.ModalLegadoBottomSheet
@@ -180,7 +181,7 @@ fun MoreConfigSheet(
                     onCheckedChange = {
                         hideStatusBar = it
                         ReadBookConfig.hideStatusBar = it
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(0, 2))
+                        ReadStyleRefreshBus.refresh(0, 2)
                     },
                 )
                 SwitchSettingItem(
@@ -189,7 +190,7 @@ fun MoreConfigSheet(
                     onCheckedChange = {
                         hideNavigationBar = it
                         ReadBookConfig.hideNavigationBar = it
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(0, 2))
+                        ReadStyleRefreshBus.refresh(0, 2)
                     },
                 )
                 SwitchSettingItem(
@@ -208,7 +209,7 @@ fun MoreConfigSheet(
                         paddingDisplayCutouts = it
                         AppConfigStore.putBoolean(PreferKey.paddingDisplayCutouts, it)
                         appCtx.putPrefBoolean(PreferKey.paddingDisplayCutouts, it)
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+                        ReadStyleRefreshBus.refresh(2)
                     },
                 )
             }
@@ -301,7 +302,7 @@ fun MoreConfigSheet(
                     onCheckedChange = {
                         useZhLayout = it
                         ReadBookConfig.useZhLayout = it
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
+                        ReadStyleRefreshBus.refresh(5)
                     },
                 )
                 SwitchSettingItem(
@@ -311,7 +312,7 @@ fun MoreConfigSheet(
                         textFullJustify = it
                         AppConfigStore.putBoolean(PreferKey.textFullJustify, it)
                         appCtx.putPrefBoolean(PreferKey.textFullJustify, it)
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
+                        ReadStyleRefreshBus.refresh(5)
                     },
                 )
                 SwitchSettingItem(
@@ -321,7 +322,7 @@ fun MoreConfigSheet(
                         textBottomJustify = it
                         AppConfigStore.putBoolean(PreferKey.textBottomJustify, it)
                         appCtx.putPrefBoolean(PreferKey.textBottomJustify, it)
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
+                        ReadStyleRefreshBus.refresh(5)
                     },
                 )
                 if (supportsOptimizeRender) {

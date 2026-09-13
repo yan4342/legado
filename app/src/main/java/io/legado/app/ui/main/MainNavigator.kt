@@ -46,8 +46,24 @@ object MainNavigator {
             MainRouteImportLocal,
             MainRouteImportRemote,
             is MainRouteCache,
-            MainRouteBookCacheManage,
+            MainRouteBookCacheManage -> {
+                if (
+                    currentRoute == MainRouteHome ||
+                    currentRoute is MainRouteBookInfo
+                ) {
+                    backStack.add(route)
+                } else {
+                    backStack.clear()
+                    backStack.add(MainRouteHome)
+                    backStack.add(route)
+                }
+            }
+
             is MainRouteReadBook -> {
+                // 阅读器全局唯一：栈内已有 reader 先移除（ReadBook.register 单槽回调 +
+                // 单例阅读状态，双 reader 会互相打架），再按来源落位——
+                // Home/BookInfo 之上直接压栈保留来源，其余重置为 Home+reader。
+                backStack.removeAll { it is MainRouteReadBook }
                 if (
                     currentRoute == MainRouteHome ||
                     currentRoute is MainRouteBookInfo

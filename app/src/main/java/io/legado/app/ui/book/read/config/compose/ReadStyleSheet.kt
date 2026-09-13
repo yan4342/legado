@@ -44,6 +44,7 @@ import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
+import io.legado.app.help.config.ReadStyleRefreshBus
 import io.legado.app.help.config.ReadTipConfig
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.model.ReadBook
@@ -132,7 +133,7 @@ fun ReadStyleSheet(
                     onClick = {
                         textBold = (textBold + 1) % 3
                         ReadBookConfig.textBold = textBold
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(8, 9, 6))
+                        ReadStyleRefreshBus.refresh(8, 9, 6)
                     },
                     label = {
                         Text(
@@ -161,7 +162,7 @@ fun ReadStyleSheet(
                     onClick = {
                         val newIndent = (indent + 1) % 4
                         ReadBookConfig.paragraphIndent = "　".repeat(newIndent)
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
+                        ReadStyleRefreshBus.refresh(8, 5)
                     },
                     label = {
                         Text(
@@ -182,7 +183,7 @@ fun ReadStyleSheet(
                             1 -> ChineseUtils.preLoad(false, TransType.TRADITIONAL_TO_SIMPLE)
                             2 -> ChineseUtils.preLoad(false, TransType.SIMPLE_TO_TRADITIONAL)
                         }
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
+                        ReadStyleRefreshBus.refresh(5)
                     },
                     label = {
                         Text(
@@ -246,7 +247,7 @@ fun ReadStyleSheet(
                 displayFormat = { "${it + 5}" },
                 onApply = {
                     ReadBookConfig.textSize = it + 5
-                    postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
+                    ReadStyleRefreshBus.refresh(8, 5)
                 },
                 updateKey = selectedPreset,
             )
@@ -257,7 +258,7 @@ fun ReadStyleSheet(
                 displayFormat = { "%.2f".format((it - 50) / 100f) },
                 onApply = {
                     ReadBookConfig.letterSpacing = (it - 50) / 100f
-                    postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
+                    ReadStyleRefreshBus.refresh(8, 5)
                 },
                 updateKey = selectedPreset,
             )
@@ -268,7 +269,7 @@ fun ReadStyleSheet(
                 displayFormat = { "%.1f".format(it / 10f) },
                 onApply = {
                     ReadBookConfig.lineSpacingExtra = it
-                    postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
+                    ReadStyleRefreshBus.refresh(8, 5)
                 },
                 updateKey = selectedPreset,
             )
@@ -279,7 +280,7 @@ fun ReadStyleSheet(
                 displayFormat = { "%.1f".format(it / 10f) },
                 onApply = {
                     ReadBookConfig.paragraphSpacing = it
-                    postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
+                    ReadStyleRefreshBus.refresh(8, 5)
                 },
                 updateKey = selectedPreset,
             )
@@ -342,7 +343,7 @@ fun ReadStyleSheet(
                     onCheckedChange = {
                         shareLayout = it
                         ReadBookConfig.shareLayout = it
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
+                        ReadStyleRefreshBus.refresh(1, 2, 5)
                     },
                 )
             }
@@ -362,7 +363,7 @@ fun ReadStyleSheet(
                         pageAnim = ReadBook.pageAnim()
                         textBold = ReadBookConfig.textBold
                         shareLayout = ReadBookConfig.shareLayout
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
+                        ReadStyleRefreshBus.refresh(1, 2, 5)
                         if (AppConfig.readBarStyleFollowPage) {
                             postEvent(EventBus.UPDATE_READ_ACTION_BAR, true)
                         }
@@ -378,7 +379,7 @@ fun ReadStyleSheet(
                     pageAnim = ReadBook.pageAnim()
                     textBold = ReadBookConfig.textBold
                     shareLayout = ReadBookConfig.shareLayout
-                    postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
+                    ReadStyleRefreshBus.refresh(1, 2, 5)
                     showBgTextConfig = true
                 },
                 onAdd = {
@@ -416,7 +417,7 @@ fun ReadStyleSheet(
             textBold = ReadBookConfig.textBold
             shareLayout = ReadBookConfig.shareLayout
             showBgTextConfig = false
-            postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
+            ReadStyleRefreshBus.refresh(1, 2, 5)
         },
         onTextColorClick = onTextColorClick,
         onBgColorClick = onBgColorClick,
@@ -506,16 +507,16 @@ private fun InLinePaddingConfig() {
         modifier = Modifier.padding(top = 2.dp, bottom = 2.dp),
     )
     LabeledSlider("上", ReadBookConfig.paddingTop, valueRange = 0f..200f, onApply = {
-        ReadBookConfig.paddingTop = it; postEvent(EventBus.UP_CONFIG, arrayListOf(10, 5))
+        ReadBookConfig.paddingTop = it; ReadStyleRefreshBus.refresh(10, 5)
     })
     LabeledSlider("下", ReadBookConfig.paddingBottom, valueRange = 0f..100f, onApply = {
-        ReadBookConfig.paddingBottom = it; postEvent(EventBus.UP_CONFIG, arrayListOf(10, 5))
+        ReadBookConfig.paddingBottom = it; ReadStyleRefreshBus.refresh(10, 5)
     })
     LabeledSlider("左", ReadBookConfig.paddingLeft, valueRange = 0f..100f, onApply = {
-        ReadBookConfig.paddingLeft = it; postEvent(EventBus.UP_CONFIG, arrayListOf(10, 5))
+        ReadBookConfig.paddingLeft = it; ReadStyleRefreshBus.refresh(10, 5)
     })
     LabeledSlider("右", ReadBookConfig.paddingRight, valueRange = 0f..100f, onApply = {
-        ReadBookConfig.paddingRight = it; postEvent(EventBus.UP_CONFIG, arrayListOf(10, 5))
+        ReadBookConfig.paddingRight = it; ReadStyleRefreshBus.refresh(10, 5)
     })
 
     Row(
@@ -535,21 +536,21 @@ private fun InLinePaddingConfig() {
             onCheckedChange = {
                 showHeaderLine = it
                 ReadBookConfig.showHeaderLine = it
-                postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+                ReadStyleRefreshBus.refresh(2)
             },
         )
     }
     LabeledSlider("上", ReadBookConfig.headerPaddingTop, valueRange = 0f..300f, onApply = {
-        ReadBookConfig.headerPaddingTop = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+        ReadBookConfig.headerPaddingTop = it; ReadStyleRefreshBus.refresh(2)
     })
     LabeledSlider("下", ReadBookConfig.headerPaddingBottom, valueRange = 0f..300f, onApply = {
-        ReadBookConfig.headerPaddingBottom = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+        ReadBookConfig.headerPaddingBottom = it; ReadStyleRefreshBus.refresh(2)
     })
     LabeledSlider("左", ReadBookConfig.headerPaddingLeft, valueRange = 0f..300f, onApply = {
-        ReadBookConfig.headerPaddingLeft = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+        ReadBookConfig.headerPaddingLeft = it; ReadStyleRefreshBus.refresh(2)
     })
     LabeledSlider("右", ReadBookConfig.headerPaddingRight, valueRange = 0f..300f, onApply = {
-        ReadBookConfig.headerPaddingRight = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+        ReadBookConfig.headerPaddingRight = it; ReadStyleRefreshBus.refresh(2)
     })
 
     Row(
@@ -569,21 +570,21 @@ private fun InLinePaddingConfig() {
             onCheckedChange = {
                 showFooterLine = it
                 ReadBookConfig.showFooterLine = it
-                postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+                ReadStyleRefreshBus.refresh(2)
             },
         )
     }
     LabeledSlider("上", ReadBookConfig.footerPaddingTop, valueRange = 0f..300f, onApply = {
-        ReadBookConfig.footerPaddingTop = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+        ReadBookConfig.footerPaddingTop = it; ReadStyleRefreshBus.refresh(2)
     })
     LabeledSlider("下", ReadBookConfig.footerPaddingBottom, valueRange = 0f..300f, onApply = {
-        ReadBookConfig.footerPaddingBottom = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+        ReadBookConfig.footerPaddingBottom = it; ReadStyleRefreshBus.refresh(2)
     })
     LabeledSlider("左", ReadBookConfig.footerPaddingLeft, valueRange = 0f..300f, onApply = {
-        ReadBookConfig.footerPaddingLeft = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+        ReadBookConfig.footerPaddingLeft = it; ReadStyleRefreshBus.refresh(2)
     })
     LabeledSlider("右", ReadBookConfig.footerPaddingRight, valueRange = 0f..300f, onApply = {
-        ReadBookConfig.footerPaddingRight = it; postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+        ReadBookConfig.footerPaddingRight = it; ReadStyleRefreshBus.refresh(2)
     })
 
     Spacer(modifier = Modifier.height(4.dp))
@@ -628,7 +629,7 @@ private fun InlineTipConfig() {
                 onClick = {
                     titleMode = index
                     ReadBookConfig.titleMode = index
-                    postEvent(EventBus.UP_CONFIG, arrayListOf(5))
+                    ReadStyleRefreshBus.refresh(5)
                 },
                 label = {
                     Text(text = name, style = MaterialTheme.typography.labelSmall)
@@ -638,13 +639,13 @@ private fun InlineTipConfig() {
         }
     }
     LabeledSlider("字号", ReadBookConfig.titleSize, valueRange = 0f..10f, onApply = {
-        ReadBookConfig.titleSize = it; postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
+        ReadBookConfig.titleSize = it; ReadStyleRefreshBus.refresh(8, 5)
     })
     LabeledSlider("上边距", ReadBookConfig.titleTopSpacing, valueRange = 0f..100f, onApply = {
-        ReadBookConfig.titleTopSpacing = it; postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
+        ReadBookConfig.titleTopSpacing = it; ReadStyleRefreshBus.refresh(8, 5)
     })
     LabeledSlider("下边距", ReadBookConfig.titleBottomSpacing, valueRange = 0f..100f, onApply = {
-        ReadBookConfig.titleBottomSpacing = it; postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
+        ReadBookConfig.titleBottomSpacing = it; ReadStyleRefreshBus.refresh(8, 5)
     })
 
     CategorySection("页眉") {
@@ -660,7 +661,7 @@ private fun InlineTipConfig() {
                 context.selector(items = headerModeNames) { _, i ->
                     headerMode = headerModeKeys[i]
                     ReadTipConfig.headerMode = headerMode
-                    postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+                    ReadStyleRefreshBus.refresh(2)
                 }
             },
         )
@@ -682,7 +683,7 @@ private fun InlineTipConfig() {
                         ReadTipConfig.tipHeaderLeft = tipHeaderLeft
                         ReadTipConfig.tipHeaderMiddle = tipHeaderMiddle
                         ReadTipConfig.tipHeaderRight = tipHeaderRight
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(2, 6))
+                        ReadStyleRefreshBus.refresh(2, 6)
                     }
                 },
             )
@@ -702,7 +703,7 @@ private fun InlineTipConfig() {
                 context.selector(items = footerModeNames) { _, i ->
                     footerMode = footerModeKeys[i]
                     ReadTipConfig.footerMode = footerMode
-                    postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+                    ReadStyleRefreshBus.refresh(2)
                 }
             },
         )
@@ -724,7 +725,7 @@ private fun InlineTipConfig() {
                         ReadTipConfig.tipFooterLeft = tipFooterLeft
                         ReadTipConfig.tipFooterMiddle = tipFooterMiddle
                         ReadTipConfig.tipFooterRight = tipFooterRight
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(2, 6))
+                        ReadStyleRefreshBus.refresh(2, 6)
                     }
                 },
             )
@@ -744,7 +745,7 @@ private fun InlineTipConfig() {
                     if (i == 0) {
                         tipColor = 0
                         ReadTipConfig.tipColor = 0
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+                        ReadStyleRefreshBus.refresh(2)
                     } else {
                         io.legado.app.lib.prefs.ColorPreference.ColorPickerDialogCompat.newBuilder()
                             .setDialogType(com.jaredrummler.android.colorpicker.ColorPickerDialog.TYPE_CUSTOM)
@@ -772,7 +773,7 @@ private fun InlineTipConfig() {
                     if (i <= 1) {
                         tipDividerColor = i - 1
                         ReadTipConfig.tipDividerColor = tipDividerColor
-                        postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+                        ReadStyleRefreshBus.refresh(2)
                     } else {
                         io.legado.app.lib.prefs.ColorPreference.ColorPickerDialogCompat.newBuilder()
                             .setDialogType(com.jaredrummler.android.colorpicker.ColorPickerDialog.TYPE_CUSTOM)

@@ -46,8 +46,7 @@ import io.legado.app.lib.theme.bottomSheetBackground
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
 import io.legado.app.service.BaseReadAloudService
-import io.legado.app.ui.book.read.BaseReadBookActivity
-import io.legado.app.ui.book.read.ReadBookActivity
+import io.legado.app.ui.book.read.ReadBookRouteState
 import io.legado.app.ui.common.compose.LegadoTheme
 import io.legado.app.ui.common.compose.legadoPopupPrimaryTextColor
 import java.util.Locale
@@ -115,7 +114,7 @@ class AutoReadDialog : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val bottomDialog = (activity as ReadBookActivity).bottomDialog++
+        val bottomDialog = ReadBookRouteState.bumpBottomDialog(1)
         if (bottomDialog > 0) {
             dismiss()
         }
@@ -123,12 +122,12 @@ class AutoReadDialog : DialogFragment() {
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
-        (activity as ReadBookActivity).bottomDialog--
+        ReadBookRouteState.bumpBottomDialog(-1)
     }
 
     private fun openPageAnimSetting() {
-        (activity as BaseReadBookActivity).showPageAnimConfig {
-            (activity as ReadBookActivity).upPageAnim()
+        ReadBookRouteState.controllerRef?.showPageAnimConfig {
+            ReadBookRouteState.controllerRef?.upPageAnim()
             ReadBook.loadContent(false)
         }
     }

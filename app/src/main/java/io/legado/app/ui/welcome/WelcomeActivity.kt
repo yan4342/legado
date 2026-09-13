@@ -12,7 +12,6 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.backgroundColor
-import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.main.MainActivity
 import io.legado.app.utils.BitmapUtils
 import io.legado.app.utils.fullScreen
@@ -106,7 +105,7 @@ open class WelcomeActivity : BaseActivity<ActivityWelcomeBinding>() {
                     appDb.bookDao.lastReadBook
                 }
                 if (lastBook != null) {
-                    startActivity<ReadBookActivity>()
+                    startActivity(io.legado.app.ui.main.MainIntent.createReadBookIntent(this@WelcomeActivity))
                 }
                 finish()
             }

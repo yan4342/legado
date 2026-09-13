@@ -52,14 +52,18 @@ class ReadView(context: Context, attrs: AttributeSet) :
     FrameLayout(context, attrs),
     DataSource, LayoutProgressListener {
 
-    val callBack: CallBack get() = activity as CallBack
+    /** 阶段 4 路由化：路由形态由 ReadBookController 注入；Activity 形态回退 activity as CallBack。 */
+    var callBackOverride: CallBack? = null
+    private val callBackReady: Boolean get() = callBackOverride != null || activity is CallBack
+    val callBack: CallBack get() = callBackOverride ?: activity as CallBack
     var pageFactory: TextPageFactory = TextPageFactory(this)
     var pageDelegate: PageDelegate? = null
         private set(value) {
             field?.onDestroy()
             field = null
             field = value
-            upContent()
+            // 构造期（XML inflate、回调尚未注入）跳过内容加载，注入后由 ViewLayer 补跑
+            if (callBackReady) upContent()
         }
     override var isScroll = false
     val prevPage by lazy { PageView(context) }

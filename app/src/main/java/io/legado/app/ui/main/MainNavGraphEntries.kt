@@ -3,6 +3,9 @@ package io.legado.app.ui.main
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -10,6 +13,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
@@ -38,6 +43,7 @@ import io.legado.app.ui.book.info.compose.BookInfoRouteScreen
 import io.legado.app.ui.book.readaloud.cache.TtsCacheRouteScreen
 import io.legado.app.ui.book.readaloud.casting.BookVoiceCastingRouteScreen
 import io.legado.app.ui.book.readaloud.cloudtts.CloudTtsRouteScreen
+import io.legado.app.ui.book.read.ReadBookRouteState
 import io.legado.app.ui.book.readaloud.player.ReadAloudPlayerRouteScreen
 import io.legado.app.ui.book.search.SearchIntent
 import io.legado.app.ui.book.search.SearchScreen
@@ -161,6 +167,7 @@ internal fun BookInfoEntry(
     onNavigateBack: () -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     tocRouteState: TocRouteState,
+    readBookRouteState: ReadBookRouteState,
 ) {
     BookInfoRouteScreen(
         bookUrl = route.bookUrl,
@@ -188,6 +195,10 @@ internal fun BookInfoEntry(
         sharedCoverKey = route.sharedCoverKey,
         tocRouteState = tocRouteState,
         onOpenTocRoute = { bookUrl -> onNavigateToRoute(MainRouteToc(bookUrl)) },
+        readBookRouteState = readBookRouteState,
+        onOpenReader = { bookUrl, inBookshelf ->
+            onNavigateToRoute(MainRouteReadBook(bookUrl = bookUrl, inBookshelf = inBookshelf))
+        },
     )
 }
 
@@ -201,6 +212,7 @@ internal fun TocEntry(
     onNavigateBack: () -> Unit,
     launchScope: CoroutineScope,
     tocRouteState: TocRouteState,
+    onNavigateToRoute: (MainRoute) -> Unit,
 ) {
     val viewModel: TocViewModel = koinViewModel()
 
@@ -212,6 +224,9 @@ internal fun TocEntry(
         onExit = { result ->
             tocRouteState.pendingResult = result
             onNavigateBack()
+        },
+        onOpenReader = { bookUrl ->
+            onNavigateToRoute(MainRouteReadBook(bookUrl = bookUrl))
         },
     )
 }

@@ -3,6 +3,7 @@ package io.legado.app.ui.book.read.page
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.drawable.LayerDrawable
+import android.os.Build
 import android.view.LayoutInflater
 import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
@@ -19,7 +20,6 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ReadTipConfig
 import io.legado.app.model.ReadBook
-import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.page.entities.TextLine
 import io.legado.app.ui.book.read.page.entities.TextPage
 import io.legado.app.ui.book.read.page.entities.TextPos
@@ -41,7 +41,15 @@ import java.util.Date
 class PageView(context: Context) : FrameLayout(context) {
 
     private val binding = ViewBookPageBinding.inflate(LayoutInflater.from(context), this, true)
-    private val readBookActivity get() = activity as? ReadBookActivity
+    // 阶段 4 路由化：多窗口判断不再依赖具体 Activity 类型（语义对齐 BaseActivity.isInMultiWindow）
+    private val hostInMultiWindow: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity?.isInMultiWindowMode == true
+    /** 阶段 4 路由化：路由形态由 ReadBookController 注入（透传给页内 ContentTextView）。 */
+    var callBackOverride: ContentTextView.CallBack? = null
+        set(value) {
+            field = value
+            binding.contentTextView.callBackOverride = value
+        }
     private var battery = 100
     private var tvTitle: BatteryView? = null
     private var tvTime: BatteryView? = null
@@ -126,7 +134,7 @@ class PageView(context: Context) : FrameLayout(context) {
      */
     fun upStatusBar() = with(binding.vwStatusBar) {
 //        setPadding(paddingLeft, context.statusBarHeight, paddingRight, paddingBottom)
-        isGone = ReadBookConfig.hideStatusBar || readBookActivity?.isInMultiWindow == true
+        isGone = ReadBookConfig.hideStatusBar || hostInMultiWindow
     }
 
     fun upNavigationBar() {

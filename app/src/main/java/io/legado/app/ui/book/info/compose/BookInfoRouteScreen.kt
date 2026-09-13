@@ -68,7 +68,7 @@ import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
 import io.legado.app.ui.book.info.BookInfoViewModel
 import io.legado.app.ui.book.info.edit.BookInfoEditActivity
 import io.legado.app.ui.book.manga.ReadMangaActivity
-import io.legado.app.ui.book.read.ReadBookActivity
+import io.legado.app.ui.book.read.ReadBookRouteState
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.book.toc.TocRouteResult
@@ -125,6 +125,10 @@ fun BookInfoRouteScreen(
     // 主栈形态：目录走 MainRouteToc 路由，结果经 tocRouteState 回传；null 时保持 ActivityResult 旧路径。
     tocRouteState: TocRouteState? = null,
     onOpenTocRoute: (String) -> Unit = {},
+    // 主栈形态：阅读路由退出结果回传（刷新书籍/在架状态）；null 时保持 readLauncher 旧路径。
+    readBookRouteState: ReadBookRouteState? = null,
+    // 阅读器打开回调：主栈形态走 MainRouteReadBook 路由；null 时跨组件走 createReadBookIntent。
+    onOpenReader: ((bookUrl: String, inBookshelf: Boolean) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val activity = context as? AppCompatActivity
@@ -164,11 +168,25 @@ fun BookInfoRouteScreen(
                 vm.getBook(false)?.let { b ->
                     fragActivity?.lifecycleScope?.launch {
                         withContext(IO) { b.durChapterIndex = i; b.durChapterPos = p; appDb.bookDao.update(b) }
-                        activity?.startActivity(makeReadIntent(activity, vm, b))
+                        openTextReader(activity, b, vm.inBookshelf, onOpenReader)
                     }
                 }
             }
         } ?: run { if (!vm.inBookshelf) vm.delBook() }
+    }
+
+    // 阅读路由退出结果回传（pending-holder）：readLauncher 的路由形态等价物。
+    readBookRouteState?.let { rbState ->
+        LaunchedEffect(rbState.pendingExit) {
+            if (rbState.pendingExit == true) {
+                rbState.pendingExit = null
+                vm.upBook(Intent())
+                if (rbState.addedToShelf) {
+                    vm.inBookshelf = true
+                    rbState.addedToShelf = false
+                }
+            }
+        }
     }
 
     // 主栈目录路由的结果回传（pending-holder）：TocEntry 写入后回退，此处消费并清空。
@@ -188,7 +206,7 @@ fun BookInfoRouteScreen(
                                 book.durChapterPos = result.pos
                                 appDb.bookDao.update(book)
                             }
-                            activity?.startActivity(makeReadIntent(activity, vm, book))
+                            openTextReader(activity, book, vm.inBookshelf, onOpenReader)
                         }
                     }
                 }
@@ -199,7 +217,7 @@ fun BookInfoRouteScreen(
     val readLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         vm.upBook(Intent())
         if (it.resultCode == Activity.RESULT_OK) vm.inBookshelf = true
-        if (it.resultCode == ReadBookActivity.RESULT_DELETED) onBack()
+        if (it.resultCode == ReadBookRouteState.RESULT_DELETED) onBack()
     }
     val editLauncher = rememberLauncherForActivityResult(StartActivityContract(BookInfoEditActivity::class.java)) {
         if (it.resultCode == Activity.RESULT_OK) refreshTrigger++
@@ -733,10 +751,25 @@ fun BookInfoRouteScreen(
 private fun makeReadIntent(ctx: android.content.Context, vm: BookInfoViewModel, b: Book): Intent {
     val cls: Class<*> = when {
         b.isAudio -> AudioPlayActivity::class.java
-        !b.isLocal && b.isImage && AppConfig.showMangaUi -> ReadMangaActivity::class.java
-        else -> ReadBookActivity::class.java
+        else -> ReadMangaActivity::class.java
     }
     return Intent(ctx, cls).apply { putExtra("bookUrl", b.bookUrl); putExtra("inBookshelf", vm.inBookshelf) }
+}
+
+/** 打开文本阅读器：主栈路由优先，宿主为 Activity 时跨组件拉起 MainActivity */
+private fun openTextReader(
+    ctx: android.content.Context?,
+    book: Book,
+    inBookshelf: Boolean,
+    onOpenReader: ((String, Boolean) -> Unit)?,
+) {
+    if (onOpenReader != null) {
+        onOpenReader(book.bookUrl, inBookshelf)
+    } else {
+        ctx?.startActivity(
+            io.legado.app.ui.main.MainIntent.createReadBookIntent(ctx, book.bookUrl, inBookshelf = inBookshelf)
+        )
+    }
 }
 
 private fun doUpload(b: Book, vm: BookInfoViewModel, act: AppCompatActivity?, scope: kotlinx.coroutines.CoroutineScope) {

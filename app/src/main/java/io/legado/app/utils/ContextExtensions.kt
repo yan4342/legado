@@ -46,7 +46,6 @@ import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.book.audio.AudioPlayActivity
 import io.legado.app.ui.book.manga.ReadMangaActivity
-import io.legado.app.ui.book.read.ReadBookActivity
 import splitties.systemservices.clipboardManager
 import splitties.systemservices.connectivityManager
 import splitties.systemservices.uiModeManager
@@ -75,10 +74,18 @@ fun Context.startActivityForBook(
     book: Book,
     configIntent: Intent.() -> Unit = {},
 ) {
+    if (!book.isAudio && (book.isLocal || !book.isImage || !AppConfig.showMangaUi)) {
+        // 阶段 4：文本阅读器为主栈路由，跨组件经 EXTRA_START_ROUTE 拉起 MainActivity
+        val intent = io.legado.app.ui.main.MainIntent.createReadBookIntent(
+            this, book.bookUrl, inBookshelf = true
+        )
+        intent.apply(configIntent)
+        startActivity(intent)
+        return
+    }
     val cls = when {
         book.isAudio -> AudioPlayActivity::class.java
-        !book.isLocal && book.isImage && AppConfig.showMangaUi -> ReadMangaActivity::class.java
-        else -> ReadBookActivity::class.java
+        else -> ReadMangaActivity::class.java
     }
     val intent = Intent(this, cls)
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

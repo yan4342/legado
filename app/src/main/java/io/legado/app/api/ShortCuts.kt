@@ -7,7 +7,6 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import io.legado.app.R
 import io.legado.app.receiver.SharedReceiverActivity
-import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.main.MainActivity
 
 object ShortCuts {
@@ -30,7 +29,9 @@ object ShortCuts {
 
     private fun buildReadBookShortCutInfo(context: Context): ShortcutInfoCompat {
         val bookShelfIntent = buildIntent<MainActivity>(context)
-        val readBookIntent = buildIntent<ReadBookActivity>(context)
+        // ShortcutInfo.setIntents 要求 intent 必须带 action（component-only 会 NPE）
+        val readBookIntent = io.legado.app.ui.main.MainIntent.createReadBookIntent(context)
+            .setAction(Intent.ACTION_VIEW)
         return ShortcutInfoCompat.Builder(context, "lastRead")
             .setShortLabel(context.getString(R.string.last_read))
             .setLongLabel(context.getString(R.string.last_read))

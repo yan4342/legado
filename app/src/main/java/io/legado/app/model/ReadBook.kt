@@ -24,6 +24,7 @@ import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.book.update
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
+import io.legado.app.help.config.ReadStyleRefreshBus
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.globalExecutor
 import io.legado.app.domain.usecase.ReChapterUseCase
@@ -211,7 +212,7 @@ object ReadBook : CoroutineScope by MainScope() {
         val oldIndex = ReadBookConfig.styleSelect
         ReadBookConfig.isComic = book.isImage
         if (oldIndex != ReadBookConfig.styleSelect) {
-            postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
+            ReadStyleRefreshBus.refresh(1, 2, 5)
             if (AppConfig.readBarStyleFollowPage) {
                 postEvent(EventBus.UPDATE_READ_ACTION_BAR, true)
             }

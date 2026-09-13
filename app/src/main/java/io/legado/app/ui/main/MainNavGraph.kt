@@ -35,6 +35,8 @@ import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.book.search.SearchViewModel
+import io.legado.app.ui.book.read.ReadBookEntry
+import io.legado.app.ui.book.read.ReadBookRouteState
 import io.legado.app.ui.book.toc.TocRouteState
 import io.legado.app.ui.common.compose.LegadoWaitDialog
 import kotlinx.coroutines.awaitCancellation
@@ -63,6 +65,9 @@ fun MainNavHost(
 
     // 目录路由结果回传（TocEntry → BookInfoEntry）的 pending-holder。
     val tocRouteState = remember { TocRouteState() }
+
+    // 阅读路由结果回传（ReadBookEntry → BookInfoEntry）的 pending-holder。
+    val readBookRouteState = remember { ReadBookRouteState() }
 
     // 统一回退回调，NavDisplay.onBack 和各条目 onBack 共用。
     // 当栈只有首页时，委托给 MainActivity 的双击退出逻辑；
@@ -215,13 +220,24 @@ fun MainNavHost(
                     } else null
                 }
             ) { route ->
-                BookInfoEntry(route, onNavigateToRoute, onNavigateBack, sharedTransitionScope, tocRouteState)
+                BookInfoEntry(route, onNavigateToRoute, onNavigateBack, sharedTransitionScope, tocRouteState, readBookRouteState)
             }
 
             // 阶段 3：目录路由化——选择结果经 TocRouteState 回传 BookInfoEntry，
             // 阅读器/漫画/听书形态仍走 TocActivity 薄壳（TocActivityResult 契约不变）。
             entry<MainRouteToc> { route ->
-                TocEntry(route, onNavigateBack, scope, tocRouteState)
+                TocEntry(route, onNavigateBack, scope, tocRouteState, onNavigateToRoute)
+            }
+
+            // 阶段 4：阅读页路由化。当前无调用方进入（外部仍走 ReadBookActivity，
+            // M5 删壳后统一走本路由）；isPopped 供 dispose 区分"被覆盖"与"已弹栈"。
+            entry<MainRouteReadBook> { route ->
+                ReadBookEntry(
+                    route,
+                    onNavigateBack,
+                    readBookRouteState,
+                    isPopped = { backStack.none { it == route } },
+                )
             }
 
             entry<MainRouteExploreShow> { route ->

@@ -53,7 +53,7 @@ import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
 import io.legado.app.service.BaseReadAloudService
-import io.legado.app.ui.book.read.ReadBookActivity
+import io.legado.app.ui.book.read.ReadBookRouteState
 import io.legado.app.ui.common.compose.LegadoTheme
 import io.legado.app.ui.common.compose.legadoPopupBackgroundColor
 import io.legado.app.ui.common.compose.legadoPopupPrimaryTextColor
@@ -113,7 +113,7 @@ class ReadAloudDialog : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val bottomDialog = (activity as ReadBookActivity).bottomDialog++
+        val bottomDialog = ReadBookRouteState.bumpBottomDialog(1)
         if (bottomDialog > 0) {
             dismissAllowingStateLoss()
             return
@@ -124,7 +124,7 @@ class ReadAloudDialog : DialogFragment() {
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
-        (activity as ReadBookActivity).bottomDialog--
+        ReadBookRouteState.bumpBottomDialog(-1)
     }
 
     private fun upTtsSpeechRate() {
