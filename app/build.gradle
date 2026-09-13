@@ -28,6 +28,9 @@ def version = "3." + releaseTime()
 def gitCommits = providers.exec {
     commandLine('git', 'rev-list', 'HEAD', '--count')
 }.standardOutput.asText.get().trim().toInteger()
+// 2026-09-13：129 个本地提交被压缩成 1 个，commit 计数因此少了 129。
+// 补偿回来，保证 versionCode 相对压缩前的构建仍然单调递增（压缩前 HEAD 为 16756）。
+def versionCodeOffset = 129
 
 android {
     compileSdk = libs.versions.compile.sdk.get().toInteger()
@@ -56,7 +59,7 @@ android {
         applicationId "io.legado.app"
         minSdk 28
         targetSdk 36
-        versionCode 10000 + gitCommits
+        versionCode 10000 + gitCommits + versionCodeOffset
         versionName version
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         project.ext.set("archivesBaseName", name + "_" + version)
